@@ -33,11 +33,13 @@ const Login = () => {
     setErrors({});
 
     try {
+      console.log("Tentando buscar usuario:", username.trim());
       const { data, error } = await supabase
         .from("usuarios")
         .select("id, nome, papel, area_servico, senha_hash, ativo")
         .eq("username", username.trim())
         .maybeSingle();
+      console.log("Resultado:", data, error);
 
       if (error) throw error;
 
