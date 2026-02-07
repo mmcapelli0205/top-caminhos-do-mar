@@ -32,6 +32,7 @@ const MreSection = () => {
   const qc = useQueryClient();
   const [items, setItems] = useState<Partial<MreItem>[]>([]);
   const [seeded, setSeeded] = useState(false);
+  const [mercadoNames, setMercadoNames] = useState(["Atacadão", "Mercadão", "Marsil"]);
 
   const { data: totalParticipantes } = useQuery({
     queryKey: ["fin-participantes-count"],
@@ -154,15 +155,14 @@ const MreSection = () => {
               <TableHead className="sticky left-0 bg-card z-10 min-w-[150px]">Item</TableHead>
               <TableHead className="text-center">Obrig.</TableHead>
               <TableHead className="text-center">Qtd/Kit</TableHead>
-              <TableHead>
-                <div className="flex items-center gap-1">Atacadão <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => toast({ title: "Webhook não configurado" })}><Search className="h-3 w-3" /></Button></div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-1">Mercadão <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => toast({ title: "Webhook não configurado" })}><Search className="h-3 w-3" /></Button></div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-1">Marsil <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => toast({ title: "Webhook não configurado" })}><Search className="h-3 w-3" /></Button></div>
-              </TableHead>
+              {["preco_atacadao", "preco_mercadao", "preco_marsil"].map((_, mi) => (
+                <TableHead key={mi}>
+                  <div className="flex items-center gap-1">
+                    <Input value={mercadoNames[mi]} onChange={(e) => setMercadoNames(prev => prev.map((n, i) => i === mi ? e.target.value : n))} className="h-7 min-w-[80px] text-xs font-semibold" />
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => toast({ title: "Webhook não configurado" })}><Search className="h-3 w-3" /></Button>
+                  </div>
+                </TableHead>
+              ))}
               <TableHead className="text-right">Menor</TableHead>
               <TableHead className="text-right">Total</TableHead>
             </TableRow>
