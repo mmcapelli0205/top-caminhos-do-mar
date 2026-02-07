@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Users, Search, Download, Plus, Eye, Pencil,
+  Users, Search, Download, Plus, Eye, Pencil, Upload,
   CheckCircle, XCircle, Circle, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import ParticipanteSheet from "@/components/ParticipanteSheet";
+import ImportCSVDialog from "@/components/ImportCSVDialog";
 import { useParticipantes, type Participante } from "@/hooks/useParticipantes";
 
 const PAGE_SIZE = 20;
@@ -54,6 +55,9 @@ export default function Participantes() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedParticipant, setSelectedParticipant] = useState<Participante | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const existingCpfs = useMemo(() => participantes.map((p) => p.cpf), [participantes]);
 
   // debounce search
   useEffect(() => {
@@ -151,6 +155,9 @@ export default function Participantes() {
           <span className="text-sm text-muted-foreground">({filtered.length})</span>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" /> Importar da TicketAndGo
+          </Button>
           <Button variant="outline" size="sm" onClick={exportCSV}>
             <Download className="h-4 w-4 mr-1" /> CSV
           </Button>
@@ -315,6 +322,11 @@ export default function Participantes() {
         open={!!selectedParticipant}
         onOpenChange={(open) => { if (!open) setSelectedParticipant(null); }}
         familiaNumero={selectedParticipant ? getFamiliaNumero(selectedParticipant.familia_id) : null}
+      />
+      <ImportCSVDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        existingCpfs={existingCpfs}
       />
     </div>
   );
