@@ -15,6 +15,7 @@ import Equipamentos from "./pages/Equipamentos";
 import ArtesEDocs from "./pages/ArtesEDocs";
 import CheckIn from "./pages/CheckIn";
 import Configuracoes from "./pages/Configuracoes";
+import Tops from "./pages/Tops";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/artes-docs" element={<ArtesEDocs />} />
             <Route path="/check-in" element={<CheckIn />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="/tops" element={<Tops />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

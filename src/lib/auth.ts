@@ -8,6 +8,7 @@ import {
   Wrench,
   ImageIcon,
   QrCode,
+  Calendar,
   Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -36,6 +37,7 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 7, title: "Equipamentos", url: "/equipamentos", icon: Wrench },
   { id: 8, title: "Artes & Docs", url: "/artes-docs", icon: ImageIcon },
   { id: 9, title: "Check-in", url: "/check-in", icon: QrCode },
+  { id: 11, title: "TOPs", url: "/tops", icon: Calendar },
   { id: 10, title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
