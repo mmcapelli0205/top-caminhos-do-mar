@@ -1,99 +1,86 @@
 
 
-## Importacao CSV (TicketAndGo) - Stepper Modal
+## Familias - Pagina de Gestao e Algoritmo de Formacao
 
 ### Resumo
-Adicionar botao "Importar da TicketAndGo" na pagina de Participantes que abre um modal com 4 etapas: Upload, Mapeamento, Validacao e Importacao. Usa a biblioteca `papaparse` para parsing de CSV.
-
-### Dependencia nova
-- `papaparse` (+ `@types/papaparse` como devDependency) para parsing robusto de CSV com auto-deteccao de delimitador e encoding.
+Construir a pagina completa de Familias em `/familias` com configuracao, algoritmo automatico de distribuicao, visualizacao em cards e salvamento no Supabase.
 
 ### Arquivos a criar/modificar
 
-**1. `src/components/ImportCSVDialog.tsx`** (novo)
-Componente principal do modal com stepper de 4 etapas.
-
-**2. `src/pages/Participantes.tsx`** (modificar)
-Adicionar botao "Importar da TicketAndGo" e renderizar o dialog.
+**1. `src/pages/Familias.tsx`** (reescrever) — Pagina completa
+**2. `src/lib/familiaAlgorithm.ts`** (novo) — Logica do algoritmo isolada para testabilidade
 
 ### Detalhes Tecnicos
 
-**Estrutura do componente ImportCSVDialog:**
-- Props: `open`, `onOpenChange`, `existingCpfs: string[]` (lista de CPFs ja cadastrados)
-- Estado: `step` (1-4), `rawData`, `headers`, `mapping`, `validationResults`, `importProgress`
+#### Algoritmo de Formacao (`src/lib/familiaAlgorithm.ts`)
 
-**Step 1 - Upload:**
-- Zona de drag-and-drop com visual (icone Upload, borda tracejada)
-- Aceita `.csv` e `.xlsx`
-- Ao carregar o arquivo:
-  - Tenta decodificar com TextDecoder usando UTF-8, depois Latin1 se houver caracteres estranhos
-  - Usa `Papa.parse()` com `header: true`, `skipEmptyLines: true`, `dynamicTyping: false`
-  - Papa auto-detecta delimitador (comma, semicolon, tab)
-- Exibe nome do arquivo e contagem de linhas
-- Botao "Proximo" habilitado apos upload
+Funcao pura que recebe lista de participantes e numero N de familias, retorna um Map de familia_index para array de participante IDs.
 
-**Step 2 - Preview e Mapeamento:**
-- Tabela preview com as 5 primeiras linhas do CSV
-- Para cada coluna do banco (nome, cpf, telefone, data_nascimento, email, igreja, peso, altura, etc.), um Select dropdown mapeando para colunas do CSV
-- Auto-mapeamento fuzzy: normaliza nomes removendo acentos e lowercase, tenta match parcial:
-  - "nome completo" ou "nome" -> nome
-  - "cpf" -> cpf
-  - "data nasc" ou "nascimento" -> data_nascimento
-  - "telefone" ou "celular" ou "whatsapp" -> telefone
-  - "email" ou "e-mail" -> email
-  - "igreja" ou "comunidade" -> igreja
-  - etc.
-- Campos obrigatorios (nome, cpf, telefone, data_nascimento) destacados em vermelho se nao mapeados
-- Botao "Proximo" desabilitado se campos obrigatorios nao mapeados
+Entrada:
+- `participants`: array de participantes (com nome, data_nascimento, amigo_parente, doenca, peso, condicionamento)
+- `numFamilias`: number
 
-**Step 3 - Validacao:**
-- Processa todas as linhas aplicando:
-  - Limpeza de CPF (remove pontos, tracos, espacos)
-  - Validacao de algoritmo CPF (usando funcao existente em `src/lib/cpf.ts`)
-  - Deteccao de duplicatas contra `existingCpfs`
-  - Validacao de formato de data (tenta dd/mm/yyyy, yyyy-mm-dd, dd-mm-yyyy)
-  - Trim em todos os campos de texto
-- Tabela resumo com 3 categorias:
-  - Novos (verde): prontos para importar
-  - Duplicatas (amarelo): CPF ja existe no banco
-  - Erros (vermelho): CPF invalido, campos obrigatorios vazios
-- Permite expandir cada categoria para ver as linhas
-- Checkboxes para incluir/excluir linhas com problema
+Saida:
+- `families`: array de N arrays, cada um com participantes atribuidos
 
-**Step 4 - Importacao:**
-- Botao "Importar X participantes"
-- Progress bar (componente Progress do shadcn) mostrando progresso
-- Para cada participante valido:
-  - `qr_code = crypto.randomUUID()`
-  - `status = "inscrito"`
-  - Calcula idade: se >= 40, `ergometrico_status = "pendente"`
-  - `contrato_assinado = false`
-  - `checkin_realizado = false`
-- Insere em lotes de 50 via `supabase.from("participantes").insert(batch)`
-- Ao concluir: resumo final ("X importados com sucesso"), botao "Fechar"
-- Invalida cache react-query `["participantes"]` para atualizar a lista
+Passos do algoritmo (executados em ordem):
+1. **Separacao (amigo_parente)**: Parseia o campo `amigo_parente`. Se participante A lista nome que faz match (case-insensitive, trim) com participante B, marca par como "devem separar". Na atribuicao, coloca em familias com distancia maxima (indice 0 vs N/2).
+2. **Idosos 60+**: Filtra participantes com idade >= 60. Distribui round-robin entre as familias.
+3. **Saude**: Filtra participantes com `doenca` preenchido (nao null, nao vazio). Distribui round-robin, pulando familias que ja tem 2+ membros com condicao de saude.
+4. **Peso > 100kg**: Distribui round-robin, max 2 por familia.
+5. **Condicionamento <= 2**: Distribui round-robin, max 2 por familia.
+6. **Restantes**: Todos nao atribuidos, ordenados por idade decrescente, distribuidos round-robin para balancear contagem total.
 
-**Edge cases tratados:**
-- Linhas vazias ignoradas (skipEmptyLines do papaparse)
-- Espacos extras no CPF e telefone removidos
-- Telefone: aceita varios formatos, normaliza para (XX) XXXXX-XXXX
-- Datas: aceita dd/mm/yyyy e yyyy-mm-dd, converte para yyyy-mm-dd no banco
-- Arquivo vazio ou sem linhas validas: mensagem de erro
+Funcao auxiliar `calcAge(dob: string): number` para calcular idade.
 
-### Modificacao em Participantes.tsx
-- Import do componente ImportCSVDialog
-- Estado `importOpen` para controlar o modal
-- Passar `existingCpfs` extraido de `participantes.map(p => p.cpf)`
-- Botao "Importar da TicketAndGo" com icone Upload ao lado do botao "Novo Participante"
+#### Pagina Familias (`src/pages/Familias.tsx`)
 
-### Componentes shadcn utilizados
-- Dialog/DialogContent (modal grande, max-w-4xl)
-- Progress (barra de progresso)
-- Table (preview e validacao)
-- Select (mapeamento de colunas)
-- Button, Badge, Alert
-- Checkbox (selecao de linhas)
+**Secao Topo - Configuracao:**
+- Input "Numero de Familias" (number, default 10)
+- Botao "Gerar Familias Automaticamente" (laranja, destaque)
+- Texto info: "Total participantes aptos: X" (count de participantes com status != 'cancelado')
+
+**Dados:** Usa `useParticipantes()` hook existente para buscar participantes e familias.
+
+**Ao clicar "Gerar":**
+1. Filtra participantes com status != 'cancelado'
+2. Executa algoritmo de `familiaAlgorithm.ts`
+3. Armazena resultado em estado local (nao salva imediatamente)
+4. Exibe resultado nos cards abaixo
+
+**Grid de Cards de Familia:**
+- Responsivo: 1 coluna mobile, 2 tablet (md), 3 desktop (lg)
+- Cada card (componente Card do shadcn):
+  - Header: "Familia X" + contagem de membros + idade media
+  - Lista de membros com: nome, idade, badge peso (vermelho se >100kg), flag saude (icone coracao se tem doenca), badge condicionamento (1-5)
+  - Borda vermelha se alguma regra violada no card
+
+**Reatribuicao Manual:**
+- Cada membro tem um Select dropdown com numeros das familias (1-N)
+- Ao mudar, move o participante para a nova familia no estado local
+- Mostra warning amarelo se a mudanca viola regra de separacao
+
+**Tabela Resumo (bottom):**
+- Colunas: Familia | Membros | Idade Media | Saude | Pesados | Baixo Cond.
+- Linhas com violacao de balanceamento destacadas em laranja
+- Violacao = diferenca de membros > 2 entre maior e menor familia, ou regra de max excedida
+
+**Botao "Salvar Familias":**
+- Primeiro: cria/atualiza registros na tabela `familias` (upsert por numero)
+- Depois: para cada participante, faz update de `familia_id` na tabela `participantes`
+- Usa batch updates via supabase
+- Toast de sucesso "Familias salvas com sucesso!"
+- Invalida cache react-query `["participantes"]` e `["familias"]`
+
+### Sem Drag and Drop
+Para evitar adicionar dependencia pesada (`@dnd-kit`), a reatribuicao manual sera feita via dropdown Select em cada membro. Isso e mais simples, mais acessivel e funciona perfeitamente em mobile.
 
 ### Sem alteracoes no banco
-Usa tabela `participantes` existente. Nenhuma migracao necessaria.
+Usa tabelas `familias` e `participantes` existentes. Campo `familia_id` em participantes ja existe. Nenhuma migracao necessaria.
 
+### Componentes shadcn utilizados
+- Card, CardHeader, CardContent
+- Input, Button, Select
+- Table, TableHead, TableRow, TableCell
+- Badge, Alert
+- Toast (via sonner)
