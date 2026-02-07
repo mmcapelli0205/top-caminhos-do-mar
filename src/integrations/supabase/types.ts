@@ -63,7 +63,6 @@ export type Database = {
           preco_krill: number | null
           preco_manual: number | null
           preco_swift: number | null
-          preco_swift2: number | null
           top_id: string | null
         }
         Insert: {
@@ -76,7 +75,6 @@ export type Database = {
           preco_krill?: number | null
           preco_manual?: number | null
           preco_swift?: number | null
-          preco_swift2?: number | null
           top_id?: string | null
         }
         Update: {
@@ -89,7 +87,6 @@ export type Database = {
           preco_krill?: number | null
           preco_manual?: number | null
           preco_swift?: number | null
-          preco_swift2?: number | null
           top_id?: string | null
         }
         Relationships: [
@@ -109,11 +106,17 @@ export type Database = {
           comprovante_url: string | null
           created_at: string | null
           data: string | null
+          data_aquisicao: string | null
           descricao: string
+          fornecedor: string | null
           id: string
+          item: string | null
+          observacoes: string | null
+          quantidade: number | null
           responsavel: string | null
           top_id: string | null
           valor: number
+          valor_unitario: number | null
         }
         Insert: {
           auto_calculado?: boolean | null
@@ -121,11 +124,17 @@ export type Database = {
           comprovante_url?: string | null
           created_at?: string | null
           data?: string | null
+          data_aquisicao?: string | null
           descricao: string
+          fornecedor?: string | null
           id?: string
+          item?: string | null
+          observacoes?: string | null
+          quantidade?: number | null
           responsavel?: string | null
           top_id?: string | null
           valor: number
+          valor_unitario?: number | null
         }
         Update: {
           auto_calculado?: boolean | null
@@ -133,15 +142,59 @@ export type Database = {
           comprovante_url?: string | null
           created_at?: string | null
           data?: string | null
+          data_aquisicao?: string | null
           descricao?: string
+          fornecedor?: string | null
           id?: string
+          item?: string | null
+          observacoes?: string | null
+          quantidade?: number | null
           responsavel?: string | null
+          top_id?: string | null
+          valor?: number
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "despesas_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doacoes: {
+        Row: {
+          created_at: string | null
+          data: string | null
+          doador: string
+          id: string
+          observacoes: string | null
+          top_id: string | null
+          valor: number
+        }
+        Insert: {
+          created_at?: string | null
+          data?: string | null
+          doador: string
+          id?: string
+          observacoes?: string | null
+          top_id?: string | null
+          valor: number
+        }
+        Update: {
+          created_at?: string | null
+          data?: string | null
+          doador?: string
+          id?: string
+          observacoes?: string | null
           top_id?: string | null
           valor?: number
         }
         Relationships: [
           {
-            foreignKeyName: "despesas_top_id_fkey"
+            foreignKeyName: "doacoes_top_id_fkey"
             columns: ["top_id"]
             isOneToOne: false
             referencedRelation: "tops"
