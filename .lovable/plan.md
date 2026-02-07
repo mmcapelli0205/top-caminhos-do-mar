@@ -1,103 +1,107 @@
 
 
-## Check-in com QR Code
+## Financeiro Completo - Receita, Despesas, MRE, Ceia do Rei
 
 ### Resumo
-Construir a pagina completa de Check-in em `/check-in` com duas abas: preparacao de QR Codes e realizacao de check-in no dia do evento com scanner de camera.
+Reescrever a pagina `/financeiro` com 5 abas (Resumo, Receita, Despesas, MRE, Ceia do Rei), cada uma como componente independente, com dados conectados ao Supabase.
 
-### Dependencias novas
-- `qrcode` — geracao de QR codes client-side (canvas/data URL)
-- `html5-qrcode` — scanner de camera para leitura de QR codes
-- `jszip` — empacotamento dos PNGs em ZIP para download
-- `@types/qrcode` — tipos TypeScript
+### Problema de tipos
+A tabela `despesas` no banco ja tem colunas `quantidade`, `valor_unitario`, `item`, `fornecedor`, `data_aquisicao`, `observacoes` mas o arquivo `types.ts` esta desatualizado e nao as inclui. Da mesma forma, a tabela `doacoes` existe no banco mas nao esta no types. Sera necessaria uma migracao "no-op" (ex: um comentario SQL) para forcar a regeneracao dos tipos, ou usar `.select("*")` e tratar os campos manualmente. A abordagem sera usar uma migracao vazia para forcar refresh dos tipos.
 
 ### Arquivos a criar/modificar
 
-**1. `src/pages/CheckIn.tsx`** (reescrever) — Pagina completa com 2 abas
+| Arquivo | Acao |
+|---|---|
+| `src/pages/Financeiro.tsx` | Reescrever — pagina com Tabs |
+| `src/components/financeiro/ResumoSection.tsx` | Novo — dashboard financeiro |
+| `src/components/financeiro/ReceitaSection.tsx` | Novo — inscricoes + doacoes |
+| `src/components/financeiro/DespesasSection.tsx` | Novo — despesas por categoria |
+| `src/components/financeiro/MreSection.tsx` | Novo — MRE kit alimentacao |
+| `src/components/financeiro/CeiaSection.tsx` | Novo — Ceia do Rei |
+| `src/components/financeiro/PriceCell.tsx` | Novo — celula de preco reutilizavel |
+
+### Migracao necessaria
+Uma migracao "no-op" para forcar regeneracao dos tipos que incluam `doacoes` e os campos novos de `despesas`. Algo como:
+```sql
+-- Force types refresh
+SELECT 1;
+```
 
 ### Detalhes Tecnicos
 
-#### Tab 1 - "QR Codes" (Preparacao)
+#### Financeiro.tsx (pagina principal)
+- Tabs: Resumo | Receita | Despesas | MRE | Ceia do Rei
+- Cada tab renderiza o componente correspondente
+- Icone DollarSign no header
 
-**Dados:** Usa `useParticipantes()` para buscar participantes e familias.
+#### Tab 1 - ResumoSection
+- 3 cards grandes: Receita Total (verde), Despesa Total (vermelho), Saldo (cor condicional)
+- Receita = sum(participantes.valor_pago) + sum(doacoes.valor)
+- Despesa = sum(despesas.valor)
+- PieChart (recharts) com distribuicao de despesas por categoria
+- BarChart comparando Receita vs Despesa
+- Queries: fetch participantes (valor_pago), doacoes (valor), despesas (valor, categoria)
 
-**Tabela:**
-- Colunas: Nome, Familia (numero via familiaMap), QR Code (thumbnail 48x48), Status (checkin_realizado)
-- QR code gerado client-side a partir do campo `qr_code` do participante (UUID)
-- Se `qr_code` estiver null, mostra "Sem QR"
+#### Tab 2 - ReceitaSection
+**Secao 2a - Inscricoes:**
+- Cards resumo: Total Arrecadado, por PIX, por Cartao, com Cupom
+- Tabela: Nome | Valor Pago | Forma Pagamento | Cupom | Status
+- Dados de `participantes` (somente leitura)
+- Totalizador no rodape
 
-**Botao "Gerar Todos QR Codes":**
-- Para cada participante sem `qr_code` preenchido, gera um UUID via `crypto.randomUUID()`
-- Faz batch update no Supabase: `update({ qr_code }).eq("id", participante.id)` para cada um
-- Invalida cache react-query `["participantes"]`
-- Toast de sucesso
+**Secao 2b - Doacoes:**
+- Tabela editavel com dados da tabela `doacoes`
+- Colunas: Doador | Valor | Data | Observacoes | Acoes
+- Botao "+ Nova Doacao" adiciona linha editavel
+- CRUD completo via Supabase (insert/update/delete)
+- Totalizador
 
-**Botao "Baixar QR Codes (ZIP)":**
-- Usa `qrcode` para gerar PNG data URL para cada participante com `qr_code`
-- Usa `jszip` para empacotar todos os PNGs
-- Cada arquivo nomeado: `QR_[Nome]_Familia[N].png` (nome sanitizado, sem caracteres especiais)
-- Download via blob URL
+#### Tab 3 - DespesasSection
+- Categorias fixas no dropdown: Administrativas, Juridicas, Papelaria, Comunicacao, Equipamentos, Combustivel, Montanha, Locacao da Base, Banheiros Quimicos, Fogos/Decoracao, Fardas, Gorras, Patchs, Pins, Taxa Global, Taxa Ticket and Go, Diversos
+- Tabela conectada a `despesas` (excluindo auto_calculado=true para nao misturar com MRE/Ceia)
+- Colunas: Item | Categoria | Qtd | Valor Unit. | Total | Fornecedor | Data | Obs | Acoes
+- "+ Nova Despesa" abre dialog com formulario
+- Total auto: quantidade x valor_unitario salvo no campo valor
+- Filtro por categoria e busca por texto
+- Editar via dialog, excluir com confirmacao
+- Rodape: total por categoria filtrada e total geral
 
-#### Tab 2 - "Realizar Check-in" (Dia do evento)
+#### Tab 4 - MreSection
+- Header: Total Participantes (status != cancelado)
+- Tabela editavel de `mre_itens`
+- Pre-fill automatico se tabela vazia (7 obrigatorios + 3 outros)
+- PriceCell com indicador azul (auto) / laranja (manual)
+- Calculos: menorPreco, total por item, custo total MRE, custo por kit
+- Botoes: Salvar, + Adicionar Item, Salvar como Despesa
+- Botao "Buscar" nos headers de preco (toast placeholder por enquanto)
 
-**Layout:**
-- Contador no topo: "Check-ins: X / Y total (Z%)" — X = count de checkin_realizado=true, Y = total participantes
-- Area de camera (60vh height, full-width mobile)
-- Barra de busca manual abaixo da camera (pesquisa por nome ou CPF)
-- Card de resultado abaixo
+#### Tab 5 - CeiaSection
+- Header: Total Pessoas (participantes + servidores), Total Carne (x 0.400), Margem editavel
+- Tabela editavel de `cela_itens`
+- Pre-fill com 4 itens (Bovina 40%, Linguica 25%, Frango 20%, Batata 15%)
+- Mesma logica de PriceCell
+- Calculos: kgTotal, menor preco, total por item, custo total, custo por pessoa
+- Botoes: Salvar, Salvar como Despesa
 
-**Scanner:**
-- Usa `html5-qrcode` com `Html5QrcodeScanner` ou `Html5Qrcode` diretamente
-- Inicializa camera ao montar a tab
-- On decode: busca participante com `qr_code` matching, se nao encontrado busca em `servidores`
-- Cleanup ao desmontar
+#### PriceCell (componente reutilizavel)
+- Input numerico com dot indicator (4px circulo)
+- Azul: fonte_auto=true
+- Laranja: preco digitado manualmente
+- Sem dot: celula vazia
 
-**Card de Resultado (apos scan ou busca):**
-- Nome (texto grande)
-- Familia # (via familiaMap)
-- Status atual (checkin_realizado)
-- Tipo: "Participante" ou "Servidor"
-
-**Validacao — Card Verde:**
-Condicoes para "Documentacao OK":
-- `contrato_assinado === true`
-- `ergometrico_status === 'aprovado'` OU `'dispensado'` OU idade < 40
-
-Se todas ok: card verde com icone check e "Documentacao OK"
-Se alguma falha: card vermelho com lista de pendencias
-
-**Para servidores:** Sempre mostra card verde (sem validacao de contrato/ergometrico)
-
-**Botao "Confirmar Check-in":**
-- Visivel sempre no card verde
-- No card vermelho: botao "Forcar Check-in" (outline/destructive) com confirmacao
-- Ao confirmar:
-  - Update `checkin_realizado = true` (participantes) ou `checkin = true` (servidores)
-  - Play beep via Web Audio API: oscillator 800Hz por 200ms
-  - Toast de sucesso
-  - Invalida cache `["participantes"]`
-  - Limpa resultado e reseta scanner para proxima pessoa
-
-**Busca Manual:**
-- Input com debounce 300ms
-- Filtra participantes por nome (case-insensitive includes) ou CPF (digits only)
-- Mostra lista de resultados clicaveis (max 5)
-- Ao clicar, seleciona e mostra o card de resultado
-
-#### Funcao auxiliar calcAge
-Reutiliza logica de calculo de idade (mesma do familiaAlgorithm.ts) para verificar se participante tem menos de 40 anos.
+#### Alert de precos vazios
+- Banner laranja no topo de MRE e Ceia se algum preco obrigatorio estiver vazio
 
 #### Responsividade
-- Camera area: `h-[60vh] w-full` em mobile, `h-[400px] max-w-2xl mx-auto` em desktop
-- Card de resultado: full-width em mobile, max-w-md centralizado em desktop
-- Tabela da Tab 1: scroll horizontal em mobile
+- Tabelas com overflow-x-auto
+- Primeira coluna sticky com bg-card
+- Inputs min-width 80px
+- Dialog de nova despesa fullscreen em mobile
+- TabsList com scroll horizontal em mobile
 
 ### Componentes shadcn utilizados
-- Tabs, TabsList, TabsTrigger, TabsContent
-- Table, TableHeader, TableRow, TableHead, TableCell, TableBody
-- Input, Button, Badge, Card, CardHeader, CardContent
-- Dialog (para confirmacao de "Forcar Check-in")
+Card, Tabs, Table, Input, Select, Button, Checkbox, Badge, Alert, Dialog, Label, Separator
 
-### Sem alteracoes no banco
-Usa campos existentes: `participantes.qr_code`, `participantes.checkin_realizado`, `servidores.qr_code`, `servidores.checkin`. Nenhuma migracao necessaria.
+### Graficos
+PieChart e BarChart do recharts (ja instalado)
 
