@@ -253,13 +253,13 @@ export default function ParticipanteForm() {
               <FormControl>
                 <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {field.value ? format(new Date(field.value), "dd/MM/yyyy") : "Selecione"}
+                  {field.value ? format(new Date(field.value + "T12:00:00"), "dd/MM/yyyy") : "Selecione"}
                 </Button>
               </FormControl>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar mode="single" locale={ptBR}
-                selected={field.value ? new Date(field.value) : undefined}
+                selected={field.value ? new Date(field.value + "T12:00:00") : undefined}
                 onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                 defaultMonth={new Date(1990, 0)}
                 captionLayout="dropdown-buttons"
