@@ -1,15 +1,17 @@
 
-## Corrigir Conexao do Login ao Supabase Correto
 
-### Problema
-O arquivo `src/pages/Login.tsx` importa o cliente Supabase de `@/lib/supabase.ts`, que aponta para um projeto Supabase **diferente** (URL: `pxvhrsxcyfmdvisulbbu`). O projeto correto "Sistema Legendarios" (URL: `ilknzgupnswyeynwpovj`) ja esta configurado em `src/integrations/supabase/client.ts`.
+## Adicionar console.log para debug no Login
 
-### Solucao
+### Alteracao
 
-1. **Atualizar o import no Login.tsx** (linha 4):
-   - De: `import { supabase } from "@/lib/supabase"`
-   - Para: `import { supabase } from "@/integrations/supabase/client"`
+No arquivo `src/pages/Login.tsx`, adicionar dois `console.log`:
 
-2. **Remover o arquivo antigo** `src/lib/supabase.ts` — ele aponta para o projeto errado e nao deve ser usado.
+1. **Antes da query (linha 36):** `console.log("Tentando buscar usuario:", username.trim());`
+2. **Apos a query (linha 41, antes do `if (error)`):** `console.log("Resultado:", data, error);`
 
-Nenhuma outra alteracao necessaria. A query, comparacao de senha e toda a logica do login ja estao corretas.
+Isso permitira ver no DevTools exatamente o que o Supabase retorna — se `data` e `null` e `error` e `null`, o problema e RLS bloqueando o SELECT com a anon key.
+
+### Proximo passo apos debug
+
+Se confirmado que RLS bloqueia, sera necessario adicionar uma policy `FOR SELECT USING (true)` na tabela `usuarios` no Supabase, ou criar um approach mais seguro via edge function.
+
