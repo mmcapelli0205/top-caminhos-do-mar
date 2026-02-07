@@ -1,71 +1,69 @@
 
 
-## Melhorias no Financeiro - Complemento
+## Taxa Global + Inscricao de Servidores
 
 ### Resumo
-Quatro melhorias na area Financeiro: (1) Taxa Ticket and Go e Receita Liquida no Resumo, (2) Upload de comprovante nas Despesas, (3) Exportar PDF do balanco, (4) Subtotais por categoria com badges no Resumo.
+Duas mudancas principais: (1) adicionar taxa "Global" no Resumo, separada da "Ticket and Go", com logica diferenciada por tipo de inscricao; (2) adicionar secao "Inscricao de Servidores" na aba Receita, usando a tabela `servidores` com novos campos financeiros.
+
+### Logica das Taxas (ponto-chave)
+
+- **Participantes** pagam ambas as taxas: Ticket and Go + Global
+- **Servidores** pagam apenas: Ticket and Go (sem Global)
+- No Resumo, o calculo fica:
+
+```text
+receitaParticipantes = sum(participantes.valor_pago) onde status != cancelado
+receitaServidores    = sum(servidores.valor_pago)
+
+taxaTicket_Participantes = receitaParticipantes * ticketPercent%
+taxaTicket_Servidores    = receitaServidores * ticketPercent%
+taxaGlobal_Participantes = receitaParticipantes * globalPercent%
+
+totalTaxas = taxaTicket_Participantes + taxaTicket_Servidores + taxaGlobal_Participantes
+
+receitaLiquida = (receitaParticipantes + receitaServidores + doacoes) - totalTaxas
+```
+
+### Migracao necessaria
+
+Adicionar campos na tabela `servidores`:
+
+```sql
+ALTER TABLE public.servidores
+  ADD COLUMN valor_pago numeric DEFAULT 0,
+  ADD COLUMN forma_pagamento text,
+  ADD COLUMN cupom_desconto text,
+  ADD COLUMN status text DEFAULT 'ativo';
+```
 
 ### Arquivos a modificar
 
 | Arquivo | Acao |
 |---|---|
-| `src/components/financeiro/ResumoSection.tsx` | Reescrever — taxa, receita liquida, PDF, badges por categoria |
-| `src/components/financeiro/DespesasSection.tsx` | Modificar — campo comprovante_url com upload no dialog + coluna na tabela |
+| `src/components/financeiro/ResumoSection.tsx` | Adicionar taxa Global, buscar servidores, recalcular receita liquida |
+| `src/components/financeiro/ReceitaSection.tsx` | Adicionar secao "Inscricao de Servidores" com tabela read-only + cards resumo |
 
 ### Detalhes Tecnicos
 
-#### 1. ResumoSection — Taxa Ticket and Go + Receita Liquida
+#### ResumoSection
 
-- Adicionar estado `taxaPercent` (default 10)
-- Input editavel ao lado do card de Receita: "Taxa Ticket and Go: [10] %"
-- Calculos:
-  - `taxaValor = receitaInscricoes * (taxaPercent / 100)`
-  - `receitaLiquida = receitaInscricoes - taxaValor + receitaDoacoes`
-  - `saldo = receitaLiquida - despesaTotal`
-- Card de Receita reformulado para mostrar 3 linhas:
-  - Total Bruto (inscricoes + doacoes)
-  - Taxa TicketAndGo: -R$ X.XXX
-  - Receita Liquida (verde, destaque)
-- Card de Saldo usa receitaLiquida
-- Abaixo do Saldo: texto "Despesas representam X% da Receita" (`(despesaTotal / receitaLiquida * 100).toFixed(1)%`)
+- Novo estado: `globalPercent` (default 0)
+- Nova query: buscar `servidores` (valor_pago, status)
+- Card de Receita reformulado:
+  - Total Bruto = participantes + servidores + doacoes
+  - Linha "Taxa Ticket and Go: [10]%" com input editavel — aplicada sobre (participantes + servidores)
+  - Linha "Taxa Global: [0]%" com input editavel — aplicada apenas sobre participantes
+  - Receita Liquida = bruto - taxaTicket(part+serv) - taxaGlobal(part)
+- PDF atualizado para incluir servidores e taxa Global
 
-#### 2. ResumoSection — Subtotais por categoria com badges
+#### ReceitaSection
 
-- Usar as 17 categorias fixas do DespesasSection (+ MRE, Ceia do Rei, Bebidas para auto_calculados)
-- Abaixo do grafico de pizza, listar cada categoria que tem valor > 0 como Badge colorido: "Fardas: R$ 1.200"
-- Cores dos badges seguem o array COLORS ja existente
+- Nova secao "Inscricoes de Servidores" entre "Inscricoes" e "Doacoes"
+- Nova query: buscar servidores com campos financeiros
+- Cards resumo: Total Arrecadado Servidores, por PIX, por Cartao
+- Tabela read-only: Nome | Valor Pago | Forma Pgto | Cupom | Status
+- Totalizador de servidores
+- Card final "RECEITA TOTAL" soma participantes + servidores + doacoes
 
-#### 3. ResumoSection — Exportar PDF
-
-- Botao "Exportar PDF" no header do Resumo
-- Usa jsPDF (ja instalado)
-- Conteudo:
-  - Header: "TOP Caminhos do Mar #1575 | 02 a 05 de Abril de 2026"
-  - Secao Receita: Total Inscricoes, Doacoes, Taxa TicketAndGo, Receita Liquida
-  - Secao Despesas: lista cada categoria com subtotal
-  - Resultado Final: Saldo (texto verde/vermelho nao aplicavel em PDF basico, usar prefixo +/-)
-  - Nome arquivo: "balanco-financeiro-top1575.pdf"
-
-#### 4. DespesasSection — Upload de comprovante
-
-- Adicionar `comprovante_url` ao form state (string)
-- No dialog, novo campo "Comprovante" com input type="file"
-- Ao selecionar arquivo:
-  - Upload para Supabase Storage bucket "assets" no path `comprovantes/{uuid}-{filename}`
-  - Obter URL publica via `getPublicUrl`
-  - Salvar URL no campo `comprovante_url` do payload
-- Na tabela, nova coluna "Comprovante" entre "Obs" e "Acoes":
-  - Se `comprovante_url` existe: icone FileDown como link (target="_blank")
-  - Se nao: "-"
-- No edit, se ja tem comprovante mostrar link + opcao de trocar
-
-### Componentes utilizados
-- jsPDF para geracao do PDF
-- Supabase Storage (`supabase.storage.from("assets").upload(...)`)
-- Badge para subtotais por categoria
-- Input type="file" para upload
-- FileDown (lucide) como icone de download
-
-### Sem alteracao no banco
-O campo `comprovante_url` ja existe na tabela `despesas`. O bucket "assets" ja existe e e publico. Nenhuma migracao necessaria.
-
+### Sem alteracao em MRE/Ceia/Bebidas
+As taxas sao descontadas apenas no Resumo para calcular receita liquida. As outras abas nao sao afetadas.
