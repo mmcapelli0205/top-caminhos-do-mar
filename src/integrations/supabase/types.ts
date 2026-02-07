@@ -52,6 +52,61 @@ export type Database = {
           },
         ]
       }
+      autorizacoes_medicas: {
+        Row: {
+          autorizado_por: string | null
+          created_at: string | null
+          data_autorizacao: string | null
+          id: string
+          observacoes: string | null
+          participante_id: string | null
+          status: string | null
+          top_id: string | null
+        }
+        Insert: {
+          autorizado_por?: string | null
+          created_at?: string | null
+          data_autorizacao?: string | null
+          id?: string
+          observacoes?: string | null
+          participante_id?: string | null
+          status?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          autorizado_por?: string | null
+          created_at?: string | null
+          data_autorizacao?: string | null
+          id?: string
+          observacoes?: string | null
+          participante_id?: string | null
+          status?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "autorizacoes_medicas_autorizado_por_fkey"
+            columns: ["autorizado_por"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autorizacoes_medicas_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autorizacoes_medicas_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bebidas_itens: {
         Row: {
           created_at: string | null
@@ -290,6 +345,67 @@ export type Database = {
           },
         ]
       }
+      ergometricos: {
+        Row: {
+          analisado_por: string | null
+          arquivo_url: string | null
+          created_at: string | null
+          data_analise: string | null
+          data_envio: string | null
+          id: string
+          observacoes_medicas: string | null
+          participante_id: string | null
+          status: string | null
+          top_id: string | null
+        }
+        Insert: {
+          analisado_por?: string | null
+          arquivo_url?: string | null
+          created_at?: string | null
+          data_analise?: string | null
+          data_envio?: string | null
+          id?: string
+          observacoes_medicas?: string | null
+          participante_id?: string | null
+          status?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          analisado_por?: string | null
+          arquivo_url?: string | null
+          created_at?: string | null
+          data_analise?: string | null
+          data_envio?: string | null
+          id?: string
+          observacoes_medicas?: string | null
+          participante_id?: string | null
+          status?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ergometricos_analisado_por_fkey"
+            columns: ["analisado_por"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ergometricos_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ergometricos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       familias: {
         Row: {
           created_at: string | null
@@ -328,6 +444,179 @@ export type Database = {
             columns: ["hakuma_id"]
             isOneToOne: false
             referencedRelation: "hakunas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hakuna_equipamentos: {
+        Row: {
+          cedido_por: string | null
+          created_at: string | null
+          fonte_auto: boolean | null
+          id: string
+          nome: string
+          obrigatorio: boolean | null
+          observacoes: string | null
+          preco_loja1: number | null
+          preco_loja2: number | null
+          preco_loja3: number | null
+          preco_manual: number | null
+          quantidade: number | null
+          situacao: string | null
+          top_id: string | null
+        }
+        Insert: {
+          cedido_por?: string | null
+          created_at?: string | null
+          fonte_auto?: boolean | null
+          id?: string
+          nome: string
+          obrigatorio?: boolean | null
+          observacoes?: string | null
+          preco_loja1?: number | null
+          preco_loja2?: number | null
+          preco_loja3?: number | null
+          preco_manual?: number | null
+          quantidade?: number | null
+          situacao?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          cedido_por?: string | null
+          created_at?: string | null
+          fonte_auto?: boolean | null
+          id?: string
+          nome?: string
+          obrigatorio?: boolean | null
+          observacoes?: string | null
+          preco_loja1?: number | null
+          preco_loja2?: number | null
+          preco_loja3?: number | null
+          preco_manual?: number | null
+          quantidade?: number | null
+          situacao?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hakuna_equipamentos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hakuna_medicamentos: {
+        Row: {
+          cedido_por: string | null
+          created_at: string | null
+          fonte_auto: boolean | null
+          id: string
+          nome: string
+          obrigatorio: boolean | null
+          observacoes: string | null
+          preco_farmacia1: number | null
+          preco_farmacia2: number | null
+          preco_farmacia3: number | null
+          preco_manual: number | null
+          quantidade: number | null
+          situacao: string | null
+          top_id: string | null
+          unidade: string | null
+        }
+        Insert: {
+          cedido_por?: string | null
+          created_at?: string | null
+          fonte_auto?: boolean | null
+          id?: string
+          nome: string
+          obrigatorio?: boolean | null
+          observacoes?: string | null
+          preco_farmacia1?: number | null
+          preco_farmacia2?: number | null
+          preco_farmacia3?: number | null
+          preco_manual?: number | null
+          quantidade?: number | null
+          situacao?: string | null
+          top_id?: string | null
+          unidade?: string | null
+        }
+        Update: {
+          cedido_por?: string | null
+          created_at?: string | null
+          fonte_auto?: boolean | null
+          id?: string
+          nome?: string
+          obrigatorio?: boolean | null
+          observacoes?: string | null
+          preco_farmacia1?: number | null
+          preco_farmacia2?: number | null
+          preco_farmacia3?: number | null
+          preco_manual?: number | null
+          quantidade?: number | null
+          situacao?: string | null
+          top_id?: string | null
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hakuna_medicamentos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hakuna_participante: {
+        Row: {
+          created_at: string | null
+          hakuna_id: string | null
+          id: string
+          motivo: string | null
+          participante_id: string | null
+          prioridade: number | null
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hakuna_id?: string | null
+          id?: string
+          motivo?: string | null
+          participante_id?: string | null
+          prioridade?: number | null
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hakuna_id?: string | null
+          id?: string
+          motivo?: string | null
+          participante_id?: string | null
+          prioridade?: number | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hakuna_participante_hakuna_id_fkey"
+            columns: ["hakuna_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hakuna_participante_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hakuna_participante_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
             referencedColumns: ["id"]
           },
         ]

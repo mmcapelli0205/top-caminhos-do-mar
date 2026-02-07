@@ -1,0 +1,328 @@
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableRow, TableHead, TableCell, TableBody } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast";
+import { ChevronDown, ChevronRight, Wand2, UserMinus, UserPlus, Eye } from "lucide-react";
+import ServidorSheet from "@/components/ServidorSheet";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Servidor = Tables<"servidores">;
+type Hakuna = Tables<"hakunas">;
+type HakunaPart = Tables<"hakuna_participante">;
+type Participante = Tables<"participantes">;
+
+function calcAge(dob: string | null): number | null {
+  if (!dob) return null;
+  return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 86400000));
+}
+
+const KEYWORD_MAP: [RegExp, string][] = [
+  [/diabetes|insulina|glicemia/i, "Médico"],
+  [/cadeirante|prótese|amputação|mobilidade|fisio/i, "Fisioterapeuta"],
+  [/cardio|coração|marca-passo|arritmia/i, "Médico"],
+  [/dor|coluna|hérnia|artrose|artrite/i, "Fisioterapeuta"],
+  [/visual|cego|visão/i, "Médico"],
+  [/auditiv|surd/i, "Médico"],
+  [/depressão|ansiedade|psic/i, "Psicólogo"],
+  [/dental|dente/i, "Dentista"],
+];
+
+function matchEspecialidade(doenca: string): string | null {
+  for (const [regex, esp] of KEYWORD_MAP) {
+    if (regex.test(doenca)) return esp;
+  }
+  return null;
+}
+
+export default function EquipeTab() {
+  const qc = useQueryClient();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedServidor, setSelectedServidor] = useState<Servidor | null>(null);
+  const [searchPart, setSearchPart] = useState("");
+  const [linkingFor, setLinkingFor] = useState<string | null>(null);
+
+  const { data: servidores = [], isLoading: loadS } = useQuery({
+    queryKey: ["hk-servidores"],
+    queryFn: async () => {
+      const { data } = await supabase.from("servidores").select("*").eq("area_servico", "Hakuna").eq("status", "aprovado").order("nome");
+      return (data ?? []) as Servidor[];
+    },
+  });
+
+  const { data: hakunas = [] } = useQuery({
+    queryKey: ["hk-hakunas"],
+    queryFn: async () => {
+      const { data } = await supabase.from("hakunas").select("*");
+      return (data ?? []) as Hakuna[];
+    },
+  });
+
+  const { data: vinculos = [] } = useQuery({
+    queryKey: ["hk-vinculos"],
+    queryFn: async () => {
+      const { data } = await supabase.from("hakuna_participante").select("*");
+      return (data ?? []) as HakunaPart[];
+    },
+  });
+
+  const { data: participantes = [] } = useQuery({
+    queryKey: ["hk-participantes"],
+    queryFn: async () => {
+      const { data } = await supabase.from("participantes").select("*").order("nome");
+      return (data ?? []) as Participante[];
+    },
+  });
+
+  const hakunaMap = useMemo(() => {
+    const m = new Map<string, Hakuna>();
+    hakunas.forEach((h) => { if (h.servidor_id) m.set(h.servidor_id, h); });
+    return m;
+  }, [hakunas]);
+
+  const vinculosByHakuna = useMemo(() => {
+    const m = new Map<string, HakunaPart[]>();
+    vinculos.forEach((v) => {
+      if (!v.hakuna_id) return;
+      const arr = m.get(v.hakuna_id) ?? [];
+      arr.push(v);
+      m.set(v.hakuna_id, arr);
+    });
+    return m;
+  }, [vinculos]);
+
+  const partMap = useMemo(() => {
+    const m = new Map<string, Participante>();
+    participantes.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [participantes]);
+
+  const especCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    servidores.forEach((s) => {
+      const h = hakunaMap.get(s.id);
+      const esp = h?.especialidade_medica || "Não definida";
+      counts[esp] = (counts[esp] || 0) + 1;
+    });
+    return counts;
+  }, [servidores, hakunaMap]);
+
+  // Match automático
+  const matchMutation = useMutation({
+    mutationFn: async () => {
+      const partsComDoenca = participantes.filter((p) => p.doenca && p.doenca.trim().length > 0);
+      if (partsComDoenca.length === 0) throw new Error("Nenhum participante com doença preenchida");
+
+      // Group hakunas by especialidade
+      const hakunasByEsp = new Map<string, string[]>();
+      servidores.forEach((s) => {
+        const h = hakunaMap.get(s.id);
+        const esp = h?.especialidade_medica || "Geral";
+        const arr = hakunasByEsp.get(esp) ?? [];
+        arr.push(s.id); // hakuna_id is servidor_id in hakuna_participante
+        hakunasByEsp.set(esp, arr);
+      });
+
+      const counters = new Map<string, number>();
+      const inserts: any[] = [];
+
+      // Already linked participant IDs
+      const linkedIds = new Set(vinculos.map((v) => v.participante_id));
+
+      for (const p of partsComDoenca) {
+        if (linkedIds.has(p.id)) continue;
+        const targetEsp = matchEspecialidade(p.doenca!) ?? "Geral";
+        let pool = hakunasByEsp.get(targetEsp);
+        if (!pool || pool.length === 0) {
+          // fallback to any
+          pool = servidores.map((s) => s.id);
+        }
+        if (pool.length === 0) continue;
+
+        const idx = (counters.get(targetEsp) ?? 0) % pool.length;
+        counters.set(targetEsp, idx + 1);
+
+        inserts.push({
+          hakuna_id: pool[idx],
+          participante_id: p.id,
+          motivo: `Auto: ${p.doenca?.substring(0, 60)} → ${targetEsp}`,
+          prioridade: 1,
+        });
+      }
+
+      if (inserts.length === 0) throw new Error("Nenhum novo vínculo a criar");
+      const { error } = await supabase.from("hakuna_participante").insert(inserts);
+      if (error) throw error;
+      return inserts.length;
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
+      toast({ title: `${count} vínculo(s) criado(s)` });
+    },
+    onError: (e: any) => toast({ title: "Match", description: e.message, variant: "destructive" }),
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("hakuna_participante").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
+      toast({ title: "Desvinculado" });
+    },
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: async ({ hakunaId, partId }: { hakunaId: string; partId: string }) => {
+      const { error } = await supabase.from("hakuna_participante").insert({ hakuna_id: hakunaId, participante_id: partId, motivo: "Manual" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
+      setLinkingFor(null);
+      setSearchPart("");
+      toast({ title: "Vinculado" });
+    },
+  });
+
+  const filteredParts = searchPart.length >= 2
+    ? participantes.filter((p) => p.nome.toLowerCase().includes(searchPart.toLowerCase())).slice(0, 8)
+    : [];
+
+  return (
+    <div className="space-y-4">
+      {/* Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total Aprovados</p><span className="text-2xl font-bold text-foreground">{servidores.length}</span></CardContent></Card>
+        {Object.entries(especCounts).map(([esp, c]) => (
+          <Card key={esp}><CardContent className="p-3"><p className="text-xs text-muted-foreground truncate">{esp}</p><span className="text-lg font-bold text-foreground">{c}</span></CardContent></Card>
+        ))}
+      </div>
+
+      {/* Match Button */}
+      <Button variant="outline" onClick={() => matchMutation.mutate()} disabled={matchMutation.isPending}>
+        <Wand2 className="h-4 w-4 mr-1" /> Gerar Match Automático
+      </Button>
+
+      {/* Table */}
+      <div className="rounded-md border border-border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8" />
+              <TableHead>Nome</TableHead>
+              <TableHead>Especialidade</TableHead>
+              <TableHead className="hidden md:table-cell">CRM/Registro</TableHead>
+              <TableHead className="hidden md:table-cell">Telefone</TableHead>
+              <TableHead className="text-center">Vinculados</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loadS ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              ))
+            ) : servidores.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum Hakuna aprovado.</TableCell></TableRow>
+            ) : servidores.map((s) => {
+              const h = hakunaMap.get(s.id);
+              const vList = vinculosByHakuna.get(s.id) ?? [];
+              const isExp = expandedId === s.id;
+              return (
+                <TableRow key={s.id} className="group">
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpandedId(isExp ? null : s.id)}>
+                      {isExp ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="font-medium">{s.nome}</TableCell>
+                  <TableCell>{h?.especialidade_medica ?? "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{h?.crm || h?.registro_profissional || "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
+                  <TableCell className="text-center"><Badge variant="secondary">{vList.length}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Expanded section */}
+      {expandedId && (() => {
+        const vList = vinculosByHakuna.get(expandedId) ?? [];
+        return (
+          <div className="border border-border rounded-md p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-foreground">Participantes vinculados</h3>
+              <Button variant="outline" size="sm" onClick={() => setLinkingFor(linkingFor === expandedId ? null : expandedId)}>
+                <UserPlus className="h-4 w-4 mr-1" /> Vincular
+              </Button>
+            </div>
+            {linkingFor === expandedId && (
+              <div className="space-y-2">
+                <Input placeholder="Buscar participante..." value={searchPart} onChange={(e) => setSearchPart(e.target.value)} />
+                {filteredParts.map((p) => (
+                  <Button key={p.id} variant="ghost" size="sm" className="w-full justify-start" onClick={() => linkMutation.mutate({ hakunaId: expandedId, partId: p.id })}>
+                    {p.nome} {p.doenca ? `(${p.doenca.substring(0, 30)})` : ""}
+                  </Button>
+                ))}
+              </div>
+            )}
+            {vList.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum participante vinculado</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Idade</TableHead>
+                    <TableHead>Doença/Condição</TableHead>
+                    <TableHead className="hidden md:table-cell">Medicamentos</TableHead>
+                    <TableHead>Prioridade</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vList.map((v) => {
+                    const p = partMap.get(v.participante_id ?? "");
+                    if (!p) return null;
+                    return (
+                      <TableRow key={v.id}>
+                        <TableCell className="font-medium">{p.nome}</TableCell>
+                        <TableCell>{calcAge(p.data_nascimento) ?? "—"}</TableCell>
+                        <TableCell>{p.doenca ?? "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{p.medicamentos ?? "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={v.prioridade === 3 ? "destructive" : v.prioridade === 2 ? "default" : "secondary"}>
+                            {v.prioridade === 3 ? "Alta" : v.prioridade === 2 ? "Média" : "Baixa"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => unlinkMutation.mutate(v.id)}>
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        );
+      })()}
+
+      <ServidorSheet servidor={selectedServidor} open={!!selectedServidor} onOpenChange={(o) => { if (!o) setSelectedServidor(null); }} />
+    </div>
+  );
+}
