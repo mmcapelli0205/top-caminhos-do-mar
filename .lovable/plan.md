@@ -1,107 +1,71 @@
 
 
-## Financeiro Completo - Receita, Despesas, MRE, Ceia do Rei
+## Melhorias no Financeiro - Complemento
 
 ### Resumo
-Reescrever a pagina `/financeiro` com 5 abas (Resumo, Receita, Despesas, MRE, Ceia do Rei), cada uma como componente independente, com dados conectados ao Supabase.
+Quatro melhorias na area Financeiro: (1) Taxa Ticket and Go e Receita Liquida no Resumo, (2) Upload de comprovante nas Despesas, (3) Exportar PDF do balanco, (4) Subtotais por categoria com badges no Resumo.
 
-### Problema de tipos
-A tabela `despesas` no banco ja tem colunas `quantidade`, `valor_unitario`, `item`, `fornecedor`, `data_aquisicao`, `observacoes` mas o arquivo `types.ts` esta desatualizado e nao as inclui. Da mesma forma, a tabela `doacoes` existe no banco mas nao esta no types. Sera necessaria uma migracao "no-op" (ex: um comentario SQL) para forcar a regeneracao dos tipos, ou usar `.select("*")` e tratar os campos manualmente. A abordagem sera usar uma migracao vazia para forcar refresh dos tipos.
-
-### Arquivos a criar/modificar
+### Arquivos a modificar
 
 | Arquivo | Acao |
 |---|---|
-| `src/pages/Financeiro.tsx` | Reescrever — pagina com Tabs |
-| `src/components/financeiro/ResumoSection.tsx` | Novo — dashboard financeiro |
-| `src/components/financeiro/ReceitaSection.tsx` | Novo — inscricoes + doacoes |
-| `src/components/financeiro/DespesasSection.tsx` | Novo — despesas por categoria |
-| `src/components/financeiro/MreSection.tsx` | Novo — MRE kit alimentacao |
-| `src/components/financeiro/CeiaSection.tsx` | Novo — Ceia do Rei |
-| `src/components/financeiro/PriceCell.tsx` | Novo — celula de preco reutilizavel |
-
-### Migracao necessaria
-Uma migracao "no-op" para forcar regeneracao dos tipos que incluam `doacoes` e os campos novos de `despesas`. Algo como:
-```sql
--- Force types refresh
-SELECT 1;
-```
+| `src/components/financeiro/ResumoSection.tsx` | Reescrever — taxa, receita liquida, PDF, badges por categoria |
+| `src/components/financeiro/DespesasSection.tsx` | Modificar — campo comprovante_url com upload no dialog + coluna na tabela |
 
 ### Detalhes Tecnicos
 
-#### Financeiro.tsx (pagina principal)
-- Tabs: Resumo | Receita | Despesas | MRE | Ceia do Rei
-- Cada tab renderiza o componente correspondente
-- Icone DollarSign no header
+#### 1. ResumoSection — Taxa Ticket and Go + Receita Liquida
 
-#### Tab 1 - ResumoSection
-- 3 cards grandes: Receita Total (verde), Despesa Total (vermelho), Saldo (cor condicional)
-- Receita = sum(participantes.valor_pago) + sum(doacoes.valor)
-- Despesa = sum(despesas.valor)
-- PieChart (recharts) com distribuicao de despesas por categoria
-- BarChart comparando Receita vs Despesa
-- Queries: fetch participantes (valor_pago), doacoes (valor), despesas (valor, categoria)
+- Adicionar estado `taxaPercent` (default 10)
+- Input editavel ao lado do card de Receita: "Taxa Ticket and Go: [10] %"
+- Calculos:
+  - `taxaValor = receitaInscricoes * (taxaPercent / 100)`
+  - `receitaLiquida = receitaInscricoes - taxaValor + receitaDoacoes`
+  - `saldo = receitaLiquida - despesaTotal`
+- Card de Receita reformulado para mostrar 3 linhas:
+  - Total Bruto (inscricoes + doacoes)
+  - Taxa TicketAndGo: -R$ X.XXX
+  - Receita Liquida (verde, destaque)
+- Card de Saldo usa receitaLiquida
+- Abaixo do Saldo: texto "Despesas representam X% da Receita" (`(despesaTotal / receitaLiquida * 100).toFixed(1)%`)
 
-#### Tab 2 - ReceitaSection
-**Secao 2a - Inscricoes:**
-- Cards resumo: Total Arrecadado, por PIX, por Cartao, com Cupom
-- Tabela: Nome | Valor Pago | Forma Pagamento | Cupom | Status
-- Dados de `participantes` (somente leitura)
-- Totalizador no rodape
+#### 2. ResumoSection — Subtotais por categoria com badges
 
-**Secao 2b - Doacoes:**
-- Tabela editavel com dados da tabela `doacoes`
-- Colunas: Doador | Valor | Data | Observacoes | Acoes
-- Botao "+ Nova Doacao" adiciona linha editavel
-- CRUD completo via Supabase (insert/update/delete)
-- Totalizador
+- Usar as 17 categorias fixas do DespesasSection (+ MRE, Ceia do Rei, Bebidas para auto_calculados)
+- Abaixo do grafico de pizza, listar cada categoria que tem valor > 0 como Badge colorido: "Fardas: R$ 1.200"
+- Cores dos badges seguem o array COLORS ja existente
 
-#### Tab 3 - DespesasSection
-- Categorias fixas no dropdown: Administrativas, Juridicas, Papelaria, Comunicacao, Equipamentos, Combustivel, Montanha, Locacao da Base, Banheiros Quimicos, Fogos/Decoracao, Fardas, Gorras, Patchs, Pins, Taxa Global, Taxa Ticket and Go, Diversos
-- Tabela conectada a `despesas` (excluindo auto_calculado=true para nao misturar com MRE/Ceia)
-- Colunas: Item | Categoria | Qtd | Valor Unit. | Total | Fornecedor | Data | Obs | Acoes
-- "+ Nova Despesa" abre dialog com formulario
-- Total auto: quantidade x valor_unitario salvo no campo valor
-- Filtro por categoria e busca por texto
-- Editar via dialog, excluir com confirmacao
-- Rodape: total por categoria filtrada e total geral
+#### 3. ResumoSection — Exportar PDF
 
-#### Tab 4 - MreSection
-- Header: Total Participantes (status != cancelado)
-- Tabela editavel de `mre_itens`
-- Pre-fill automatico se tabela vazia (7 obrigatorios + 3 outros)
-- PriceCell com indicador azul (auto) / laranja (manual)
-- Calculos: menorPreco, total por item, custo total MRE, custo por kit
-- Botoes: Salvar, + Adicionar Item, Salvar como Despesa
-- Botao "Buscar" nos headers de preco (toast placeholder por enquanto)
+- Botao "Exportar PDF" no header do Resumo
+- Usa jsPDF (ja instalado)
+- Conteudo:
+  - Header: "TOP Caminhos do Mar #1575 | 02 a 05 de Abril de 2026"
+  - Secao Receita: Total Inscricoes, Doacoes, Taxa TicketAndGo, Receita Liquida
+  - Secao Despesas: lista cada categoria com subtotal
+  - Resultado Final: Saldo (texto verde/vermelho nao aplicavel em PDF basico, usar prefixo +/-)
+  - Nome arquivo: "balanco-financeiro-top1575.pdf"
 
-#### Tab 5 - CeiaSection
-- Header: Total Pessoas (participantes + servidores), Total Carne (x 0.400), Margem editavel
-- Tabela editavel de `cela_itens`
-- Pre-fill com 4 itens (Bovina 40%, Linguica 25%, Frango 20%, Batata 15%)
-- Mesma logica de PriceCell
-- Calculos: kgTotal, menor preco, total por item, custo total, custo por pessoa
-- Botoes: Salvar, Salvar como Despesa
+#### 4. DespesasSection — Upload de comprovante
 
-#### PriceCell (componente reutilizavel)
-- Input numerico com dot indicator (4px circulo)
-- Azul: fonte_auto=true
-- Laranja: preco digitado manualmente
-- Sem dot: celula vazia
+- Adicionar `comprovante_url` ao form state (string)
+- No dialog, novo campo "Comprovante" com input type="file"
+- Ao selecionar arquivo:
+  - Upload para Supabase Storage bucket "assets" no path `comprovantes/{uuid}-{filename}`
+  - Obter URL publica via `getPublicUrl`
+  - Salvar URL no campo `comprovante_url` do payload
+- Na tabela, nova coluna "Comprovante" entre "Obs" e "Acoes":
+  - Se `comprovante_url` existe: icone FileDown como link (target="_blank")
+  - Se nao: "-"
+- No edit, se ja tem comprovante mostrar link + opcao de trocar
 
-#### Alert de precos vazios
-- Banner laranja no topo de MRE e Ceia se algum preco obrigatorio estiver vazio
+### Componentes utilizados
+- jsPDF para geracao do PDF
+- Supabase Storage (`supabase.storage.from("assets").upload(...)`)
+- Badge para subtotais por categoria
+- Input type="file" para upload
+- FileDown (lucide) como icone de download
 
-#### Responsividade
-- Tabelas com overflow-x-auto
-- Primeira coluna sticky com bg-card
-- Inputs min-width 80px
-- Dialog de nova despesa fullscreen em mobile
-- TabsList com scroll horizontal em mobile
-
-### Componentes shadcn utilizados
-Card, Tabs, Table, Input, Select, Button, Checkbox, Badge, Alert, Dialog, Label, Separator
-
-### Graficos
-PieChart e BarChart do recharts (ja instalado)
+### Sem alteracao no banco
+O campo `comprovante_url` ja existe na tabela `despesas`. O bucket "assets" ja existe e e publico. Nenhuma migracao necessaria.
 
