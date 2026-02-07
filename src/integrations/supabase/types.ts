@@ -491,6 +491,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "participantes_familia_id_fkey"
+            columns: ["familia_id"]
+            isOneToOne: false
+            referencedRelation: "familias"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "participantes_top_id_fkey"
             columns: ["top_id"]
             isOneToOne: false
