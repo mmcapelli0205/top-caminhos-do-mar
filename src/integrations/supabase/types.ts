@@ -52,6 +52,50 @@ export type Database = {
           },
         ]
       }
+      bebidas_itens: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          preco_manual: number | null
+          preco_mercado1: number | null
+          preco_mercado2: number | null
+          preco_mercado3: number | null
+          quantidade_por_pessoa: number | null
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          preco_manual?: number | null
+          preco_mercado1?: number | null
+          preco_mercado2?: number | null
+          preco_mercado3?: number | null
+          quantidade_por_pessoa?: number | null
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          preco_manual?: number | null
+          preco_mercado1?: number | null
+          preco_mercado2?: number | null
+          preco_mercado3?: number | null
+          quantidade_por_pessoa?: number | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bebidas_itens_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cela_itens: {
         Row: {
           id: string
