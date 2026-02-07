@@ -5,6 +5,7 @@ import ReceitaSection from "@/components/financeiro/ReceitaSection";
 import DespesasSection from "@/components/financeiro/DespesasSection";
 import MreSection from "@/components/financeiro/MreSection";
 import CeiaSection from "@/components/financeiro/CeiaSection";
+import BebidasSection from "@/components/financeiro/BebidasSection";
 
 const Financeiro = () => (
   <div className="space-y-4">
@@ -20,12 +21,14 @@ const Financeiro = () => (
         <TabsTrigger value="despesas">Despesas</TabsTrigger>
         <TabsTrigger value="mre">MRE</TabsTrigger>
         <TabsTrigger value="ceia">Ceia do Rei</TabsTrigger>
+        <TabsTrigger value="bebidas">Bebidas</TabsTrigger>
       </TabsList>
       <TabsContent value="resumo"><ResumoSection /></TabsContent>
       <TabsContent value="receita"><ReceitaSection /></TabsContent>
       <TabsContent value="despesas"><DespesasSection /></TabsContent>
       <TabsContent value="mre"><MreSection /></TabsContent>
       <TabsContent value="ceia"><CeiaSection /></TabsContent>
+      <TabsContent value="bebidas"><BebidasSection /></TabsContent>
     </Tabs>
   </div>
 );

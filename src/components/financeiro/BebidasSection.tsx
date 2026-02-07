@@ -8,26 +8,32 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Save, Search, AlertTriangle } from "lucide-react";
 import PriceCell from "./PriceCell";
-import type { Tables } from "@/integrations/supabase/types";
 
-type CeiaItem = Tables<"cela_itens">;
+interface BebidaItem {
+  id?: string;
+  nome: string;
+  quantidade_por_pessoa: number | null;
+  preco_mercado1: number | null;
+  preco_mercado2: number | null;
+  preco_mercado3: number | null;
+  preco_manual: number | null;
+  top_id?: string | null;
+}
 
-const DEFAULT_ITEMS = [
-  { nome: "Carne Bovina", percentual: 40, kg_por_pessoa: 0.16 },
-  { nome: "Linguiça", percentual: 25, kg_por_pessoa: 0.1 },
-  { nome: "Frango", percentual: 20, kg_por_pessoa: 0.08 },
-  { nome: "Batata Inglesa", percentual: 15, kg_por_pessoa: 0.06 },
+const DEFAULT_ITEMS: Omit<BebidaItem, "id">[] = [
+  { nome: "Água (unid)", quantidade_por_pessoa: 2, preco_mercado1: null, preco_mercado2: null, preco_mercado3: null, preco_manual: null },
+  { nome: "Refrigerante (L)", quantidade_por_pessoa: 0.5, preco_mercado1: null, preco_mercado2: null, preco_mercado3: null, preco_manual: null },
+  { nome: "Leite (L)", quantidade_por_pessoa: 0.3, preco_mercado1: null, preco_mercado2: null, preco_mercado3: null, preco_manual: null },
+  { nome: "Isotônico (unid)", quantidade_por_pessoa: 1, preco_mercado1: null, preco_mercado2: null, preco_mercado3: null, preco_manual: null },
 ];
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtKg = (v: number) => `${v.toFixed(1)} kg`;
 
-const CeiaSection = () => {
+const BebidasSection = () => {
   const qc = useQueryClient();
-  const [items, setItems] = useState<Partial<CeiaItem>[]>([]);
-  const [margem, setMargem] = useState(10);
+  const [items, setItems] = useState<BebidaItem[]>([]);
   const [seeded, setSeeded] = useState(false);
-  const [mercadoNames, setMercadoNames] = useState(["Krill", "Swift", "M.Araujo"]);
+  const [mercadoNames, setMercadoNames] = useState(["Mercado 1", "Mercado 2", "Mercado 3"]);
 
   const { data: totalParticipantes } = useQuery({
     queryKey: ["fin-participantes-count"],
@@ -46,24 +52,22 @@ const CeiaSection = () => {
   });
 
   const totalPessoas = (totalParticipantes ?? 0) + (totalServidores ?? 0);
-  const totalCarneKg = totalPessoas * 0.4;
-  const margemFactor = 1 + margem / 100;
 
   const { data: dbItems, isSuccess } = useQuery({
-    queryKey: ["fin-ceia-itens"],
+    queryKey: ["fin-bebidas-itens"],
     queryFn: async () => {
-      const { data } = await supabase.from("cela_itens").select("*").order("nome");
-      return (data ?? []) as CeiaItem[];
+      const { data } = await supabase.from("bebidas_itens").select("*").order("nome");
+      return (data ?? []) as BebidaItem[];
     },
   });
 
   const seedMutation = useMutation({
     mutationFn: async () => {
-      const inserts = DEFAULT_ITEMS.map((d) => ({ nome: d.nome, percentual: d.percentual, kg_por_pessoa: d.kg_por_pessoa, margem_seguranca: 1.1 }));
-      const { error } = await supabase.from("cela_itens").insert(inserts);
+      const inserts = DEFAULT_ITEMS.map((d) => ({ nome: d.nome, quantidade_por_pessoa: d.quantidade_por_pessoa }));
+      const { error } = await supabase.from("bebidas_itens").insert(inserts);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-ceia-itens"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-bebidas-itens"] }),
   });
 
   useEffect(() => {
@@ -74,24 +78,24 @@ const CeiaSection = () => {
   }, [isSuccess, dbItems, seeded]);
 
   useEffect(() => {
-    if (dbItems && dbItems.length > 0) {
-      setItems(dbItems);
-      if (dbItems[0]?.margem_seguranca) setMargem(Math.round((dbItems[0].margem_seguranca - 1) * 100));
-    }
+    if (dbItems && dbItems.length > 0) setItems(dbItems);
   }, [dbItems]);
 
   const updateItem = useCallback((idx: number, field: string, value: any) => {
-    setItems((prev) => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
   }, []);
 
-  const getMinPrice = (it: Partial<CeiaItem>) => {
+  const addItem = () => {
+    setItems((prev) => [...prev, { nome: "", quantidade_por_pessoa: 1, preco_mercado1: null, preco_mercado2: null, preco_mercado3: null, preco_manual: null }]);
+  };
+
+  const getMinPrice = (it: BebidaItem) => {
     if (it.preco_manual != null) return it.preco_manual;
-    const prices = [it.preco_krill, it.preco_swift, it.preco_araujo].filter((p): p is number => p != null);
+    const prices = [it.preco_mercado1, it.preco_mercado2, it.preco_mercado3].filter((p): p is number => p != null);
     return prices.length > 0 ? Math.min(...prices) : 0;
   };
 
-  const getKgTotal = (it: Partial<CeiaItem>) => totalPessoas * (it.kg_por_pessoa ?? 0) * margemFactor;
-  const calcTotal = (it: Partial<CeiaItem>) => getKgTotal(it) * getMinPrice(it);
+  const calcTotal = (it: BebidaItem) => getMinPrice(it) * (it.quantidade_por_pessoa ?? 0) * totalPessoas;
 
   const custoTotal = items.reduce((s, it) => s + calcTotal(it), 0);
   const custoPorPessoa = totalPessoas > 0 ? custoTotal / totalPessoas : 0;
@@ -103,37 +107,40 @@ const CeiaSection = () => {
       for (const it of items) {
         if (!it.nome) continue;
         const payload = {
-          nome: it.nome, percentual: it.percentual, kg_por_pessoa: it.kg_por_pessoa,
-          preco_krill: it.preco_krill, preco_swift: it.preco_swift, preco_araujo: it.preco_araujo,
-          preco_manual: it.preco_manual, margem_seguranca: margemFactor,
+          nome: it.nome,
+          quantidade_por_pessoa: it.quantidade_por_pessoa,
+          preco_mercado1: it.preco_mercado1,
+          preco_mercado2: it.preco_mercado2,
+          preco_mercado3: it.preco_mercado3,
+          preco_manual: it.preco_manual,
         };
         if (it.id) {
-          await supabase.from("cela_itens").update(payload).eq("id", it.id);
+          await supabase.from("bebidas_itens").update(payload).eq("id", it.id);
         } else {
-          await supabase.from("cela_itens").insert(payload);
+          await supabase.from("bebidas_itens").insert(payload);
         }
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fin-ceia-itens"] });
-      toast({ title: "Ceia salva" });
+      qc.invalidateQueries({ queryKey: ["fin-bebidas-itens"] });
+      toast({ title: "Bebidas salvas" });
     },
   });
 
   const saveDespesaMutation = useMutation({
     mutationFn: async () => {
       const total = items.reduce((s, it) => s + calcTotal(it), 0);
-      const { data: existing } = await supabase.from("despesas").select("id").eq("descricao", "Ceia do Rei - Churrasco").eq("auto_calculado", true).maybeSingle();
+      const { data: existing } = await supabase.from("despesas").select("id").eq("descricao", "Bebidas").eq("auto_calculado", true).maybeSingle();
       if (existing) {
-        await supabase.from("despesas").update({ valor: total, categoria: "Ceia do Rei" }).eq("id", existing.id);
+        await supabase.from("despesas").update({ valor: total, categoria: "Bebidas" }).eq("id", existing.id);
       } else {
-        await supabase.from("despesas").insert({ descricao: "Ceia do Rei - Churrasco", valor: total, categoria: "Ceia do Rei", auto_calculado: true });
+        await supabase.from("despesas").insert({ descricao: "Bebidas", valor: total, categoria: "Bebidas", auto_calculado: true });
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-despesas-lista"] });
       qc.invalidateQueries({ queryKey: ["fin-despesas-resumo"] });
-      toast({ title: "Despesa Ceia salva" });
+      toast({ title: "Despesa Bebidas salva" });
     },
   });
 
@@ -141,12 +148,7 @@ const CeiaSection = () => {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4 text-sm">
         <span>Total Pessoas: <strong>{totalPessoas}</strong></span>
-        <span>Total Carne: <strong>{fmtKg(totalCarneKg)}</strong></span>
-        <span className="flex items-center gap-1">
-          Margem: <Input type="number" min={0} max={50} value={margem} onChange={(e) => setMargem(parseInt(e.target.value) || 0)} className="w-16 h-7 text-center" />%
-        </span>
       </div>
-      <p className="text-xs text-muted-foreground">Cálculo: 400g/pessoa (carnes + batata assada, sem guarnições)</p>
 
       {hasEmptyPrices && (
         <Alert className="border-orange-500/50 bg-orange-500/10">
@@ -159,15 +161,16 @@ const CeiaSection = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="sticky left-0 bg-card z-10 min-w-[130px]">Item</TableHead>
-              <TableHead className="text-center">%</TableHead>
-              <TableHead className="text-right">Kg/pessoa</TableHead>
-              <TableHead className="text-right">Kg Total</TableHead>
-              {["preco_krill", "preco_swift", "preco_araujo"].map((_, mi) => (
+              <TableHead className="sticky left-0 bg-card z-10 min-w-[150px]">Item</TableHead>
+              <TableHead className="text-center">Qtd/Pessoa</TableHead>
+              <TableHead className="text-right">Qtd Total</TableHead>
+              {[0, 1, 2].map((mi) => (
                 <TableHead key={mi}>
                   <div className="flex items-center gap-1">
-                    <Input value={mercadoNames[mi]} onChange={(e) => setMercadoNames(prev => prev.map((n, i) => i === mi ? e.target.value : n))} className="h-7 min-w-[80px] text-xs font-semibold" />
-                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => toast({ title: "Webhook não configurado" })}><Search className="h-3 w-3" /></Button>
+                    <Input value={mercadoNames[mi]} onChange={(e) => setMercadoNames((prev) => prev.map((n, i) => (i === mi ? e.target.value : n)))} className="h-7 min-w-[80px] text-xs font-semibold" />
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => toast({ title: "Webhook não configurado" })}>
+                      <Search className="h-3 w-3" />
+                    </Button>
                   </div>
                 </TableHead>
               ))}
@@ -178,13 +181,16 @@ const CeiaSection = () => {
           <TableBody>
             {items.map((it, i) => (
               <TableRow key={it.id ?? `new-${i}`}>
-                <TableCell className="sticky left-0 bg-card z-10 font-medium">{it.nome}</TableCell>
-                <TableCell className="text-center">{it.percentual ?? 0}%</TableCell>
-                <TableCell className="text-right">{(it.kg_por_pessoa ?? 0).toFixed(3)}</TableCell>
-                <TableCell className="text-right">{fmtKg(getKgTotal(it))}</TableCell>
-                <TableCell><PriceCell value={it.preco_krill ?? null} onChange={(v) => updateItem(i, "preco_krill", v)} /></TableCell>
-                <TableCell><PriceCell value={it.preco_swift ?? null} onChange={(v) => updateItem(i, "preco_swift", v)} /></TableCell>
-                <TableCell><PriceCell value={it.preco_araujo ?? null} onChange={(v) => updateItem(i, "preco_araujo", v)} /></TableCell>
+                <TableCell className="sticky left-0 bg-card z-10">
+                  <Input value={it.nome ?? ""} onChange={(e) => updateItem(i, "nome", e.target.value)} className="min-w-[140px]" />
+                </TableCell>
+                <TableCell>
+                  <Input type="number" min={0} step="0.1" value={it.quantidade_por_pessoa ?? 0} onChange={(e) => updateItem(i, "quantidade_por_pessoa", parseFloat(e.target.value) || 0)} className="w-20 text-center" />
+                </TableCell>
+                <TableCell className="text-right">{((it.quantidade_por_pessoa ?? 0) * totalPessoas).toFixed(0)}</TableCell>
+                <TableCell><PriceCell value={it.preco_mercado1 ?? null} onChange={(v) => updateItem(i, "preco_mercado1", v)} /></TableCell>
+                <TableCell><PriceCell value={it.preco_mercado2 ?? null} onChange={(v) => updateItem(i, "preco_mercado2", v)} /></TableCell>
+                <TableCell><PriceCell value={it.preco_mercado3 ?? null} onChange={(v) => updateItem(i, "preco_mercado3", v)} /></TableCell>
                 <TableCell className="text-right font-medium">{fmt(getMinPrice(it))}</TableCell>
                 <TableCell className="text-right font-medium">{fmt(calcTotal(it))}</TableCell>
               </TableRow>
@@ -204,9 +210,7 @@ const CeiaSection = () => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => setItems((prev) => [...prev, { nome: "", percentual: 0, kg_por_pessoa: 0 }])}>
-          <Plus className="h-4 w-4 mr-1" /> Adicionar Item
-        </Button>
+        <Button variant="outline" onClick={addItem}><Plus className="h-4 w-4 mr-1" /> Adicionar Item</Button>
         <Button onClick={() => saveMutation.mutate()}><Save className="h-4 w-4 mr-1" /> Salvar</Button>
         <Button variant="secondary" onClick={() => saveDespesaMutation.mutate()}>Salvar como Despesa</Button>
       </div>
@@ -214,4 +218,4 @@ const CeiaSection = () => {
   );
 };
 
-export default CeiaSection;
+export default BebidasSection;
