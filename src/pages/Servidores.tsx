@@ -1,8 +1,405 @@
-import { Shield } from "lucide-react";
-const Servidores = () => (
-  <div className="space-y-4">
-    <div className="flex items-center gap-3"><Shield className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold text-foreground">Servidores</h1></div>
-    <p className="text-muted-foreground">Em construção</p>
-  </div>
-);
-export default Servidores;
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Shield, Search, Download, Plus, Eye, Pencil, Check, X,
+  ArrowUp, ArrowDown, AlertTriangle,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import ServidorSheet from "@/components/ServidorSheet";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Servidor = Tables<"servidores">;
+
+const AREAS_SERVICO = [
+  "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
+  "Logística", "Voz", "ADM", "Resgate", "Coordenação Geral",
+  "Intercessão", "Alimentação", "Tempo e Execução", "DOC", "Outra área",
+];
+
+const PAGE_SIZE = 20;
+type SortKey = "nome" | "idade" | "status";
+type SortDir = "asc" | "desc";
+
+const statusColors: Record<string, string> = {
+  pendente: "bg-orange-600/20 text-orange-400 border-orange-600/30",
+  aprovado: "bg-green-600/20 text-green-400 border-green-600/30",
+  recusado: "bg-red-600/20 text-red-400 border-red-600/30",
+  sem_area: "bg-red-900/30 text-red-300 border-red-800/40",
+};
+
+const statusLabels: Record<string, string> = {
+  pendente: "Pendente",
+  aprovado: "Aprovado",
+  recusado: "Recusado",
+  sem_area: "Sem Área",
+};
+
+function calcAge(dob: string | null): number | null {
+  if (!dob) return null;
+  return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 86400000));
+}
+
+export default function Servidores() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { data: servidores = [], isLoading } = useQuery({
+    queryKey: ["servidores"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("servidores").select("*").order("nome");
+      if (error) throw error;
+      return data as Servidor[];
+    },
+  });
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filterArea, setFilterArea] = useState("todas");
+  const [filterStatus, setFilterStatus] = useState("todos");
+  const [sortKey, setSortKey] = useState<SortKey>("nome");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedServidor, setSelectedServidor] = useState<Servidor | null>(null);
+
+  // Recusar dialog
+  const [recusarTarget, setRecusarTarget] = useState<Servidor | null>(null);
+  const [recusarMotivo, setRecusarMotivo] = useState("");
+  const [recusando, setRecusando] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterArea, filterStatus]);
+
+  // Counts
+  const pendentes = useMemo(() => servidores.filter(s => s.status === "pendente"), [servidores]);
+  const semArea = useMemo(() => servidores.filter(s => s.status === "sem_area"), [servidores]);
+
+  const areaCounts = useMemo(() => {
+    const map: Record<string, { aprovados: number; pendentes: number }> = {};
+    AREAS_SERVICO.forEach(a => { map[a] = { aprovados: 0, pendentes: 0 }; });
+    servidores.forEach(s => {
+      const area = s.area_servico;
+      if (!area || !map[area]) return;
+      if (s.status === "aprovado") map[area].aprovados++;
+      else if (s.status === "pendente") map[area].pendentes++;
+    });
+    return map;
+  }, [servidores]);
+
+  // Filter
+  const filtered = useMemo(() => {
+    let list = servidores;
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      list = list.filter(s => s.nome.toLowerCase().includes(q) || (s.cpf?.toLowerCase().includes(q) ?? false));
+    }
+    if (filterArea !== "todas") {
+      list = list.filter(s => s.area_servico === filterArea);
+    }
+    if (filterStatus !== "todos") {
+      list = list.filter(s => s.status === filterStatus);
+    }
+    return list;
+  }, [servidores, debouncedSearch, filterArea, filterStatus]);
+
+  // Sort
+  const sorted = useMemo(() => {
+    const copy = [...filtered];
+    const dir = sortDir === "asc" ? 1 : -1;
+    copy.sort((a, b) => {
+      let va: string | number | null = null, vb: string | number | null = null;
+      switch (sortKey) {
+        case "nome": va = a.nome.toLowerCase(); vb = b.nome.toLowerCase(); break;
+        case "idade": va = calcAge(a.data_nascimento); vb = calcAge(b.data_nascimento); break;
+        case "status": va = a.status; vb = b.status; break;
+      }
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return va < vb ? -dir : va > vb ? dir : 0;
+    });
+    return copy;
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  }
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return null;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
+  }
+
+  async function handleAceitar(s: Servidor) {
+    const { error } = await supabase.from("servidores").update({
+      status: "aprovado",
+      updated_at: new Date().toISOString(),
+    }).eq("id", s.id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`${s.nome} aprovado na área ${s.area_servico}!`);
+    queryClient.invalidateQueries({ queryKey: ["servidores"] });
+  }
+
+  async function handleRecusarConfirm() {
+    if (!recusarTarget || !recusarMotivo.trim()) return;
+    setRecusando(true);
+    const s = recusarTarget;
+    const naFirstOption = s.area_servico === s.area_preferencia_1;
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    if (naFirstOption && s.area_preferencia_2) {
+      update.area_servico = s.area_preferencia_2;
+      update.status = "pendente";
+    } else {
+      update.status = "sem_area";
+    }
+
+    const { error } = await supabase.from("servidores").update(update).eq("id", s.id);
+    setRecusando(false);
+    if (error) { toast.error("Erro: " + error.message); return; }
+
+    if (naFirstOption && s.area_preferencia_2) {
+      toast.info(`${s.nome} movido para 2ª opção: ${s.area_preferencia_2}`);
+    } else {
+      toast.warning(`${s.nome} ficou sem área.`);
+    }
+    setRecusarTarget(null);
+    setRecusarMotivo("");
+    queryClient.invalidateQueries({ queryKey: ["servidores"] });
+  }
+
+  function exportCSV() {
+    const headers = ["Nome", "CPF", "Idade", "Telefone", "Email", "1ª Opção", "2ª Opção", "Área Atual", "Status"];
+    const rows = filtered.map(s => [
+      s.nome, s.cpf ?? "", calcAge(s.data_nascimento) ?? "", s.telefone ?? "", s.email ?? "",
+      s.area_preferencia_1 ?? "", s.area_preferencia_2 ?? "", s.area_servico ?? "", s.status ?? "",
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "servidores.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Shield className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">Servidores</h1>
+          <span className="text-sm text-muted-foreground">({servidores.length} total)</span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportCSV}>
+            <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
+          <Button size="sm" onClick={() => navigate("/servidores/novo")}>
+            <Plus className="h-4 w-4 mr-1" /> Novo Servidor
+          </Button>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {pendentes.length > 0 && (
+        <Card className="border-orange-600/50 bg-orange-600/10 cursor-pointer" onClick={() => { setFilterStatus("pendente"); setFilterArea("todas"); }}>
+          <CardContent className="p-3 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-400" />
+            <span className="text-sm font-medium text-orange-400">⚠️ {pendentes.length} servidor(es) aguardando alocação!</span>
+          </CardContent>
+        </Card>
+      )}
+      {semArea.length > 0 && (
+        <Card className="border-red-600/50 bg-red-600/10 cursor-pointer" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
+          <CardContent className="p-3 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-400" />
+            <span className="text-sm font-medium text-red-400">⚠️ {semArea.length} servidor(es) sem área!</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Area Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {AREAS_SERVICO.map(area => {
+          const c = areaCounts[area];
+          return (
+            <Card key={area} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => { setFilterArea(area); setFilterStatus("todos"); }}>
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground truncate">{area}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-lg font-bold text-foreground">{c.aprovados}</span>
+                  {c.pendentes > 0 && (
+                    <Badge className="bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs">{c.pendentes} pend.</Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {semArea.length > 0 && (
+          <Card className="cursor-pointer border-red-600/40 hover:border-red-500/60" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
+            <CardContent className="p-3">
+              <p className="text-xs text-red-400">Sem Área</p>
+              <span className="text-lg font-bold text-red-400">{semArea.length}</span>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        <Select value={filterArea} onValueChange={setFilterArea}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas Áreas</SelectItem>
+            {AREAS_SERVICO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos Status</SelectItem>
+            <SelectItem value="pendente">Pendente</SelectItem>
+            <SelectItem value="aprovado">Aprovado</SelectItem>
+            <SelectItem value="recusado">Recusado</SelectItem>
+            <SelectItem value="sem_area">Sem Área</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nome ou CPF..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border border-border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="cursor-pointer" onClick={() => toggleSort("nome")}>Nome<SortIcon col="nome" /></TableHead>
+              <TableHead className="cursor-pointer hidden md:table-cell" onClick={() => toggleSort("idade")}>Idade<SortIcon col="idade" /></TableHead>
+              <TableHead className="hidden md:table-cell">Telefone</TableHead>
+              <TableHead className="hidden lg:table-cell">1ª Opção</TableHead>
+              <TableHead className="hidden lg:table-cell">2ª Opção</TableHead>
+              <TableHead>Área Atual</TableHead>
+              <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}>Status<SortIcon col="status" /></TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : paginated.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
+              </TableRow>
+            ) : paginated.map(s => {
+              const age = calcAge(s.data_nascimento);
+              const st = s.status ?? "ativo";
+              return (
+                <TableRow key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
+                  <TableCell className="font-medium">{s.nome}</TableCell>
+                  <TableCell className="hidden md:table-cell">{age ?? "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{s.area_preferencia_1 ?? "—"}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{s.area_preferencia_2 ?? "—"}</TableCell>
+                  <TableCell>{s.area_servico ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge className={statusColors[st] ?? ""}>{statusLabels[st] ?? st}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/servidores/${s.id}/editar`)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {st === "pendente" && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-400 hover:text-green-300" onClick={() => handleAceitar(s)}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => { setRecusarTarget(s); setRecusarMotivo(""); }}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      {!isLoading && sorted.length > 0 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} de {sorted.length}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>Anterior</Button>
+            <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>Próximo</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Recusar Dialog */}
+      <Dialog open={!!recusarTarget} onOpenChange={open => { if (!open) setRecusarTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recusar Servidor</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Recusar <strong>{recusarTarget?.nome}</strong> da área <strong>{recusarTarget?.area_servico}</strong>?
+            {recusarTarget?.area_servico === recusarTarget?.area_preferencia_1 && recusarTarget?.area_preferencia_2
+              ? ` Será movido para a 2ª opção: ${recusarTarget.area_preferencia_2}.`
+              : " Ficará sem área atribuída."}
+          </p>
+          <Textarea placeholder="Motivo da recusa (obrigatório)" value={recusarMotivo} onChange={e => setRecusarMotivo(e.target.value)} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecusarTarget(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={!recusarMotivo.trim() || recusando} onClick={handleRecusarConfirm}>
+              Confirmar Recusa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Sheet */}
+      <ServidorSheet servidor={selectedServidor} open={!!selectedServidor} onOpenChange={open => { if (!open) setSelectedServidor(null); }} />
+    </div>
+  );
+}
