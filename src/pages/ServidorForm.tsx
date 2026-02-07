@@ -26,8 +26,8 @@ import { cn } from "@/lib/utils";
 
 const AREAS_SERVICO = [
   "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
-  "Logística", "Voz", "ADM", "Resgate", "Coordenação Geral",
-  "Intercessão", "Alimentação", "Tempo e Execução", "DOC", "Outra área",
+  "Logística", "Voz", "ADM", "Coordenação Geral",
+  "Intercessão", "DOC", "Outra área",
 ];
 
 const HABILIDADES = [
