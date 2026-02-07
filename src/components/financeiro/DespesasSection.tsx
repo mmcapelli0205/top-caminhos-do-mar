@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Despesa = Tables<"despesas">;
@@ -22,7 +22,7 @@ const CATEGORIAS = [
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const emptyForm = { item: "", categoria: CATEGORIAS[0], quantidade: 1, valor_unitario: 0, fornecedor: "", data_aquisicao: "", observacoes: "" };
+const emptyForm = { item: "", categoria: CATEGORIAS[0], quantidade: 1, valor_unitario: 0, fornecedor: "", data_aquisicao: "", observacoes: "", comprovante_url: "" };
 
 const DespesasSection = () => {
   const qc = useQueryClient();
@@ -31,6 +31,7 @@ const DespesasSection = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [uploading, setUploading] = useState(false);
 
   const { data: despesas } = useQuery({
     queryKey: ["fin-despesas-lista"],
@@ -52,6 +53,23 @@ const DespesasSection = () => {
   const totalFiltered = filtered.reduce((s, d) => s + (d.valor ?? 0), 0);
   const totalGeral = (despesas ?? []).reduce((s, d) => s + (d.valor ?? 0), 0);
 
+  const handleFileUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `comprovantes/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("assets").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("assets").getPublicUrl(path);
+      setForm((prev) => ({ ...prev, comprovante_url: urlData.publicUrl }));
+      toast({ title: "Comprovante enviado" });
+    } catch (err: any) {
+      toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const valor = (form.quantidade ?? 1) * (form.valor_unitario ?? 0);
@@ -65,6 +83,7 @@ const DespesasSection = () => {
         fornecedor: form.fornecedor || null,
         data_aquisicao: form.data_aquisicao || null,
         observacoes: form.observacoes || null,
+        comprovante_url: form.comprovante_url || null,
         auto_calculado: false,
       };
       if (editingId) {
@@ -107,6 +126,7 @@ const DespesasSection = () => {
       fornecedor: d.fornecedor ?? "",
       data_aquisicao: d.data_aquisicao ?? "",
       observacoes: d.observacoes ?? "",
+      comprovante_url: d.comprovante_url ?? "",
     });
     setDialogOpen(true);
   };
@@ -147,6 +167,7 @@ const DespesasSection = () => {
               <TableHead>Fornecedor</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Obs</TableHead>
+              <TableHead>Comprovante</TableHead>
               <TableHead className="w-[80px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -162,6 +183,13 @@ const DespesasSection = () => {
                 <TableCell>{d.data_aquisicao ?? "-"}</TableCell>
                 <TableCell className="max-w-[150px] truncate">{d.observacoes ?? "-"}</TableCell>
                 <TableCell>
+                  {d.comprovante_url ? (
+                    <a href={d.comprovante_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      <FileDown className="h-4 w-4" />
+                    </a>
+                  ) : "-"}
+                </TableCell>
+                <TableCell>
                   <div className="flex gap-1">
                     <Button size="icon" variant="ghost" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => { if (confirm("Excluir despesa?")) deleteMutation.mutate(d.id); }}><Trash2 className="h-4 w-4" /></Button>
@@ -170,7 +198,7 @@ const DespesasSection = () => {
               </TableRow>
             ))}
             {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhuma despesa encontrada</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhuma despesa encontrada</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -207,10 +235,30 @@ const DespesasSection = () => {
             <div><Label>Fornecedor</Label><Input value={form.fornecedor} onChange={(e) => setForm({ ...form, fornecedor: e.target.value })} /></div>
             <div><Label>Data Aquisição</Label><Input type="date" value={form.data_aquisicao} onChange={(e) => setForm({ ...form, data_aquisicao: e.target.value })} /></div>
             <div><Label>Observações</Label><Input value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
+            <div>
+              <Label>Comprovante</Label>
+              {form.comprovante_url && (
+                <div className="flex items-center gap-2 mb-2">
+                  <a href={form.comprovante_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
+                    <FileDown className="h-3 w-3" /> Ver atual
+                  </a>
+                  <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, comprovante_url: "" })}>Remover</Button>
+                </div>
+              )}
+              <Input
+                type="file"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              />
+              {uploading && <p className="text-xs text-muted-foreground mt-1">Enviando...</p>}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={!form.item}>Salvar</Button>
+            <Button onClick={() => saveMutation.mutate()} disabled={!form.item || uploading}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
