@@ -1,170 +1,91 @@
 
 
-## Modulo Servidores e Hakunas - Cadastro + Alocacao por Area
+## Modulo Hakunas - Equipe de Saude Completa (5 Abas)
 
 ### Resumo
-Reescrever as paginas /servidores e /hakunas com dashboard panoramico, formulario de cadastro completo com 4 abas, fluxo de alocacao Aceitar/Recusar por coordenador, e lista filtrada de Hakunas. Criar nova pagina ServidorForm seguindo o padrao existente do ParticipanteForm.
+Reescrever `/hakunas` com 5 abas: Equipe (lista + match participantes), Ergometricos (exames 40+), Autorizacoes (liberacao montanha), Medicamentos (kit com cotacao 3 farmacias), Equipamentos (kit com cotacao 3 lojas). Medicamentos e Equipamentos seguem o padrao ja existente do MreSection/BebidasSection. Itens "comprar" sobem como despesa auto_calculada pro Financeiro.
+
+### Nenhuma migracao necessaria
+Todas as tabelas ja existem: `ergometricos`, `autorizacoes_medicas`, `hakuna_medicamentos`, `hakuna_equipamentos`, `hakuna_participante`. Os tipos serao regenerados automaticamente.
 
 ### Arquivos a criar/modificar
 
 | Arquivo | Acao |
 |---|---|
-| `src/pages/Servidores.tsx` | Reescrever - dashboard + lista com alocacao |
-| `src/pages/ServidorForm.tsx` | Criar - formulario 4 abas |
-| `src/pages/Hakunas.tsx` | Reescrever - lista filtrada Hakuna |
-| `src/App.tsx` | Adicionar rotas /servidores/novo e /servidores/:id/editar |
-
-### Nenhuma migracao necessaria
-Todos os campos ja existem na tabela `servidores` (nome, cpf, telefone, email, data_nascimento, numero_legendario, experiencia, estrangeiro, pais, cep, endereco, cidade, estado, igreja, sede, habilidades, areas_servidas, area_preferencia_1, area_preferencia_2, contato_nome, contato_email, contato_telefone, tem_veiculo, tem_recurso, recurso_descricao, cupom_desconto, status, tamanho_farda, area_servico, especialidade, checkin, qr_code, valor_pago, forma_pagamento, updated_at). A tabela `hakunas` tambem ja existe com servidor_id, especialidade_medica, registro_profissional, crm, associacao_medica, disponibilidade.
+| `src/pages/Hakunas.tsx` | Reescrever - header + 5 abas |
+| `src/components/hakunas/EquipeTab.tsx` | Criar - lista Hakunas + match participantes |
+| `src/components/hakunas/ErgometricosTab.tsx` | Criar - registro ergometricos 40+ |
+| `src/components/hakunas/AutorizacoesTab.tsx` | Criar - autorizacoes medicas |
+| `src/components/hakunas/MedicamentosTab.tsx` | Criar - kit medicamentos (padrao MreSection) |
+| `src/components/hakunas/EquipamentosTab.tsx` | Criar - kit equipamentos (padrao MreSection) |
 
 ### Detalhes Tecnicos
 
-#### 1. App.tsx - Novas rotas
+#### Hakunas.tsx (pagina principal)
+- Header com HeartPulse + "Hakunas - Equipe de Saude" + contador + botao "+ Novo Hakuna"
+- Tabs: Equipe | Ergometricos | Autorizacoes | Medicamentos | Equipamentos
+- Cada aba renderiza seu componente dedicado
 
-Adicionar dentro do bloco AppLayout:
-- `/servidores/novo` renderizando ServidorForm
-- `/servidores/:id/editar` renderizando ServidorForm
+#### EquipeTab.tsx
+- **Queries**: servidores (area_servico='Hakuna', status='aprovado'), hakunas, hakuna_participante, participantes
+- **Cards resumo**: Total aprovados + contagem por especialidade_medica
+- **Tabela**: Nome | Especialidade | CRM/Registro | Telefone | Participantes vinculados (count) | Acoes
+- **Match automatico**: Botao "Gerar Match Automatico" que:
+  1. Busca participantes com campo `doenca` preenchido
+  2. Analisa palavras-chave e faz match com especialidade do Hakuna (diabetes->Medico, cadeirante->Fisioterapeuta, etc.)
+  3. Distribui round-robin entre Hakunas da mesma especialidade
+  4. Insere em `hakuna_participante` com motivo automatico
+- **Expansao por Hakuna**: Cada linha expande mostrando participantes vinculados com nome, idade, condicao, medicamentos, prioridade
+- **Acoes**: Desvincular, Vincular manualmente (select com busca)
 
-#### 2. Servidores.tsx - Dashboard + Lista com Alocacao
+#### ErgometricosTab.tsx
+- **Info**: "Participantes com 40+ anos precisam de teste ergometrico aprovado"
+- **Queries**: participantes (filtro idade >= 40), ergometricos
+- **Cards**: Total 40+ | Pendentes | Enviados | Aprovados | Reprovados | Dispensados
+- **Filtro**: Status (Todos, Pendente, Enviado, Aprovado, Reprovado, Dispensado)
+- **Tabela**: Nome | Idade | Status | Arquivo (link) | Analisado por | Data | Observacoes | Acoes
+- **Upload**: Upload para bucket "assets", cria registro em `ergometricos`
+- **Analisar**: Dialog com select status (Aprovado/Reprovado) + textarea observacoes, update em `ergometricos` + `participantes.ergometrico_status`
 
-**Constantes (no topo do arquivo):**
+#### AutorizacoesTab.tsx
+- **Info**: "Autorizacao medica para subir a montanha"
+- **Queries**: todos participantes, autorizacoes_medicas
+- **Tabela**: Nome | Idade | Doenca/Condicao | Ergometrico | Autorizacao | Observacoes | Acoes
+- Participantes com doenca preenchida ficam destacados
+- **Acoes**: Aprovar (verde) / Reprovar (vermelho) via Dialog com observacoes obrigatorias
+- Salva em `autorizacoes_medicas`
 
-```text
-AREAS_SERVICO = ["Hakuna", "Seguranca", "Eventos", "Midia", "Comunicacao",
-  "Logistica", "Voz", "ADM", "Resgate", "Coordenacao Geral",
-  "Intercessao", "Alimentacao", "Tempo e Execucao", "DOC", "Outra area"]
-```
+#### MedicamentosTab.tsx
+- **Segue padrao identico ao MreSection** (ja existente no projeto)
+- Conectado a tabela `hakuna_medicamentos`
+- 3 fornecedores editaveis (default: "Drogasil", "Droga Raia", "Farmacia Popular")
+- Colunas: Item | Qtd | Unid. | Situacao | Cedido por | Farm.1 R$ | Farm.2 R$ | Farm.3 R$ | Menor | Total
+- **Situacao** (Select): "Comprar" (badge vermelho), "Em Estoque" (badge verde), "Cedido por Hakuna" (badge azul, mostra campo cedido_por)
+- Menor = MIN(farm1, farm2, farm3), preco_manual override
+- Total = Menor x Qtd (somente se situacao = "comprar")
+- Rodape: CUSTO TOTAL e CUSTO POR KIT
+- Reutiliza componente PriceCell existente
+- **"Salvar como Despesa"**: upsert em `despesas` com descricao="Kit Medico - Medicamentos", categoria="Medicamentos", auto_calculado=true
 
-**Query:** useQuery buscando todos os servidores da tabela `servidores`.
+#### EquipamentosTab.tsx
+- **Identico ao MedicamentosTab** mas conectado a `hakuna_equipamentos`
+- 3 fornecedores editaveis (default: "Shopmed", "Cirurgica Express", "Farmacia Popular")
+- Colunas: Item | Qtd | Situacao | Cedido por | Loja1 R$ | Loja2 R$ | Loja3 R$ | Menor | Total
+- Mesma logica de situacao (Comprar/Em Estoque/Cedido)
+- **"Salvar como Despesa"**: categoria="Equipamentos Medicos", auto_calculado=true
 
-**Estrutura da pagina:**
+### Integracao com Financeiro
+- Medicamentos e Equipamentos usam o mesmo padrao de `saveDespesaMutation` do MreSection/BebidasSection
+- Upsert por descricao + auto_calculado=true
+- Aparece automaticamente no Financeiro > Resumo (grafico de pizza + soma despesas)
 
-1. **Header**: Icone Shield + "Servidores" + contador + botoes "+ Novo Servidor" e "Exportar CSV"
-
-2. **Alertas** (Cards vermelho/laranja no topo):
-   - "X servidores aguardando alocacao!" se houver status="pendente"
-   - "X servidores sem area!" se houver status="sem_area"
-   - Clicaveis: ao clicar, seta o filtro de status correspondente
-
-3. **Cards panoramicos** (grid responsivo 2 cols mobile, 4 desktop):
-   - Um Card por area de servico mostrando: nome da area, total aprovados, badge laranja com pendentes
-   - Card especial "Sem Area" em vermelho
-
-4. **Filtros:**
-   - Select "Area" (Todas + cada area)
-   - Select "Status" (Todos, Pendente, Aprovado, Recusado, Sem Area)
-   - Input busca por nome/CPF
-
-5. **Tabela:**
-   - Colunas: Nome | Idade | Telefone | 1a Opcao | 2a Opcao | Area Atual | Status | Acoes
-   - Status com Badge colorido (pendente=laranja, aprovado=verde, recusado=vermelho, sem_area=vermelho escuro)
-   - Acoes: Eye (ver), Pencil (editar), e se pendente: botao Check verde "Aceitar" e botao X vermelho "Recusar"
-
-6. **Logica Aceitar:**
-   - Update: area_servico = area onde esta pendente, status = "aprovado"
-   - Toast de sucesso
-   - Invalida queries
-
-7. **Logica Recusar:**
-   - Abre Dialog com Textarea obrigatorio "Motivo da recusa"
-   - Se estava na 1a opcao (area_servico === area_preferencia_1): move para 2a opcao (area_servico = area_preferencia_2, status permanece "pendente")
-   - Se estava na 2a opcao: status = "sem_area"
-   - Toast informando resultado
-   - Invalida queries
-
-8. **Logica de filtro por area:**
-   - Mostra servidores aprovados naquela area + pendentes cuja area_servico corresponde
-
-9. **Paginacao e ordenacao:** Mesmo padrao do Participantes.tsx (PAGE_SIZE=20, sort por nome/idade/status)
-
-10. **Sheet de detalhes:** Ao clicar Eye ou na linha, abre Sheet lateral com todos os dados do servidor (similar ao ParticipanteSheet)
-
-#### 3. ServidorForm.tsx - Formulario 4 Abas
-
-Segue o padrao do ParticipanteForm.tsx existente (useForm + zod + react-hook-form).
-
-**Schema zod:**
-- nome: string required
-- email: string email required
-- telefone: string required
-- estrangeiro: boolean
-- cpf: string, required se nao estrangeiro, validacao validateCPF
-- data_nascimento: string required
-- numero_legendario: string required
-- experiencia: string (enum)
-- tamanho_farda: string
-- pais: string default "Brasil"
-- cep: string
-- endereco, cidade, estado: string
-- igreja, sede: string
-- habilidades: string (JSON array serializado)
-- areas_servidas: string (JSON array serializado)
-- area_preferencia_1: string required
-- area_preferencia_2: string required, diferente de area_preferencia_1
-- contato_nome: string required
-- contato_email: string email required
-- contato_telefone: string required
-- tem_veiculo: boolean
-- tem_recurso: boolean
-- recurso_descricao: string (visivel se tem_recurso)
-- cupom_desconto: string
-- valor_pago: number
-
-**Aba 1 - Dados Pessoais:**
-- nome, email, telefone (mascara), checkbox estrangeiro, cpf (mascara, desabilitado se estrangeiro), data_nascimento (DatePicker dropdown-buttons fromYear=1930 toYear=2010), numero_legendario, experiencia (Select), tamanho_farda (Select)
-
-**Aba 2 - Endereco e Igreja:**
-- pais (Select), cep (mascara xxxxx-xxx, auto-fetch viacep ao completar 8 digitos), endereco, cidade, estado, igreja, sede
-
-**Aba 3 - Habilidades e Area:**
-- habilidades: grid de Checkboxes com as 12 habilidades definidas, salva como JSON string
-- areas_servidas: grid de Checkboxes com AREAS_SERVICO, salva como JSON string
-- area_preferencia_1: Select required
-- area_preferencia_2: Select required (filtra para excluir a 1a opcao)
-
-**Aba 4 - Contato e Recursos:**
-- contato_nome, contato_email, contato_telefone (mascara)
-- tem_veiculo: RadioGroup Sim/Nao
-- tem_recurso: RadioGroup Sim/Nao
-- recurso_descricao: Input visivel condicionalmente
-- cupom_desconto, valor_pago, forma_pagamento
-
-**Ao salvar (criar):**
-- Gera qr_code = crypto.randomUUID()
-- area_servico = area_preferencia_1
-- status = "pendente"
-- Se area_preferencia_1 === "Hakuna": insere registro na tabela `hakunas` com servidor_id
-- Toast + redirect /servidores
-
-**Ao salvar (editar):**
-- Update com updated_at = now()
-- Se area_servico mudou para "Hakuna" e nao tem registro em hakunas: criar
-- Toast + redirect /servidores
-
-**Comportamento com query param ?area=Hakuna:**
-- Le searchParams, se area=Hakuna pre-seleciona area_preferencia_1
-
-#### 4. Hakunas.tsx - Lista Filtrada
-
-**Query:** Busca servidores onde area_servico = 'Hakuna' AND status = 'aprovado'. Faz query separada na tabela `hakunas` via servidor_id para pegar dados medicos.
-
-**Estrutura:**
-1. **Header:** Icone HeartPulse + "Hakunas - Equipe de Saude" + contador + botao "+ Novo Hakuna" (link para /servidores/novo?area=Hakuna)
-
-2. **Cards resumo:**
-   - Total Hakunas aprovados
-   - Subtotais por especialidade_medica (Medico: X, Fisioterapeuta: X, etc)
-
-3. **Tabela:**
-   - Colunas: Nome | Idade | Telefone | Especialidade Medica | CRM/Registro | Igreja | Check-in | Acoes
-   - Acoes: Eye (ver detalhes) e Pencil (editar -> /servidores/:id/editar)
-
-### Componentes shadcn utilizados
-Tabs, TabsList, TabsTrigger, TabsContent, Table, Input, Select, Checkbox, Button, Badge, Card, Dialog, Calendar/Popover (DatePicker), RadioGroup, Alert, Textarea, Sheet, Skeleton
+### Componentes reutilizados
+- PriceCell (de `src/components/financeiro/PriceCell.tsx`)
+- ServidorSheet (detalhes lateral)
+- Todos componentes shadcn: Tabs, Table, Input, Select, Checkbox, Button, Badge, Card, Dialog, Alert, Textarea, Skeleton
 
 ### Responsividade
-- Cards panoramicos: grid-cols-2 mobile, grid-cols-3 md, grid-cols-4 lg
-- Formulario: tabs empilham em mobile (TabsList com flex-wrap)
-- Tabela: overflow-x-auto, colunas secundarias hidden em mobile
-- Dialog de recusa: max-w-md, responsivo por padrao do shadcn
-
+- Tabs com scroll horizontal em mobile (TabsList overflow-x-auto)
+- Tabelas overflow-x-auto, primeira coluna sticky
+- Dialogs responsivos por padrao shadcn
+- Cards resumo: grid-cols-2 mobile, grid-cols-3 md, grid-cols-4 lg
