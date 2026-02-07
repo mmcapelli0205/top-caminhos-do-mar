@@ -338,7 +338,9 @@ export type Database = {
           created_at: string | null
           crm: string | null
           disponibilidade: string | null
+          especialidade_medica: string | null
           id: string
+          registro_profissional: string | null
           servidor_id: string | null
           top_id: string | null
         }
@@ -347,7 +349,9 @@ export type Database = {
           created_at?: string | null
           crm?: string | null
           disponibilidade?: string | null
+          especialidade_medica?: string | null
           id?: string
+          registro_profissional?: string | null
           servidor_id?: string | null
           top_id?: string | null
         }
@@ -356,7 +360,9 @@ export type Database = {
           created_at?: string | null
           crm?: string | null
           disponibilidade?: string | null
+          especialidade_medica?: string | null
           id?: string
+          registro_profissional?: string | null
           servidor_id?: string | null
           top_id?: string | null
         }
@@ -605,54 +611,123 @@ export type Database = {
       }
       servidores: {
         Row: {
+          area_preferencia_1: string | null
+          area_preferencia_2: string | null
           area_servico: string | null
+          areas_servidas: string | null
+          cep: string | null
           checkin: boolean | null
+          cidade: string | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
           cpf: string | null
           created_at: string | null
           cupom_desconto: string | null
+          data_nascimento: string | null
           email: string | null
+          endereco: string | null
           especialidade: string | null
+          estado: string | null
+          estrangeiro: boolean | null
+          experiencia: string | null
           forma_pagamento: string | null
+          habilidades: string | null
           id: string
+          igreja: string | null
           nome: string
+          numero_legendario: string | null
+          pais: string | null
           qr_code: string | null
+          recurso_descricao: string | null
+          sede: string | null
           status: string | null
+          tamanho_farda: string | null
           telefone: string | null
+          tem_recurso: boolean | null
+          tem_veiculo: boolean | null
           top_id: string | null
+          updated_at: string | null
           valor_pago: number | null
         }
         Insert: {
+          area_preferencia_1?: string | null
+          area_preferencia_2?: string | null
           area_servico?: string | null
+          areas_servidas?: string | null
+          cep?: string | null
           checkin?: boolean | null
+          cidade?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
           cpf?: string | null
           created_at?: string | null
           cupom_desconto?: string | null
+          data_nascimento?: string | null
           email?: string | null
+          endereco?: string | null
           especialidade?: string | null
+          estado?: string | null
+          estrangeiro?: boolean | null
+          experiencia?: string | null
           forma_pagamento?: string | null
+          habilidades?: string | null
           id?: string
+          igreja?: string | null
           nome: string
+          numero_legendario?: string | null
+          pais?: string | null
           qr_code?: string | null
+          recurso_descricao?: string | null
+          sede?: string | null
           status?: string | null
+          tamanho_farda?: string | null
           telefone?: string | null
+          tem_recurso?: boolean | null
+          tem_veiculo?: boolean | null
           top_id?: string | null
+          updated_at?: string | null
           valor_pago?: number | null
         }
         Update: {
+          area_preferencia_1?: string | null
+          area_preferencia_2?: string | null
           area_servico?: string | null
+          areas_servidas?: string | null
+          cep?: string | null
           checkin?: boolean | null
+          cidade?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
           cpf?: string | null
           created_at?: string | null
           cupom_desconto?: string | null
+          data_nascimento?: string | null
           email?: string | null
+          endereco?: string | null
           especialidade?: string | null
+          estado?: string | null
+          estrangeiro?: boolean | null
+          experiencia?: string | null
           forma_pagamento?: string | null
+          habilidades?: string | null
           id?: string
+          igreja?: string | null
           nome?: string
+          numero_legendario?: string | null
+          pais?: string | null
           qr_code?: string | null
+          recurso_descricao?: string | null
+          sede?: string | null
           status?: string | null
+          tamanho_farda?: string | null
           telefone?: string | null
+          tem_recurso?: boolean | null
+          tem_veiculo?: boolean | null
           top_id?: string | null
+          updated_at?: string | null
           valor_pago?: number | null
         }
         Relationships: [

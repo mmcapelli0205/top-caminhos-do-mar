@@ -10,6 +10,7 @@ import Participantes from "./pages/Participantes";
 import Familias from "./pages/Familias";
 import Servidores from "./pages/Servidores";
 import Hakunas from "./pages/Hakunas";
+import ServidorForm from "./pages/ServidorForm";
 import Financeiro from "./pages/Financeiro";
 import Equipamentos from "./pages/Equipamentos";
 import ArtesEDocs from "./pages/ArtesEDocs";
@@ -36,6 +37,8 @@ const App = () => (
             <Route path="/participantes/:id/editar" element={<ParticipanteForm />} />
             <Route path="/familias" element={<Familias />} />
             <Route path="/servidores" element={<Servidores />} />
+            <Route path="/servidores/novo" element={<ServidorForm />} />
+            <Route path="/servidores/:id/editar" element={<ServidorForm />} />
             <Route path="/hakunas" element={<Hakunas />} />
             <Route path="/financeiro" element={<Financeiro />} />
             <Route path="/equipamentos" element={<Equipamentos />} />
