@@ -2,21 +2,30 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users, Search, Download, Plus, Eye, Pencil, Upload,
-  CheckCircle, XCircle, Circle, ArrowUp, ArrowDown,
+  CheckCircle, XCircle, Circle, ArrowUp, ArrowDown, Trash2, Edit,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import ParticipanteSheet from "@/components/ParticipanteSheet";
 import ImportCSVDialog from "@/components/ImportCSVDialog";
+import BatchEditDialog from "@/components/BatchEditDialog";
 import { useParticipantes, type Participante } from "@/hooks/useParticipantes";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +52,7 @@ const ergoColors: Record<string, string> = {
 
 export default function Participantes() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { participantes, familiaMap, familias, isLoading } = useParticipantes();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,16 +67,23 @@ export default function Participantes() {
   const [selectedParticipant, setSelectedParticipant] = useState<Participante | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
+  // Batch selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [batchEditOpen, setBatchEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const existingCpfs = useMemo(() => participantes.map((p) => p.cpf), [participantes]);
 
-  // debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // reset page on filter change
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo]);
+
+  // Clear selection when filters/page change
+  useEffect(() => { setSelectedIds(new Set()); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo, currentPage]);
 
   const getFamiliaNumero = useCallback((fid: number | null) => {
     if (fid == null) return null;
@@ -75,7 +92,6 @@ export default function Participantes() {
 
   const filtered = useMemo(() => {
     let list = participantes;
-
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
       list = list.filter(
@@ -85,13 +101,11 @@ export default function Participantes() {
           (p.telefone?.toLowerCase().includes(q) ?? false)
       );
     }
-
     if (filterStatus !== "todos") list = list.filter((p) => p.status === filterStatus);
     if (filterFamilia !== "todos") list = list.filter((p) => String(p.familia_id) === filterFamilia);
     if (filterContrato === "sim") list = list.filter((p) => p.contrato_assinado);
     if (filterContrato === "nao") list = list.filter((p) => !p.contrato_assinado);
     if (filterErgo !== "todos") list = list.filter((p) => p.ergometrico_status === filterErgo);
-
     return list;
   }, [participantes, debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo]);
 
@@ -120,9 +134,51 @@ export default function Participantes() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  const pageIds = useMemo(() => new Set(paginated.map((p) => p.id)), [paginated]);
+  const allPageSelected = paginated.length > 0 && paginated.every((p) => selectedIds.has(p.id));
+  const someSelected = selectedIds.size > 0;
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("asc"); }
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        paginated.forEach((p) => next.delete(p.id));
+      } else {
+        paginated.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBatchDelete() {
+    setDeleting(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from("participantes").delete().in("id", ids);
+    setDeleting(false);
+    setDeleteConfirmOpen(false);
+
+    if (error) {
+      toast.error("Erro ao excluir: " + error.message);
+      return;
+    }
+
+    toast.success(`${ids.length} participante(s) excluído(s).`);
+    setSelectedIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ["participantes"] });
   }
 
   function SortIcon({ col }: { col: SortKey }) {
@@ -218,11 +274,33 @@ export default function Participantes() {
         </Select>
       </div>
 
+      {/* Batch action bar */}
+      {someSelected && (
+        <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50 border border-border">
+          <span className="text-sm font-medium text-foreground">{selectedIds.size} selecionado(s)</span>
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" size="sm" onClick={() => setBatchEditOpen(true)}>
+              <Edit className="h-4 w-4 mr-1" /> Editar em Lote
+            </Button>
+            <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-1" /> Excluir Selecionados
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="rounded-md border border-border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allPageSelected && paginated.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead className="cursor-pointer" onClick={() => toggleSort("nome")}>Nome<SortIcon col="nome" /></TableHead>
               <TableHead className="cursor-pointer hidden md:table-cell" onClick={() => toggleSort("idade")}>Idade<SortIcon col="idade" /></TableHead>
               <TableHead className="hidden md:table-cell">Telefone</TableHead>
@@ -239,14 +317,14 @@ export default function Participantes() {
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 10 }).map((_, j) => (
+                  {Array.from({ length: 11 }).map((_, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                   Nenhum participante encontrado.
                 </TableCell>
               </TableRow>
@@ -254,8 +332,16 @@ export default function Participantes() {
               paginated.map((p) => {
                 const age = calcAge(p.data_nascimento);
                 const famNum = getFamiliaNumero(p.familia_id);
+                const isSelected = selectedIds.has(p.id);
                 return (
-                  <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelectedParticipant(p)}>
+                  <TableRow key={p.id} className={`cursor-pointer ${isSelected ? "bg-muted/40" : ""}`} onClick={() => setSelectedParticipant(p)}>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(p.id)}
+                        aria-label={`Selecionar ${p.nome}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{p.nome}</TableCell>
                     <TableCell className="hidden md:table-cell">{age ?? "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{p.telefone ?? "—"}</TableCell>
@@ -323,11 +409,35 @@ export default function Participantes() {
         onOpenChange={(open) => { if (!open) setSelectedParticipant(null); }}
         familiaNumero={selectedParticipant ? getFamiliaNumero(selectedParticipant.familia_id) : null}
       />
-      <ImportCSVDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        existingCpfs={existingCpfs}
+      <ImportCSVDialog open={importOpen} onOpenChange={setImportOpen} existingCpfs={existingCpfs} />
+      <BatchEditDialog
+        open={batchEditOpen}
+        onOpenChange={setBatchEditOpen}
+        selectedIds={Array.from(selectedIds)}
+        onDone={() => setSelectedIds(new Set())}
       />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir {selectedIds.size} participante(s)? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBatchDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
