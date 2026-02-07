@@ -209,8 +209,7 @@ export default function ParticipanteForm() {
 
   const condLabels: Record<number, string> = { 1: "Sedentário", 2: "Leve", 3: "Moderado", 4: "Ativo", 5: "Atleta" };
 
-  // Tab content components
-  const TabDadosPessoais = () => (
+  const dadosPessoaisContent = (
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField control={form.control} name="nome" render={({ field }) => (
         <FormItem className="sm:col-span-2">
@@ -262,7 +261,11 @@ export default function ParticipanteForm() {
               <Calendar mode="single" locale={ptBR}
                 selected={field.value ? new Date(field.value) : undefined}
                 onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                captionLayout="dropdown-buttons" fromYear={1940} toYear={new Date().getFullYear()} />
+                defaultMonth={new Date(1990, 0)}
+                captionLayout="dropdown-buttons"
+                fromYear={1930}
+                toYear={2010}
+                className="p-3 pointer-events-auto" />
             </PopoverContent>
           </Popover>
           <FormMessage />
@@ -318,7 +321,7 @@ export default function ParticipanteForm() {
     </div>
   );
 
-  const TabSaude = () => (
+  const saudeContent = (
     <div className="grid gap-4">
       <FormField control={form.control} name="doenca" render={({ field }) => (
         <FormItem>
@@ -386,7 +389,7 @@ export default function ParticipanteForm() {
     </div>
   );
 
-  const TabContatos = () => (
+  const contatosContent = (
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField control={form.control} name="igreja" render={({ field }) => (
         <FormItem className="sm:col-span-2">
@@ -456,7 +459,7 @@ export default function ParticipanteForm() {
     </div>
   );
 
-  const TabFinanceiro = () => (
+  const financeiroContent = (
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField control={form.control} name="forma_pagamento" render={({ field }) => (
         <FormItem>
@@ -491,7 +494,7 @@ export default function ParticipanteForm() {
     </div>
   );
 
-  const TabDocumentos = () => (
+  const documentosContent = (
     <div className="grid gap-4">
       <FormField control={form.control} name="contrato_assinado" render={({ field }) => (
         <FormItem className="flex items-center gap-3">
@@ -528,11 +531,11 @@ export default function ParticipanteForm() {
   );
 
   const tabs = [
-    { value: "pessoais", label: "Dados Pessoais", content: <TabDadosPessoais /> },
-    { value: "saude", label: "Saúde", content: <TabSaude /> },
-    { value: "contatos", label: "Contatos & Igreja", content: <TabContatos /> },
-    { value: "financeiro", label: "Financeiro", content: <TabFinanceiro /> },
-    { value: "documentos", label: "Documentos", content: <TabDocumentos /> },
+    { value: "pessoais", label: "Dados Pessoais", content: dadosPessoaisContent },
+    { value: "saude", label: "Saúde", content: saudeContent },
+    { value: "contatos", label: "Contatos & Igreja", content: contatosContent },
+    { value: "financeiro", label: "Financeiro", content: financeiroContent },
+    { value: "documentos", label: "Documentos", content: documentosContent },
   ];
 
   return (
