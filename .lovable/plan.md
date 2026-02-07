@@ -1,80 +1,98 @@
 
 
-## Pagina de Participantes - Tabela Completa com Filtros, Ordenacao e Detalhes
+## Formulario de Participante - Cadastro e Edicao
 
 ### Resumo
-Substituir o placeholder da pagina Participantes por uma tabela de dados completa conectada ao Supabase, com busca, filtros, ordenacao, paginacao, painel lateral de detalhes e exportacao CSV.
+Criar pagina de formulario com 5 abas (Tabs) para cadastrar e editar participantes, conectada ao Supabase. Funciona em duas rotas: `/participantes/novo` (criar) e `/participantes/:id/editar` (editar).
 
 ### Arquivos a criar/modificar
 
-**1. `src/hooks/useParticipantes.ts`** (novo)
-- Hook com react-query para buscar todos os participantes da tabela `participantes`
-- Tambem buscar `familias` para mapear familia_id -> numero
-- Retornar dados brutos para processamento no componente
+**1. `src/pages/ParticipanteForm.tsx`** (novo) — Componente principal do formulario
 
-**2. `src/pages/Participantes.tsx`** (reescrever)
-- Componente principal com toda a logica de estado:
-  - `searchTerm` com debounce de 300ms (useEffect + setTimeout)
-  - `filters`: status, familia, contrato, ergometrico
-  - `sortConfig`: coluna + direcao (asc/desc)
-  - `currentPage`: paginacao de 20 por pagina
-  - `selectedParticipant`: para o painel lateral
-- Fluxo de dados: query -> filtrar client-side -> ordenar -> paginar -> renderizar
+**2. `src/App.tsx`** (modificar) — Adicionar duas rotas novas
 
-**3. `src/components/ParticipanteSheet.tsx`** (novo)
-- Painel lateral (Sheet do shadcn) com todos os campos do participante organizados em secoes:
-  - Dados Pessoais: nome, cpf, email, telefone, data_nascimento, profissao, instagram, igreja
-  - Dados Fisicos: peso, altura, condicionamento, tamanho_farda
-  - Saude: doenca, medicamentos, alergia_alimentar, ergometrico_status, ergometrico_url
-  - Contato de Emergencia: contato_nome, contato_telefone, contato_email
-  - Inscricao: status, forma_pagamento, valor_pago, cupom_desconto, inscrito_por, motivo_inscricao, amigo_parente
-  - Documentos: contrato_assinado, contrato_url, qr_code
-- No mobile: sheet ocupa tela inteira (side="bottom" ou className fullscreen)
+### Detalhes Tecnicos
 
-### Detalhes da Tabela
+**Rotas novas no App.tsx:**
+- `/participantes/novo` -> ParticipanteForm (modo criacao)
+- `/participantes/:id/editar` -> ParticipanteForm (modo edicao, busca dados existentes)
 
-**Colunas desktop (todas visiveis):**
-| Nome | Idade | Telefone | Igreja | Familia | Contrato | Ergometrico | Check-in | Status | Acoes |
+**Formulario com react-hook-form + zod:**
+- Validacao com zod schema incluindo:
+  - `nome`: string obrigatorio
+  - `cpf`: string obrigatorio com validacao de algoritmo CPF (digitos verificadores)
+  - `telefone`: string obrigatorio
+  - `data_nascimento`: string obrigatorio
+  - `igreja`: string obrigatorio
+  - Demais campos opcionais
+- Mascaras de CPF e telefone aplicadas via onChange handlers (formatacao visual)
 
-**Colunas mobile (apenas 3 + acoes):**
-| Nome | Status | Contrato | Acoes |
+**5 Abas usando shadcn Tabs:**
 
-- Idade calculada: `Math.floor((Date.now() - new Date(data_nascimento)) / (365.25 * 86400000))`
-- Familia: mostra numero da familia (via lookup na tabela familias) ou "---"
-- Contrato: CheckCircle verde (true) / XCircle vermelho (false)
-- Ergometrico: Badge com cores (pendente=orange, enviado=blue, aprovado=green, dispensado=gray)
-- Check-in: CheckCircle verde (true) / Circle cinza (false)
-- Status: Badge (inscrito=yellow, confirmado=green, cancelado=red)
-- Acoes: botao olho (abre sheet) + botao lapis (navega para edicao futura)
+TAB 1 - Dados Pessoais:
+- nome (Input, required)
+- cpf (Input com mascara 000.000.000-00, validacao algoritmo)
+- email (Input type email)
+- telefone (Input com mascara (00) 00000-0000, required)
+- data_nascimento (DatePicker com Popover+Calendar)
+- peso (Input number, kg)
+- altura (Input number, metros com decimal)
+- tamanho_farda (Select: P, M, G, GG, XG)
+- condicionamento (Slider 1-5 com labels: Sedentario a Atleta)
+- instagram (Input com prefixo @)
 
-**Ordenacao:** Click no header alterna asc/desc. Seta visual indica direcao.
+TAB 2 - Saude:
+- doenca (Textarea)
+- medicamentos (Textarea)
+- alergia_alimentar (Textarea)
+- Alerta condicional (se idade >= 40): Alert laranja + ergometrico_status (Select) + ergometrico_url (Input para link ou upload para bucket "assets")
 
-**Busca:** Input no topo filtra por nome, cpf ou telefone (debounce 300ms).
+TAB 3 - Contatos e Igreja:
+- igreja (Input, required)
+- profissao (Input)
+- amigo_parente (Input)
+- Separador: "Contato de Emergencia"
+- contato_nome, contato_telefone (mascara), contato_email
+- Separador: "Inscricao por Terceiros"
+- inscrito_por (Input)
+- motivo_inscricao (Textarea, visivel apenas se inscrito_por preenchido)
 
-**Filtros (linha de dropdowns):**
-- Status: todos / inscrito / confirmado / cancelado
-- Familia: todos / lista de numeros
-- Contrato: todos / sim / nao
-- Ergometrico: todos / pendente / enviado / aprovado / dispensado
+TAB 4 - Financeiro:
+- forma_pagamento (Select: PIX, Cartao, Multiplos Cartoes)
+- cupom_desconto (Input)
+- valor_pago (Input com prefixo R$)
 
-**Paginacao:** 20 itens por pagina. Controles Previous/Next + indicador "Mostrando X-Y de Z".
+TAB 5 - Documentos:
+- contrato_assinado (Switch)
+- contrato_url (Input para link ou upload)
 
-**Export CSV:** Botao que gera e baixa CSV da vista filtrada atual.
+**Comportamento no salvar:**
+- Criacao: gera `qr_code = crypto.randomUUID()`, status = "inscrito"
+- Edicao: seta `updated_at = new Date().toISOString()`
+- Insert/Update via supabase client
+- Toast de sucesso "Participante salvo com sucesso!"
+- Redirect para `/participantes`
+- Invalida cache react-query ["participantes"]
 
-**Botao "Novo Participante":** Botao laranja no topo direito, navega para /participantes/novo (rota placeholder).
+**Modo edicao:**
+- Usa `useParams()` para pegar o ID
+- Busca participante via `supabase.from("participantes").select("*").eq("id", id).single()`
+- Preenche o formulario com `form.reset(data)`
 
-**Loading:** Skeleton rows enquanto dados carregam.
+**Upload de arquivos (ergometrico_url, contrato_url):**
+- Upload para bucket "assets" do Supabase Storage (ja existe e eh publico)
+- Salva URL publica no campo correspondente
 
-### Componentes shadcn utilizados
-- Table, TableHeader, TableBody, TableRow, TableHead, TableCell
-- Input (busca)
-- Select (filtros)
-- Badge (status, ergometrico)
-- Sheet/SheetContent (painel lateral)
-- Button (acoes, export, novo)
-- Skeleton (loading)
-- Pagination
+**Responsivo:**
+- Em mobile (useIsMobile hook): Tabs com orientacao vertical ou Accordion
+- Inputs full-width
+- Botao salvar sticky no bottom em mobile
+
+**Nota:** O campo `pais` mencionado no prompt nao existe na tabela do banco, portanto sera omitido.
+
+### Validacao CPF (algoritmo)
+Implementar funcao que valida os 2 digitos verificadores do CPF brasileiro, rejeitar CPFs com todos digitos iguais.
 
 ### Sem alteracoes no banco
-Todas as queries usam tabelas existentes. Nenhuma migracao necessaria.
+Todas as operacoes usam a tabela `participantes` existente e o bucket "assets" existente. Nenhuma migracao necessaria.
 
