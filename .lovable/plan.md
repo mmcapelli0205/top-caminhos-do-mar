@@ -1,57 +1,80 @@
 
 
-## Dashboard Completo com KPIs, Cards e Graficos
+## Pagina de Participantes - Tabela Completa com Filtros, Ordenacao e Detalhes
 
 ### Resumo
-Construir a pagina Dashboard com dados reais do Supabase, incluindo 4 KPI cards, 2 cards de resumo e 2 graficos (barra e donut). Tudo responsivo e com loading skeletons.
+Substituir o placeholder da pagina Participantes por uma tabela de dados completa conectada ao Supabase, com busca, filtros, ordenacao, paginacao, painel lateral de detalhes e exportacao CSV.
 
-### Estrutura Visual
+### Arquivos a criar/modificar
 
-```text
-+--Desktop Layout------------------------------------------+
-| [Inscritos] [Contratos] [Ergometricos] [Check-ins]       |
-| [Familias Formadas         ] [Balanco Financeiro        ]|
-| [Grafico Faixa Etaria      ] [Grafico Status            ]|
-+----------------------------------------------------------+
+**1. `src/hooks/useParticipantes.ts`** (novo)
+- Hook com react-query para buscar todos os participantes da tabela `participantes`
+- Tambem buscar `familias` para mapear familia_id -> numero
+- Retornar dados brutos para processamento no componente
 
-+--Mobile Layout----+
-| [Inscritos       ]|
-| [Contratos       ]|
-| [Ergometricos    ]|
-| [Check-ins       ]|
-| [Familias        ]|
-| [Balanco         ]|
-| [Grafico Etaria  ]|
-| [Grafico Status  ]|
-+-------------------+
-```
+**2. `src/pages/Participantes.tsx`** (reescrever)
+- Componente principal com toda a logica de estado:
+  - `searchTerm` com debounce de 300ms (useEffect + setTimeout)
+  - `filters`: status, familia, contrato, ergometrico
+  - `sortConfig`: coluna + direcao (asc/desc)
+  - `currentPage`: paginacao de 20 por pagina
+  - `selectedParticipant`: para o painel lateral
+- Fluxo de dados: query -> filtrar client-side -> ordenar -> paginar -> renderizar
 
-### Detalhes Tecnicos
+**3. `src/components/ParticipanteSheet.tsx`** (novo)
+- Painel lateral (Sheet do shadcn) com todos os campos do participante organizados em secoes:
+  - Dados Pessoais: nome, cpf, email, telefone, data_nascimento, profissao, instagram, igreja
+  - Dados Fisicos: peso, altura, condicionamento, tamanho_farda
+  - Saude: doenca, medicamentos, alergia_alimentar, ergometrico_status, ergometrico_url
+  - Contato de Emergencia: contato_nome, contato_telefone, contato_email
+  - Inscricao: status, forma_pagamento, valor_pago, cupom_desconto, inscrito_por, motivo_inscricao, amigo_parente
+  - Documentos: contrato_assinado, contrato_url, qr_code
+- No mobile: sheet ocupa tela inteira (side="bottom" ou className fullscreen)
 
-**Arquivo modificado:** `src/pages/Dashboard.tsx`
+### Detalhes da Tabela
 
-**Dados buscados (3 queries paralelas com react-query):**
-1. `participantes` — campos: status, contrato_assinado, checkin_realizado, ergometrico_status, data_nascimento, familia_id, valor_pago
-2. `despesas` — campo: valor
-3. `familias` — contagem total
+**Colunas desktop (todas visiveis):**
+| Nome | Idade | Telefone | Igreja | Familia | Contrato | Ergometrico | Check-in | Status | Acoes |
 
-**KPI Cards (linha 1, grid 1-4 colunas):**
-1. Total Inscritos — count onde status != 'cancelado' (icone Users, borda laranja)
-2. Contratos Assinados — "X/Y (Z%)" onde contrato_assinado = true (icone FileCheck, borda verde)
-3. Ergometricos Pendentes — count onde ergometrico_status = 'pendente' E idade >= 40 (calculada a partir de data_nascimento). Icone AlertTriangle, borda vermelha se > 0
-4. Check-ins Realizados — "X/Y (Z%)" onde checkin_realizado = true (icone QrCode, borda azul)
+**Colunas mobile (apenas 3 + acoes):**
+| Nome | Status | Contrato | Acoes |
 
-**Cards resumo (linha 2, grid 2 colunas):**
-1. Familias Formadas — count distinct familia_id nao-null + "Y participantes alocados" (icone UsersRound)
-2. Balanco Financeiro — sum(valor_pago) vs sum(valor despesas), diferenca verde/vermelha (icone DollarSign)
+- Idade calculada: `Math.floor((Date.now() - new Date(data_nascimento)) / (365.25 * 86400000))`
+- Familia: mostra numero da familia (via lookup na tabela familias) ou "---"
+- Contrato: CheckCircle verde (true) / XCircle vermelho (false)
+- Ergometrico: Badge com cores (pendente=orange, enviado=blue, aprovado=green, dispensado=gray)
+- Check-in: CheckCircle verde (true) / Circle cinza (false)
+- Status: Badge (inscrito=yellow, confirmado=green, cancelado=red)
+- Acoes: botao olho (abre sheet) + botao lapis (navega para edicao futura)
 
-**Graficos (linha 3, grid 2 colunas) usando recharts:**
-1. BarChart — Faixas etarias (18-30, 31-40, 41-50, 51-60, 60+) calculadas de data_nascimento
-2. PieChart (donut) — Status dos participantes com cores: inscrito=amarelo, confirmado=verde, cancelado=vermelho
+**Ordenacao:** Click no header alterna asc/desc. Seta visual indica direcao.
 
-**Loading:** Skeleton placeholders do shadcn/ui enquanto dados carregam
+**Busca:** Input no topo filtra por nome, cpf ou telefone (debounce 300ms).
 
-**Estilo:** Cards com classes do tema (bg-card, border-border, rounded-lg). Cores de destaque via Tailwind usando os tokens existentes do tema escuro.
+**Filtros (linha de dropdowns):**
+- Status: todos / inscrito / confirmado / cancelado
+- Familia: todos / lista de numeros
+- Contrato: todos / sim / nao
+- Ergometrico: todos / pendente / enviado / aprovado / dispensado
+
+**Paginacao:** 20 itens por pagina. Controles Previous/Next + indicador "Mostrando X-Y de Z".
+
+**Export CSV:** Botao que gera e baixa CSV da vista filtrada atual.
+
+**Botao "Novo Participante":** Botao laranja no topo direito, navega para /participantes/novo (rota placeholder).
+
+**Loading:** Skeleton rows enquanto dados carregam.
+
+### Componentes shadcn utilizados
+- Table, TableHeader, TableBody, TableRow, TableHead, TableCell
+- Input (busca)
+- Select (filtros)
+- Badge (status, ergometrico)
+- Sheet/SheetContent (painel lateral)
+- Button (acoes, export, novo)
+- Skeleton (loading)
+- Pagination
 
 ### Sem alteracoes no banco
-Todas as queries usam tabelas existentes via Supabase client. Nenhuma migracao necessaria.
+Todas as queries usam tabelas existentes. Nenhuma migracao necessaria.
+
