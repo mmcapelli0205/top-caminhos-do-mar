@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { UsersRound, Wand2, Save, Heart, AlertTriangle } from "lucide-react";
+import { UsersRound, Wand2, Save, Heart, AlertTriangle, Printer } from "lucide-react";
+import EtiquetasPDFDialog from "@/components/EtiquetasPDFDialog";
 import { useParticipantes } from "@/hooks/useParticipantes";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +45,7 @@ const Familias = () => {
   const [numFamilias, setNumFamilias] = useState(10);
   const [result, setResult] = useState<FamilyResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [etiquetasOpen, setEtiquetasOpen] = useState(false);
 
   const aptos = useMemo(
     () => participantes.filter((p) => p.status !== "cancelado"),
@@ -263,10 +265,16 @@ const Familias = () => {
               Gerar Famílias Automaticamente
             </Button>
             {result && (
-              <Button onClick={handleSave} disabled={saving}>
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? "Salvando..." : "Salvar Famílias"}
-              </Button>
+              <>
+                <Button onClick={handleSave} disabled={saving}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? "Salvando..." : "Salvar Famílias"}
+                </Button>
+                <Button variant="outline" onClick={() => setEtiquetasOpen(true)}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Gerar Etiquetas
+                </Button>
+              </>
             )}
           </div>
           <p className="text-sm text-muted-foreground mt-3">
@@ -401,6 +409,16 @@ const Familias = () => {
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {result && (
+        <EtiquetasPDFDialog
+          open={etiquetasOpen}
+          onOpenChange={setEtiquetasOpen}
+          families={result.families}
+          participantMap={participantMap}
+          numFamilias={numFamilias}
+        />
       )}
     </div>
   );
