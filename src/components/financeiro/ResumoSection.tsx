@@ -1,7 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { FileDown } from "lucide-react";
+import jsPDF from "jspdf";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -10,12 +16,33 @@ const COLORS = [
   "#f59e0b", "#10b981", "#6366f1", "#ec4899", "#8b5cf6",
   "#14b8a6", "#f97316", "#06b6d4", "#84cc16", "#e11d48",
   "#a855f7", "#22d3ee", "#eab308", "#64748b",
+  "#059669", "#dc2626", "#7c3aed",
+];
+
+const BADGE_COLORS = [
+  "bg-blue-100 text-blue-800", "bg-red-100 text-red-800", "bg-amber-100 text-amber-800",
+  "bg-yellow-100 text-yellow-800", "bg-emerald-100 text-emerald-800", "bg-indigo-100 text-indigo-800",
+  "bg-pink-100 text-pink-800", "bg-violet-100 text-violet-800", "bg-teal-100 text-teal-800",
+  "bg-orange-100 text-orange-800", "bg-cyan-100 text-cyan-800", "bg-lime-100 text-lime-800",
+  "bg-rose-100 text-rose-800", "bg-purple-100 text-purple-800", "bg-sky-100 text-sky-800",
+  "bg-yellow-100 text-yellow-700", "bg-slate-100 text-slate-800",
+  "bg-green-100 text-green-800", "bg-fuchsia-100 text-fuchsia-800", "bg-stone-100 text-stone-800",
+];
+
+const ALL_CATEGORIAS = [
+  "Administrativas", "Juridicas", "Papelaria", "Comunicação", "Equipamentos",
+  "Combustível", "Montanha", "Locação da Base", "Banheiros Químicos",
+  "Fogos/Decoração", "Fardas", "Gorras", "Patchs", "Pins",
+  "Taxa Global", "Taxa Ticket and Go", "Diversos",
+  "MRE", "Ceia do Rei", "Bebidas",
 ];
 
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const ResumoSection = () => {
+  const [taxaPercent, setTaxaPercent] = useState(10);
+
   const { data: participantes } = useQuery({
     queryKey: ["fin-participantes"],
     queryFn: async () => {
@@ -44,12 +71,15 @@ const ResumoSection = () => {
     .filter((p) => p.status !== "cancelado")
     .reduce((s, p) => s + (p.valor_pago ?? 0), 0);
   const receitaDoacoes = (doacoes ?? []).reduce((s, d) => s + (d.valor ?? 0), 0);
-  const receitaTotal = receitaInscricoes + receitaDoacoes;
+  const receitaBruta = receitaInscricoes + receitaDoacoes;
+  const taxaValor = receitaInscricoes * (taxaPercent / 100);
+  const receitaLiquida = receitaInscricoes - taxaValor + receitaDoacoes;
 
   const despesaTotal = (despesas ?? []).reduce((s, d) => s + (d.valor ?? 0), 0);
-  const saldo = receitaTotal - despesaTotal;
+  const saldo = receitaLiquida - despesaTotal;
+  const despesaPercent = receitaLiquida > 0 ? (despesaTotal / receitaLiquida * 100).toFixed(1) : "0.0";
 
-  // pie data
+  // category map
   const catMap = new Map<string, number>();
   (despesas ?? []).forEach((d) => {
     const cat = d.categoria || "Sem categoria";
@@ -58,21 +88,89 @@ const ResumoSection = () => {
   const pieData = Array.from(catMap.entries()).map(([name, value]) => ({ name, value }));
 
   const barData = [
-    { name: "Receita", valor: receitaTotal },
+    { name: "Receita Líq.", valor: receitaLiquida },
     { name: "Despesas", valor: despesaTotal },
   ];
 
+  // sorted category badges
+  const categoryBadges = ALL_CATEGORIAS
+    .map((cat, i) => ({ cat, value: catMap.get(cat) ?? 0, colorIdx: i }))
+    .filter((c) => c.value > 0);
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.text("TOP Caminhos do Mar #1575 | 02 a 05 de Abril de 2026", 14, y);
+    y += 12;
+
+    doc.setFontSize(12);
+    doc.text("RECEITA", 14, y); y += 8;
+    doc.setFontSize(10);
+    doc.text(`Total Inscrições: ${fmt(receitaInscricoes)}`, 18, y); y += 6;
+    doc.text(`Doações: ${fmt(receitaDoacoes)}`, 18, y); y += 6;
+    doc.text(`Taxa Ticket and Go (${taxaPercent}%): -${fmt(taxaValor)}`, 18, y); y += 6;
+    doc.setFontSize(11);
+    doc.text(`Receita Líquida: ${fmt(receitaLiquida)}`, 18, y); y += 12;
+
+    doc.setFontSize(12);
+    doc.text("DESPESAS POR CATEGORIA", 14, y); y += 8;
+    doc.setFontSize(10);
+    categoryBadges.forEach((c) => {
+      doc.text(`${c.cat}: ${fmt(c.value)}`, 18, y); y += 6;
+      if (y > 270) { doc.addPage(); y = 20; }
+    });
+    y += 4;
+    doc.setFontSize(11);
+    doc.text(`Total Despesas: ${fmt(despesaTotal)}`, 18, y); y += 12;
+
+    doc.setFontSize(13);
+    const prefix = saldo >= 0 ? "+" : "";
+    doc.text(`RESULTADO FINAL: ${prefix}${fmt(saldo)}`, 14, y);
+
+    doc.save("balanco-financeiro-top1575.pdf");
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header with export */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Resumo Financeiro</h3>
+        <Button variant="outline" size="sm" onClick={exportPDF}>
+          <FileDown className="h-4 w-4 mr-1" /> Exportar PDF
+        </Button>
+      </div>
+
+      {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Receita Card */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Receita Total</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Receita</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600">{fmt(receitaTotal)}</p>
+          <CardContent className="space-y-1">
+            <p className="text-sm">Total Bruto: <span className="font-medium">{fmt(receitaBruta)}</span></p>
+            <div className="flex items-center gap-2 text-sm">
+              <span>Taxa Ticket and Go:</span>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={taxaPercent}
+                onChange={(e) => setTaxaPercent(parseFloat(e.target.value) || 0)}
+                className="w-16 h-7 text-center text-sm px-1"
+              />
+              <span>%</span>
+              <span className="text-destructive ml-auto">-{fmt(taxaValor)}</span>
+            </div>
+            <p className="text-lg font-bold text-green-600 pt-1">
+              Líquida: {fmt(receitaLiquida)}
+            </p>
           </CardContent>
         </Card>
+
+        {/* Despesa Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Despesa Total</CardTitle>
@@ -81,6 +179,8 @@ const ResumoSection = () => {
             <p className="text-2xl font-bold text-red-600">{fmt(despesaTotal)}</p>
           </CardContent>
         </Card>
+
+        {/* Saldo Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Saldo</CardTitle>
@@ -89,10 +189,14 @@ const ResumoSection = () => {
             <p className={`text-2xl font-bold ${saldo >= 0 ? "text-green-600" : "text-red-600"}`}>
               {fmt(saldo)}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Despesas representam {despesaPercent}% da Receita
+            </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader><CardTitle className="text-base">Despesas por Categoria</CardTitle></CardHeader>
@@ -110,6 +214,20 @@ const ResumoSection = () => {
                   <Tooltip formatter={(v: number) => fmt(v)} />
                 </PieChart>
               </ResponsiveContainer>
+            )}
+            {/* Category badges */}
+            {categoryBadges.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {categoryBadges.map((c) => (
+                  <Badge
+                    key={c.cat}
+                    variant="outline"
+                    className={`${BADGE_COLORS[c.colorIdx % BADGE_COLORS.length]} border-0`}
+                  >
+                    {c.cat}: {fmt(c.value)}
+                  </Badge>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
