@@ -5,7 +5,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import type { LucideIcon } from "lucide-react";
 
@@ -160,28 +160,26 @@ const Dashboard = () => {
             {d.isLoading ? (
               <Skeleton className="h-[220px] w-full" />
             ) : (
-              <div className="h-[220px] w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={d.statusData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={3}
-                      label={({ name, value }) => `${name}: ${value}`}
-                    >
-                      {d.statusData.map((entry) => (
-                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "hsl(220 10% 55%)"} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <ChartContainer config={Object.fromEntries(d.statusData.map(s => [s.name, { label: s.name, color: STATUS_COLORS[s.name] ?? "hsl(220 10% 55%)" }]))} className="h-[220px] w-full">
+                <PieChart>
+                  <Pie
+                    data={d.statusData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {d.statusData.map((entry) => (
+                      <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "hsl(220 10% 55%)"} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
             )}
           </CardContent>
         </Card>
