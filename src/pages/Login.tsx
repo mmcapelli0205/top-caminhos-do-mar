@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const BG_URL =
@@ -33,47 +32,26 @@ const Login = () => {
     setErrors({});
 
     try {
-      console.log("Tentando buscar usuario:", username.trim());
-      const { data, error } = await supabase
-        .from("usuarios")
-        .select("id, nome, papel, area_servico, senha_hash, ativo")
-        .eq("username", username.trim())
-        .maybeSingle();
-      console.log("Resultado:", data, error);
-
-      if (error) throw error;
-
-      if (!data) {
-        toast({ title: "Usuário não encontrado", variant: "destructive" });
-        setErrors({ username: "Usuário não encontrado" });
-        return;
-      }
-
-      if (!data.ativo) {
-        toast({
-          title: "Usuário desativado",
-          description: "Contate a Diretoria.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data.senha_hash !== password) {
-        toast({ title: "Senha incorreta", variant: "destructive" });
-        setErrors({ password: "Senha incorreta" });
-        return;
-      }
-
-      localStorage.setItem(
-        "top_user",
-        JSON.stringify({
-          id: data.id,
-          nome: data.nome,
-          papel: data.papel,
-          area_servico: data.area_servico,
-        })
+      const res = await fetch(
+        "https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.trim(), password }),
+        }
       );
 
+      const result = await res.json();
+
+      if (!res.ok) {
+        const msg = result.error || "Erro ao conectar";
+        toast({ title: msg, variant: "destructive" });
+        if (res.status === 404) setErrors({ username: msg });
+        if (res.status === 401) setErrors({ password: msg });
+        return;
+      }
+
+      localStorage.setItem("top_user", JSON.stringify(result.user));
       navigate("/dashboard");
     } catch {
       toast({ title: "Erro ao conectar", description: "Tente novamente.", variant: "destructive" });
