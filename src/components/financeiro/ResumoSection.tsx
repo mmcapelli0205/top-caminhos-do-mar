@@ -41,12 +41,21 @@ const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const ResumoSection = () => {
-  const [taxaPercent, setTaxaPercent] = useState(10);
+  const [ticketPercent, setTicketPercent] = useState(10);
+  const [globalPercent, setGlobalPercent] = useState(0);
 
   const { data: participantes } = useQuery({
     queryKey: ["fin-participantes"],
     queryFn: async () => {
       const { data } = await supabase.from("participantes").select("valor_pago, status");
+      return data ?? [];
+    },
+  });
+
+  const { data: servidores } = useQuery({
+    queryKey: ["fin-servidores-resumo"],
+    queryFn: async () => {
+      const { data } = await supabase.from("servidores").select("valor_pago, status");
       return data ?? [];
     },
   });
@@ -67,13 +76,21 @@ const ResumoSection = () => {
     },
   });
 
-  const receitaInscricoes = (participantes ?? [])
+  // Revenue calculations
+  const receitaParticipantes = (participantes ?? [])
     .filter((p) => p.status !== "cancelado")
     .reduce((s, p) => s + (p.valor_pago ?? 0), 0);
+  const receitaServidores = (servidores ?? [])
+    .reduce((s, p) => s + ((p as any).valor_pago ?? 0), 0);
   const receitaDoacoes = (doacoes ?? []).reduce((s, d) => s + (d.valor ?? 0), 0);
-  const receitaBruta = receitaInscricoes + receitaDoacoes;
-  const taxaValor = receitaInscricoes * (taxaPercent / 100);
-  const receitaLiquida = receitaInscricoes - taxaValor + receitaDoacoes;
+  const receitaBruta = receitaParticipantes + receitaServidores + receitaDoacoes;
+
+  // Tax calculations — differentiated
+  const taxaTicketPart = receitaParticipantes * (ticketPercent / 100);
+  const taxaTicketServ = receitaServidores * (ticketPercent / 100);
+  const taxaGlobalPart = receitaParticipantes * (globalPercent / 100);
+  const totalTaxas = taxaTicketPart + taxaTicketServ + taxaGlobalPart;
+  const receitaLiquida = receitaBruta - totalTaxas;
 
   const despesaTotal = (despesas ?? []).reduce((s, d) => s + (d.valor ?? 0), 0);
   const saldo = receitaLiquida - despesaTotal;
@@ -92,7 +109,6 @@ const ResumoSection = () => {
     { name: "Despesas", valor: despesaTotal },
   ];
 
-  // sorted category badges
   const categoryBadges = ALL_CATEGORIAS
     .map((cat, i) => ({ cat, value: catMap.get(cat) ?? 0, colorIdx: i }))
     .filter((c) => c.value > 0);
@@ -108,9 +124,12 @@ const ResumoSection = () => {
     doc.setFontSize(12);
     doc.text("RECEITA", 14, y); y += 8;
     doc.setFontSize(10);
-    doc.text(`Total Inscrições: ${fmt(receitaInscricoes)}`, 18, y); y += 6;
+    doc.text(`Inscrições Participantes: ${fmt(receitaParticipantes)}`, 18, y); y += 6;
+    doc.text(`Inscrições Servidores: ${fmt(receitaServidores)}`, 18, y); y += 6;
     doc.text(`Doações: ${fmt(receitaDoacoes)}`, 18, y); y += 6;
-    doc.text(`Taxa Ticket and Go (${taxaPercent}%): -${fmt(taxaValor)}`, 18, y); y += 6;
+    doc.text(`Total Bruto: ${fmt(receitaBruta)}`, 18, y); y += 6;
+    doc.text(`Taxa Ticket and Go (${ticketPercent}%) sobre Part+Serv: -${fmt(taxaTicketPart + taxaTicketServ)}`, 18, y); y += 6;
+    doc.text(`Taxa Global (${globalPercent}%) sobre Part: -${fmt(taxaGlobalPart)}`, 18, y); y += 6;
     doc.setFontSize(11);
     doc.text(`Receita Líquida: ${fmt(receitaLiquida)}`, 18, y); y += 12;
 
@@ -149,21 +168,40 @@ const ResumoSection = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Receita</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="space-y-2">
             <p className="text-sm">Total Bruto: <span className="font-medium">{fmt(receitaBruta)}</span></p>
+            <p className="text-xs text-muted-foreground">
+              Part: {fmt(receitaParticipantes)} | Serv: {fmt(receitaServidores)} | Doações: {fmt(receitaDoacoes)}
+            </p>
+            {/* Ticket and Go tax */}
             <div className="flex items-center gap-2 text-sm">
               <span>Taxa Ticket and Go:</span>
               <Input
                 type="number"
                 min={0}
                 max={100}
-                value={taxaPercent}
-                onChange={(e) => setTaxaPercent(parseFloat(e.target.value) || 0)}
+                value={ticketPercent}
+                onChange={(e) => setTicketPercent(parseFloat(e.target.value) || 0)}
                 className="w-16 h-7 text-center text-sm px-1"
               />
               <span>%</span>
-              <span className="text-destructive ml-auto">-{fmt(taxaValor)}</span>
+              <span className="text-destructive ml-auto">-{fmt(taxaTicketPart + taxaTicketServ)}</span>
             </div>
+            {/* Global tax */}
+            <div className="flex items-center gap-2 text-sm">
+              <span>Taxa Global:</span>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={globalPercent}
+                onChange={(e) => setGlobalPercent(parseFloat(e.target.value) || 0)}
+                className="w-16 h-7 text-center text-sm px-1"
+              />
+              <span>%</span>
+              <span className="text-destructive ml-auto">-{fmt(taxaGlobalPart)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground italic">Global incide apenas sobre participantes</p>
             <p className="text-lg font-bold text-green-600 pt-1">
               Líquida: {fmt(receitaLiquida)}
             </p>
@@ -215,7 +253,6 @@ const ResumoSection = () => {
                 </PieChart>
               </ResponsiveContainer>
             )}
-            {/* Category badges */}
             {categoryBadges.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-4">
                 {categoryBadges.map((c) => (
