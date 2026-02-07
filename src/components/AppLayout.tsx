@@ -44,6 +44,9 @@ export default function AppLayout() {
             <div className="flex items-center gap-3">
               <SidebarTrigger />
               <span className="text-lg font-bold text-primary">TOP Manager</span>
+              <span className="hidden text-sm text-muted-foreground md:inline">
+                TOP #1575 - Caminhos do Mar | 02-05 Abril 2026
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden items-center gap-2 sm:flex">
