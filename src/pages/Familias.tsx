@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { UsersRound, Wand2, Save, Heart, AlertTriangle } from "lucide-react";
 import { useParticipantes } from "@/hooks/useParticipantes";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/select";
 
 const Familias = () => {
-  const { participantes, isLoading } = useParticipantes();
+  const { participantes, familias, isLoading } = useParticipantes();
   const queryClient = useQueryClient();
 
   const [numFamilias, setNumFamilias] = useState(10);
@@ -49,6 +49,57 @@ const Familias = () => {
     () => participantes.filter((p) => p.status !== "cancelado"),
     [participantes]
   );
+
+  // Load saved families from Supabase on mount
+  useEffect(() => {
+    if (isLoading || participantes.length === 0 || familias.length === 0) return;
+    // Don't overwrite if user already generated
+    if (result) return;
+
+    const famMap = new Map<number, number>();
+    familias.forEach((f) => famMap.set(f.id, f.numero));
+
+    // Group participants by familia numero (0-indexed)
+    const maxNumero = Math.max(...familias.map((f) => f.numero));
+    const families: string[][] = Array.from({ length: maxNumero }, () => []);
+
+    for (const p of participantes) {
+      if (p.familia_id == null) continue;
+      const numero = famMap.get(p.familia_id);
+      if (numero == null) continue;
+      families[numero - 1].push(p.id);
+    }
+
+    // Only set if there are actually assigned participants
+    const totalAssigned = families.reduce((s, f) => s + f.length, 0);
+    if (totalAssigned === 0) return;
+
+    // Build separation pairs from current participants
+    const nameToId = new Map<string, string>();
+    participantes.forEach((p) => nameToId.set(
+      p.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(),
+      p.id
+    ));
+    const separationPairs: [string, string][] = [];
+    for (const p of participantes) {
+      if (!p.amigo_parente) continue;
+      const names = p.amigo_parente.split(/[,;]/).map((n) =>
+        n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+      ).filter(Boolean);
+      for (const rawName of names) {
+        const matchId = nameToId.get(rawName);
+        if (matchId && matchId !== p.id) {
+          const exists = separationPairs.some(
+            ([a, b]) => (a === p.id && b === matchId) || (a === matchId && b === p.id)
+          );
+          if (!exists) separationPairs.push([p.id, matchId]);
+        }
+      }
+    }
+
+    setNumFamilias(maxNumero);
+    setResult({ families, separationPairs });
+  }, [isLoading, participantes, familias]);
 
   const participantMap = useMemo(() => {
     const m = new Map<string, (typeof participantes)[0]>();
