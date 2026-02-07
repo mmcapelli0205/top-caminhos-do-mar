@@ -609,39 +609,51 @@ export type Database = {
           checkin: boolean | null
           cpf: string | null
           created_at: string | null
+          cupom_desconto: string | null
           email: string | null
           especialidade: string | null
+          forma_pagamento: string | null
           id: string
           nome: string
           qr_code: string | null
+          status: string | null
           telefone: string | null
           top_id: string | null
+          valor_pago: number | null
         }
         Insert: {
           area_servico?: string | null
           checkin?: boolean | null
           cpf?: string | null
           created_at?: string | null
+          cupom_desconto?: string | null
           email?: string | null
           especialidade?: string | null
+          forma_pagamento?: string | null
           id?: string
           nome: string
           qr_code?: string | null
+          status?: string | null
           telefone?: string | null
           top_id?: string | null
+          valor_pago?: number | null
         }
         Update: {
           area_servico?: string | null
           checkin?: boolean | null
           cpf?: string | null
           created_at?: string | null
+          cupom_desconto?: string | null
           email?: string | null
           especialidade?: string | null
+          forma_pagamento?: string | null
           id?: string
           nome?: string
           qr_code?: string | null
+          status?: string | null
           telefone?: string | null
           top_id?: string | null
+          valor_pago?: number | null
         }
         Relationships: [
           {

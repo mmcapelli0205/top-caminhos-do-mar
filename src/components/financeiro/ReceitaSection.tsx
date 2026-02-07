@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableCell, TableBody } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,20 @@ const ReceitaSection = () => {
   const cartao = ativos.filter((p) => p.forma_pagamento === "Cartão");
   const multiplos = ativos.filter((p) => p.forma_pagamento === "Múltiplos Cartões");
   const comCupom = ativos.filter((p) => p.cupom_desconto);
+
+  // Servidores (read-only)
+  const { data: servidores } = useQuery({
+    queryKey: ["fin-servidores-receita"],
+    queryFn: async () => {
+      const { data } = await supabase.from("servidores").select("id, nome, valor_pago, forma_pagamento, cupom_desconto, status").order("nome");
+      return data ?? [];
+    },
+  });
+
+  const servAtivos = (servidores ?? []).filter((s: any) => s.status !== "cancelado");
+  const totalServidores = servAtivos.reduce((s, p: any) => s + (p.valor_pago ?? 0), 0);
+  const servPix = servAtivos.filter((s: any) => s.forma_pagamento === "PIX");
+  const servCartao = servAtivos.filter((s: any) => s.forma_pagamento === "Cartão");
 
   // Doações
   const { data: doacoes } = useQuery({
@@ -86,9 +100,9 @@ const ReceitaSection = () => {
 
   return (
     <div className="space-y-8">
-      {/* Inscrições */}
+      {/* Inscrições Participantes */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Inscrições</h3>
+        <h3 className="text-lg font-semibold">Inscrições de Participantes</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { label: "Total Arrecadado", value: fmt(totalArrecadado), count: ativos.length },
@@ -131,6 +145,58 @@ const ReceitaSection = () => {
             </TableBody>
           </Table>
         </div>
+      </div>
+
+      {/* Inscrições de Servidores */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Inscrições de Servidores</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[
+            { label: "Total Arrecadado", value: fmt(totalServidores), count: servAtivos.length, sub: "servidores" },
+            { label: "PIX", value: fmt(servPix.reduce((s, p: any) => s + (p.valor_pago ?? 0), 0)), count: servPix.length, sub: "servidores" },
+            { label: "Cartão", value: fmt(servCartao.reduce((s, p: any) => s + (p.valor_pago ?? 0), 0)), count: servCartao.length, sub: "servidores" },
+          ].map((c) => (
+            <Card key={c.label}>
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground">{c.label}</p>
+                <p className="font-bold">{c.value}</p>
+                <p className="text-xs text-muted-foreground">{c.count} {c.sub}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead className="text-right">Valor Pago</TableHead>
+                <TableHead>Forma Pgto</TableHead>
+                <TableHead>Cupom</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {servAtivos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum servidor com inscrição</TableCell>
+                </TableRow>
+              ) : (
+                servAtivos.map((s: any) => (
+                  <TableRow key={s.id}>
+                    <TableCell>{s.nome}</TableCell>
+                    <TableCell className="text-right">{fmt(s.valor_pago ?? 0)}</TableCell>
+                    <TableCell>{s.forma_pagamento ?? "-"}</TableCell>
+                    <TableCell>{s.cupom_desconto ?? "-"}</TableCell>
+                    <TableCell>{s.status ?? "-"}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <p className="text-right font-bold">Total Servidores: {fmt(totalServidores)}</p>
       </div>
 
       {/* Doações */}
@@ -205,7 +271,7 @@ const ReceitaSection = () => {
 
       <Card>
         <CardContent className="p-4">
-          <p className="text-lg font-bold">RECEITA TOTAL: {fmt(totalArrecadado + totalDoacoes)}</p>
+          <p className="text-lg font-bold">RECEITA TOTAL: {fmt(totalArrecadado + totalServidores + totalDoacoes)}</p>
         </CardContent>
       </Card>
     </div>
