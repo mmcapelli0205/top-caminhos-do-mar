@@ -1,71 +1,103 @@
 
 
-## Etiquetas PDF (Pimaco 6080)
+## Check-in com QR Code
 
 ### Resumo
-Adicionar botao "Gerar Etiquetas" na pagina de Familias que abre um modal com preview e gera PDF de etiquetas adesivas no formato Pimaco 6080 usando jsPDF.
+Construir a pagina completa de Check-in em `/check-in` com duas abas: preparacao de QR Codes e realizacao de check-in no dia do evento com scanner de camera.
 
-### Dependencia nova
-- `jspdf` — geracao de PDF client-side
+### Dependencias novas
+- `qrcode` — geracao de QR codes client-side (canvas/data URL)
+- `html5-qrcode` — scanner de camera para leitura de QR codes
+- `jszip` — empacotamento dos PNGs em ZIP para download
+- `@types/qrcode` — tipos TypeScript
 
 ### Arquivos a criar/modificar
 
-**1. `src/components/EtiquetasPDFDialog.tsx`** (novo)
-Componente modal com preview e geracao do PDF.
-
-**2. `src/pages/Familias.tsx`** (modificar)
-Adicionar botao "Gerar Etiquetas" ao lado de "Salvar Familias" e renderizar o dialog.
+**1. `src/pages/CheckIn.tsx`** (reescrever) — Pagina completa com 2 abas
 
 ### Detalhes Tecnicos
 
-#### Especificacoes Pimaco 6080
-- Pagina A4: 210mm x 297mm
-- 3 colunas x 10 linhas = 30 etiquetas por pagina
-- Etiqueta: 25.4mm altura x 66.7mm largura
-- Margem esquerda: 4.7mm
-- Margem superior: 10.7mm
-- Gap horizontal: 3.1mm entre colunas
-- Sem gap vertical
+#### Tab 1 - "QR Codes" (Preparacao)
 
-#### Componente EtiquetasPDFDialog
-Props:
-- `open`, `onOpenChange`
-- `families`: array de arrays de IDs (do result)
-- `participantMap`: Map de ID para participante
-- `numFamilias`: number
+**Dados:** Usa `useParticipantes()` para buscar participantes e familias.
 
-Logica:
-1. Monta lista de etiquetas: percorre familias em ordem (1, 2, 3...), dentro de cada familia ordena participantes alfabeticamente por nome
-2. Para cada participante gera 4 entradas identicas na lista
-3. Calcula totais: total participantes, total etiquetas (x4), total paginas (ceil(total/30))
-4. Exibe info: "X participantes x 4 etiquetas = Y etiquetas total (Z paginas)"
+**Tabela:**
+- Colunas: Nome, Familia (numero via familiaMap), QR Code (thumbnail 48x48), Status (checkin_realizado)
+- QR code gerado client-side a partir do campo `qr_code` do participante (UUID)
+- Se `qr_code` estiver null, mostra "Sem QR"
 
-Preview:
-- Canvas ou div simulando a primeira pagina com as etiquetas renderizadas em HTML/CSS
-- Grid 3x10 com as dimensoes proporcionais
+**Botao "Gerar Todos QR Codes":**
+- Para cada participante sem `qr_code` preenchido, gera um UUID via `crypto.randomUUID()`
+- Faz batch update no Supabase: `update({ qr_code }).eq("id", participante.id)` para cada um
+- Invalida cache react-query `["participantes"]`
+- Toast de sucesso
 
-Geracao PDF (jsPDF):
-- `new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })`
-- Loop pelas etiquetas, calculando posicao x/y de cada uma:
-  - `x = 4.7 + col * (66.7 + 3.1)`
-  - `y = 10.7 + row * 25.4`
-- Cada etiqueta:
-  - Linha 1: nome do participante (bold, 10pt, truncado se exceder largura com `doc.getTextWidth`)
-  - Linha 2: "Familia X" (regular, 8pt)
-  - Texto centralizado horizontal e verticalmente na area da etiqueta
-- Nova pagina a cada 30 etiquetas
+**Botao "Baixar QR Codes (ZIP)":**
+- Usa `qrcode` para gerar PNG data URL para cada participante com `qr_code`
+- Usa `jszip` para empacotar todos os PNGs
+- Cada arquivo nomeado: `QR_[Nome]_Familia[N].png` (nome sanitizado, sem caracteres especiais)
+- Download via blob URL
 
-Botoes:
-- "Baixar PDF": gera blob e faz download com `doc.save("etiquetas-familias.pdf")`
-- "Imprimir": abre janela de impressao com `window.open(blobUrl)` ou `doc.autoPrint()` + `doc.output("bloburl")`
+#### Tab 2 - "Realizar Check-in" (Dia do evento)
 
-#### Modificacao em Familias.tsx
-- Import do EtiquetasPDFDialog
-- Estado `etiquetasOpen` para controlar o modal
-- Botao "Gerar Etiquetas" (com icone Printer) ao lado de "Salvar Familias", visivel somente quando `result` existe
-- Passa `result.families`, `participantMap` e `numFamilias` ao dialog
+**Layout:**
+- Contador no topo: "Check-ins: X / Y total (Z%)" — X = count de checkin_realizado=true, Y = total participantes
+- Area de camera (60vh height, full-width mobile)
+- Barra de busca manual abaixo da camera (pesquisa por nome ou CPF)
+- Card de resultado abaixo
+
+**Scanner:**
+- Usa `html5-qrcode` com `Html5QrcodeScanner` ou `Html5Qrcode` diretamente
+- Inicializa camera ao montar a tab
+- On decode: busca participante com `qr_code` matching, se nao encontrado busca em `servidores`
+- Cleanup ao desmontar
+
+**Card de Resultado (apos scan ou busca):**
+- Nome (texto grande)
+- Familia # (via familiaMap)
+- Status atual (checkin_realizado)
+- Tipo: "Participante" ou "Servidor"
+
+**Validacao — Card Verde:**
+Condicoes para "Documentacao OK":
+- `contrato_assinado === true`
+- `ergometrico_status === 'aprovado'` OU `'dispensado'` OU idade < 40
+
+Se todas ok: card verde com icone check e "Documentacao OK"
+Se alguma falha: card vermelho com lista de pendencias
+
+**Para servidores:** Sempre mostra card verde (sem validacao de contrato/ergometrico)
+
+**Botao "Confirmar Check-in":**
+- Visivel sempre no card verde
+- No card vermelho: botao "Forcar Check-in" (outline/destructive) com confirmacao
+- Ao confirmar:
+  - Update `checkin_realizado = true` (participantes) ou `checkin = true` (servidores)
+  - Play beep via Web Audio API: oscillator 800Hz por 200ms
+  - Toast de sucesso
+  - Invalida cache `["participantes"]`
+  - Limpa resultado e reseta scanner para proxima pessoa
+
+**Busca Manual:**
+- Input com debounce 300ms
+- Filtra participantes por nome (case-insensitive includes) ou CPF (digits only)
+- Mostra lista de resultados clicaveis (max 5)
+- Ao clicar, seleciona e mostra o card de resultado
+
+#### Funcao auxiliar calcAge
+Reutiliza logica de calculo de idade (mesma do familiaAlgorithm.ts) para verificar se participante tem menos de 40 anos.
+
+#### Responsividade
+- Camera area: `h-[60vh] w-full` em mobile, `h-[400px] max-w-2xl mx-auto` em desktop
+- Card de resultado: full-width em mobile, max-w-md centralizado em desktop
+- Tabela da Tab 1: scroll horizontal em mobile
 
 ### Componentes shadcn utilizados
-- Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
-- Button
+- Tabs, TabsList, TabsTrigger, TabsContent
+- Table, TableHeader, TableRow, TableHead, TableCell, TableBody
+- Input, Button, Badge, Card, CardHeader, CardContent
+- Dialog (para confirmacao de "Forcar Check-in")
+
+### Sem alteracoes no banco
+Usa campos existentes: `participantes.qr_code`, `participantes.checkin_realizado`, `servidores.qr_code`, `servidores.checkin`. Nenhuma migracao necessaria.
 
