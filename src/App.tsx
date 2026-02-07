@@ -16,6 +16,7 @@ import ArtesEDocs from "./pages/ArtesEDocs";
 import CheckIn from "./pages/CheckIn";
 import Configuracoes from "./pages/Configuracoes";
 import Tops from "./pages/Tops";
+import ParticipanteForm from "./pages/ParticipanteForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,8 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/participantes" element={<Participantes />} />
+            <Route path="/participantes/novo" element={<ParticipanteForm />} />
+            <Route path="/participantes/:id/editar" element={<ParticipanteForm />} />
             <Route path="/familias" element={<Familias />} />
             <Route path="/servidores" element={<Servidores />} />
             <Route path="/hakunas" element={<Hakunas />} />
