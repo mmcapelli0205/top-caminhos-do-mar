@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Shield, Search, Download, Plus, Eye, Pencil, Check, X,
-  ArrowUp, ArrowDown, AlertTriangle,
+  ArrowUp, ArrowDown, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,15 @@ export default function Servidores() {
   // Recusar dialog
   const [recusarTarget, setRecusarTarget] = useState<Servidor | null>(null);
   const [recusarMotivo, setRecusarMotivo] = useState("");
+
+  // Realocar dialog (single)
+  const [realocarTarget, setRealocarTarget] = useState<Servidor | null>(null);
+  const [realocarArea, setRealocarArea] = useState("");
+  const [realocando, setRealocando] = useState(false);
+
+  // Realocar todos dialog
+  const [showRealocarTodos, setShowRealocarTodos] = useState(false);
+  const [realocarTodosMap, setRealocarTodosMap] = useState<Record<string, string>>({});
   const [recusando, setRecusando] = useState(false);
 
   useEffect(() => {
@@ -235,10 +244,20 @@ export default function Servidores() {
         </Card>
       )}
       {semArea.length > 0 && (
-        <Card className="border-red-600/50 bg-red-600/10 cursor-pointer" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
-          <CardContent className="p-3 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-400" />
-            <span className="text-sm font-medium text-red-400">⚠️ {semArea.length} servidor(es) sem área!</span>
+        <Card className="border-red-600/50 bg-red-600/10">
+          <CardContent className="p-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              <span className="text-sm font-medium text-red-400">⚠️ {semArea.length} servidor(es) sem área!</span>
+            </div>
+            <Button size="sm" variant="outline" className="border-red-600/50 text-red-400 hover:bg-red-600/20" onClick={() => {
+              const map: Record<string, string> = {};
+              semArea.forEach(s => { map[s.id] = ""; });
+              setRealocarTodosMap(map);
+              setShowRealocarTodos(true);
+            }}>
+              <RefreshCw className="h-4 w-4 mr-1" /> Realocar todos
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -356,6 +375,11 @@ export default function Servidores() {
                           </Button>
                         </>
                       )}
+                      {st === "sem_area" && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-400 hover:text-orange-300" onClick={() => { setRealocarTarget(s); setRealocarArea(""); }}>
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -393,6 +417,86 @@ export default function Servidores() {
             <Button variant="outline" onClick={() => setRecusarTarget(null)}>Cancelar</Button>
             <Button variant="destructive" disabled={!recusarMotivo.trim() || recusando} onClick={handleRecusarConfirm}>
               Confirmar Recusa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Realocar Single Dialog */}
+      <Dialog open={!!realocarTarget} onOpenChange={open => { if (!open) setRealocarTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Realocar Servidor</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Este servidor foi recusado nas duas opções. Selecione uma nova área para <strong>{realocarTarget?.nome}</strong>:
+          </p>
+          <Select value={realocarArea} onValueChange={setRealocarArea}>
+            <SelectTrigger><SelectValue placeholder="Selecione a área" /></SelectTrigger>
+            <SelectContent>
+              {AREAS_SERVICO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRealocarTarget(null)}>Cancelar</Button>
+            <Button disabled={!realocarArea || realocando} onClick={async () => {
+              if (!realocarTarget || !realocarArea) return;
+              setRealocando(true);
+              const { error } = await supabase.from("servidores").update({
+                area_servico: realocarArea,
+                status: "aprovado",
+                updated_at: new Date().toISOString(),
+              }).eq("id", realocarTarget.id);
+              setRealocando(false);
+              if (error) { toast.error("Erro: " + error.message); return; }
+              toast.success(`Servidor ${realocarTarget.nome} realocado para ${realocarArea}!`);
+              setRealocarTarget(null);
+              queryClient.invalidateQueries({ queryKey: ["servidores"] });
+            }}>
+              Confirmar Realocação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Realocar Todos Dialog */}
+      <Dialog open={showRealocarTodos} onOpenChange={open => { if (!open) setShowRealocarTodos(false); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Realocar Todos Sem Área</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {semArea.map(s => (
+              <div key={s.id} className="flex items-center gap-3">
+                <span className="text-sm font-medium flex-1 min-w-0 truncate">{s.nome}</span>
+                <Select value={realocarTodosMap[s.id] ?? ""} onValueChange={v => setRealocarTodosMap(prev => ({ ...prev, [s.id]: v }))}>
+                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
+                  <SelectContent>
+                    {AREAS_SERVICO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRealocarTodos(false)}>Cancelar</Button>
+            <Button disabled={realocando} onClick={async () => {
+              const entries = Object.entries(realocarTodosMap).filter(([, area]) => area);
+              if (entries.length === 0) { toast.error("Selecione pelo menos uma área"); return; }
+              setRealocando(true);
+              for (const [id, area] of entries) {
+                await supabase.from("servidores").update({
+                  area_servico: area,
+                  status: "aprovado",
+                  updated_at: new Date().toISOString(),
+                }).eq("id", id);
+              }
+              setRealocando(false);
+              toast.success(`${entries.length} servidor(es) realocado(s)!`);
+              setShowRealocarTodos(false);
+              queryClient.invalidateQueries({ queryKey: ["servidores"] });
+            }}>
+              Salvar Todos
             </Button>
           </DialogFooter>
         </DialogContent>
