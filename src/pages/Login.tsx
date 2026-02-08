@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 const BG_URL =
   "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20-%20foto.png";
 const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Captura%20de%20tela%202026-02-06%20235131.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Logo%20Legendarios.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -128,9 +128,6 @@ const Login = () => {
             src={LOGO_URL}
             alt="Logo TOP"
             className="w-[140px] sm:w-[200px]"
-            style={{
-              clipPath: 'polygon(50% 0%, 95% 15%, 100% 55%, 80% 90%, 50% 100%, 20% 90%, 0% 55%, 5% 15%)',
-            }}
           />
         </div>
 
