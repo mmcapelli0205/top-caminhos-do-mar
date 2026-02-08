@@ -436,6 +436,65 @@ export type Database = {
           },
         ]
       }
+      artes_docs: {
+        Row: {
+          arquivo_url: string
+          categoria: string
+          created_at: string | null
+          descricao: string | null
+          enviado_por: string | null
+          id: string
+          nome: string
+          subcategoria: string | null
+          tags: string | null
+          tamanho_bytes: number | null
+          tipo_arquivo: string | null
+          top_id: string | null
+          updated_at: string | null
+          versao: number | null
+        }
+        Insert: {
+          arquivo_url: string
+          categoria: string
+          created_at?: string | null
+          descricao?: string | null
+          enviado_por?: string | null
+          id?: string
+          nome: string
+          subcategoria?: string | null
+          tags?: string | null
+          tamanho_bytes?: number | null
+          tipo_arquivo?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+          versao?: number | null
+        }
+        Update: {
+          arquivo_url?: string
+          categoria?: string
+          created_at?: string | null
+          descricao?: string | null
+          enviado_por?: string | null
+          id?: string
+          nome?: string
+          subcategoria?: string | null
+          tags?: string | null
+          tamanho_bytes?: number | null
+          tipo_arquivo?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+          versao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artes_docs_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       autorizacoes_medicas: {
         Row: {
           autorizado_por: string | null
@@ -678,6 +737,79 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "doacoes_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipamento_emprestimos: {
+        Row: {
+          created_at: string | null
+          data_devolucao: string | null
+          data_retirada: string | null
+          devolvido: boolean | null
+          equipamento_id: string | null
+          estado_devolucao: string | null
+          estado_saida: string | null
+          foto_devolucao_url: string | null
+          foto_saida_url: string | null
+          id: string
+          observacoes: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_devolucao?: string | null
+          data_retirada?: string | null
+          devolvido?: boolean | null
+          equipamento_id?: string | null
+          estado_devolucao?: string | null
+          estado_saida?: string | null
+          foto_devolucao_url?: string | null
+          foto_saida_url?: string | null
+          id?: string
+          observacoes?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_devolucao?: string | null
+          data_retirada?: string | null
+          devolvido?: boolean | null
+          equipamento_id?: string | null
+          estado_devolucao?: string | null
+          estado_saida?: string | null
+          foto_devolucao_url?: string | null
+          foto_saida_url?: string | null
+          id?: string
+          observacoes?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipamento_emprestimos_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipamento_emprestimos_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipamento_emprestimos_top_id_fkey"
             columns: ["top_id"]
             isOneToOne: false
             referencedRelation: "tops"
@@ -1489,6 +1621,104 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "usuarios_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_envios: {
+        Row: {
+          created_at: string | null
+          destinatario_nome: string | null
+          destinatario_telefone: string | null
+          enviado_em: string | null
+          erro: string | null
+          id: string
+          mensagem_enviada: string | null
+          status: string | null
+          template_id: string | null
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          destinatario_nome?: string | null
+          destinatario_telefone?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          mensagem_enviada?: string | null
+          status?: string | null
+          template_id?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          destinatario_nome?: string | null
+          destinatario_telefone?: string | null
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          mensagem_enviada?: string | null
+          status?: string | null
+          template_id?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_envios_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_envios_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          destino: string | null
+          gatilho: string
+          id: string
+          mensagem: string
+          nome: string
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          destino?: string | null
+          gatilho: string
+          id?: string
+          mensagem: string
+          nome: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          destino?: string | null
+          gatilho?: string
+          id?: string
+          mensagem?: string
+          nome?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_top_id_fkey"
             columns: ["top_id"]
             isOneToOne: false
             referencedRelation: "tops"
