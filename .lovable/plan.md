@@ -1,42 +1,70 @@
 
 
-## Correções no Cadastro de Servidores
+## Modulo Equipamentos - Controle de Emprestimos
 
-### Problema 1: Nome com número embutido
-O servidor "Marcio Macedo Capelli" está cadastrado no banco com o nome "Marcio Macedo Capelli 3219" - o número foi digitado junto com o nome. Precisamos:
-- **Corrigir o dado no banco**: atualizar o registro para separar nome e numero_legendario
-- **Melhorar a exibição**: onde o nome do servidor aparece nas listas, mostrar como "Nome - Nº Legendário" usando os campos separados
+### 1. Migracao de Banco de Dados
 
-### Problema 2: Remover campo "Tamanho Farda"
-Servidores já possuem farda, não precisam informar tamanho no cadastro.
+A tabela `equipamentos` atual tem apenas: id, nome, tipo, quantidade, status, emprestado_por, data_devolucao, top_id, created_at. Precisamos adicionar as colunas faltantes:
 
----
-
-### Alterações
-
-**1. Corrigir dado no banco (SQL direto)**
-Atualizar o registro do Marcio para separar nome e numero:
 ```sql
-UPDATE servidores SET nome = 'Marcio Macedo Capelli' WHERE id = '98f7927f-b00a-41f7-b031-75565679b168';
+ALTER TABLE public.equipamentos
+  ADD COLUMN IF NOT EXISTS categoria text DEFAULT 'Outros',
+  ADD COLUMN IF NOT EXISTS origem text DEFAULT 'proprio',
+  ADD COLUMN IF NOT EXISTS proprietario text,
+  ADD COLUMN IF NOT EXISTS estado text DEFAULT 'bom',
+  ADD COLUMN IF NOT EXISTS foto_url text,
+  ADD COLUMN IF NOT EXISTS valor_estimado numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS descricao text,
+  ADD COLUMN IF NOT EXISTS observacoes text;
 ```
 
-**2. `src/pages/ServidorForm.tsx`**
-- Remover o campo "Tamanho Farda" do formulário (linhas 292-300)
-- Remover `tamanho_farda` do schema zod e dos defaultValues
-- Remover do payload de envio
+A tabela `equipamento_emprestimos` ja possui todas as colunas necessarias (equipamento_id, responsavel_nome, data_retirada, data_devolucao, estado_saida, estado_devolucao, foto_saida_url, foto_devolucao_url, devolvido, observacoes).
 
-**3. `src/components/ServidorSheet.tsx`**
-- Remover a linha "Tamanho Farda" da seção Dados Pessoais
+### 2. Estrutura de Arquivos
 
-**4. Exibição do nome com Nº Legendário (melhoria opcional)**
-Nos selects e listas do AreaHeader e AreaDesignacoes, exibir `{s.nome} - {s.numero_legendario}` ao invés de apenas `{s.nome}`, para facilitar a identificação.
-
-### Resumo técnico
-
-| Arquivo | Ação |
+| Arquivo | Descricao |
 |---|---|
-| Banco de dados | UPDATE para corrigir nome do Marcio |
-| `src/pages/ServidorForm.tsx` | Remover campo tamanho_farda |
-| `src/components/ServidorSheet.tsx` | Remover exibição tamanho_farda |
-| `src/components/area/AreaHeader.tsx` | Exibir nome + nº legendário nos selects |
-| `src/components/area/AreaDesignacoes.tsx` | Exibir nome + nº legendário nos selects e cards |
+| `src/pages/Equipamentos.tsx` | Reescrever completamente - pagina principal com header, cards por categoria, filtros e tabela |
+| `src/components/equipamentos/EquipamentoFormDialog.tsx` | Dialog para criar/editar equipamento |
+| `src/components/equipamentos/EmprestarDialog.tsx` | Dialog para registrar emprestimo |
+| `src/components/equipamentos/DevolverDialog.tsx` | Dialog para registrar devolucao |
+| `src/components/equipamentos/EquipamentoDetalhesDialog.tsx` | Dialog com detalhes + aba historico de emprestimos |
+
+### 3. Pagina Principal (Equipamentos.tsx)
+
+- **Header**: Icone Wrench + "Equipamentos" + contador + botao "+ Novo Equipamento"
+- **Cards panoramicos**: Grid de cards (2 cols mobile, 4 desktop), um por categoria, mostrando total de itens e valor estimado total
+- **Filtros**: Categoria (dropdown), Origem (Proprio/Emprestado/Alugado), Estado (Bom/Regular/Danificado/Perdido), busca por nome
+- **Tabela**: Foto (thumbnail 40x40), Nome, Categoria, Qtd, Origem, Proprietario, Estado, Emprestimo (badge verde "Disponivel" ou laranja "Em uso por [nome]"), Acoes
+- **Acoes**: Ver detalhes, Editar, Emprestar (se disponivel), Devolver (se emprestado)
+- Queries: buscar equipamentos + emprestimos ativos (devolvido=false) para saber status de emprestimo
+
+### 4. Dialog Novo/Editar Equipamento
+
+Campos: nome, descricao, categoria (Select com 7 categorias), origem (Proprio/Emprestado/Alugado), proprietario (visivel se origem != "proprio"), quantidade, estado, foto_url (upload para bucket "assets" path "equipamentos/"), valor_estimado (input monetario R$), observacoes.
+
+### 5. Dialog Emprestar
+
+Campos: responsavel_nome (input text), data_retirada (default agora), estado_saida (Select), foto_saida_url (upload opcional), observacoes.
+Ao confirmar: INSERT em equipamento_emprestimos + UPDATE equipamento.estado.
+
+### 6. Dialog Devolver
+
+Exibe dados da retirada (quem, quando, estado saida). Campos: data_devolucao (default agora), estado_devolucao (Select), foto_devolucao_url (upload opcional), observacoes.
+Ao confirmar: UPDATE emprestimo devolvido=true + data_devolucao + estado_devolucao, UPDATE equipamento.estado.
+
+### 7. Dialog Detalhes + Historico
+
+- Aba "Detalhes": info completa do equipamento com foto
+- Aba "Historico": lista de todos emprestimos do equipamento ordenados por data, mostrando responsavel, datas, estados, fotos de saida/devolucao, observacoes
+
+### 8. Upload de Fotos
+
+Utilizar o bucket "assets" (ja existente e publico) com path `equipamentos/{uuid}`. Componente de upload inline nos dialogs com preview da imagem.
+
+### 9. Responsividade
+
+- Cards de categoria: grid-cols-2 em mobile, grid-cols-3 md, grid-cols-4 lg
+- Tabela: overflow-x-auto com coluna Nome sticky
+- Dialogs: classe adicional para fullscreen em mobile
+
