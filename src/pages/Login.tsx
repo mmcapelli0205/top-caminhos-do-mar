@@ -124,7 +124,7 @@ const Login = () => {
 
       <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/40 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
         <div className="mb-4 flex justify-center">
-          <img src={LOGO_URL} alt="Logo TOP" className="w-[120px] sm:w-[180px]" />
+          <img src={LOGO_URL} alt="Logo TOP" className="w-[120px] mix-blend-multiply sm:w-[180px]" />
         </div>
 
         <h1 className="mb-1 text-center text-2xl font-bold text-white sm:text-3xl">
