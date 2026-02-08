@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Users, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,17 +50,20 @@ export default function AreaPortal() {
   });
 
   // Stats
-  const { data: servidoresCount = 0 } = useQuery({
-    queryKey: ["area-servidores-count", decodedNome],
+  const { data: servidoresDaArea = [], isLoading: loadingServidores } = useQuery({
+    queryKey: ["area-servidores-list", decodedNome],
     queryFn: async () => {
-      const { count } = await supabase
+      const { data } = await supabase
         .from("servidores")
-        .select("id", { count: "exact", head: true })
-        .eq("area_servico", decodedNome);
-      return count ?? 0;
+        .select("id, nome, numero_legendario, telefone, cargo_area, status")
+        .eq("area_servico", decodedNome)
+        .order("nome");
+      return data ?? [];
     },
     enabled: !!decodedNome,
   });
+
+  const servidoresCount = servidoresDaArea.length;
 
   const { data: designacoesCount = 0 } = useQuery({
     queryKey: ["area-designacoes-count", area?.id],
@@ -185,6 +188,35 @@ export default function AreaPortal() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Lista de Servidores */}
+          <Card className="mt-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" /> Legendários da Área ({servidoresCount})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {servidoresDaArea.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum servidor alocado nesta área.</p>
+              ) : (
+                servidoresDaArea.map(s => (
+                  <div key={s.id} className="flex items-center justify-between bg-muted/30 rounded px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{s.nome}</span>
+                      {s.numero_legendario && <Badge variant="outline" className="text-[10px]">#{s.numero_legendario}</Badge>}
+                      {s.cargo_area && <Badge variant="secondary" className="text-[10px]">{s.cargo_area}</Badge>}
+                    </div>
+                    {s.telefone && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Phone className="h-3 w-3" /> {s.telefone}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
 
           {avisosRecentes.length > 0 && (
             <Card className="mt-4">
