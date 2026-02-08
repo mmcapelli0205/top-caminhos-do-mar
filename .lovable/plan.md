@@ -1,45 +1,41 @@
 
 
-## Fix: Permissao `pode_aprovar` para pagina Aprovacoes
+## Problema
 
-### Problema
-A pagina Aprovacoes atualmente e visivel para todos os usuarios com cargo `diretoria`. O pedido e desacoplar isso do cargo e usar uma flag dedicada `pode_aprovar` na tabela `user_profiles`.
+A pagina de Configuracoes e a edge function `manage-users` ainda usam o sistema de autenticacao antigo (tabela `usuarios` + localStorage `top_user`). Porem, a autenticacao foi migrada para o Supabase Auth nativo, com dados em `user_profiles` e `user_roles`.
 
-### Alteracoes
+Resultado: a edge function procura o `caller_id` na tabela `usuarios` (que esta vazia ou sem seu usuario), nao encontra, e retorna "Apenas diretoria pode gerenciar usuarios".
 
-#### 1. Migracao de Banco de Dados
-- Adicionar coluna `pode_aprovar BOOLEAN DEFAULT FALSE` na tabela `user_profiles`
-- Setar `pode_aprovar = true` para o usuario `4c7d3dae-e747-4414-a11d-5fd3126404f5`
+## Solucao
 
-#### 2. Hook useAuth (`src/hooks/useAuth.ts`)
-- Adicionar `pode_aprovar` ao type `UserProfile`
-- O campo ja sera carregado automaticamente pelo `select("*")`
+Migrar a pagina de Configuracoes e a edge function para usar o sistema de autenticacao atual.
 
-#### 3. Menu Lateral (`src/lib/auth.ts`)
-- Modificar `getVisibleMenuItems` para receber um segundo parametro `podeAprovar: boolean`
-- O item "Aprovacoes" (id=12) so aparece se `podeAprovar === true`, independente do cargo
-- Remover o item 12 do array default da diretoria
+### 1. Atualizar a edge function `manage-users`
 
-#### 4. AppSidebar (`src/components/AppSidebar.tsx`)
-- Receber prop `podeAprovar` alem de `cargo`
-- Passar para `getVisibleMenuItems(cargo, podeAprovar)`
+- Em vez de receber `caller_id` no body, extrair o usuario autenticado do header `Authorization` (JWT do Supabase Auth)
+- Verificar o papel do usuario na tabela `user_roles` (em vez de `usuarios`)
+- Listar usuarios de `user_profiles` + `user_roles` (em vez de `usuarios`)
+- Criar/atualizar usuarios usando Supabase Auth Admin API + `user_profiles` + `user_roles`
 
-#### 5. AppLayout (`src/components/AppLayout.tsx`)
-- Passar `podeAprovar={profile.pode_aprovar}` para o `AppSidebar`
+### 2. Atualizar a pagina `Configuracoes.tsx`
 
-#### 6. Protecao da Rota `/aprovacoes` (`src/pages/Aprovacoes.tsx`)
-- No inicio do componente, verificar `profile.pode_aprovar`
-- Se `false`, redirecionar para `/dashboard`
+- Substituir `getUser()` (localStorage) por `useAuth()` hook (Supabase Auth)
+- Enviar o token JWT do Supabase nas chamadas a API (header Authorization) em vez de `caller_id` no body
+- Verificar permissao com base no `role` do hook `useAuth` em vez de `currentUser?.papel`
+- Ajustar a interface `Usuario` para refletir os campos de `user_profiles` + `user_roles`
 
-#### 7. Toggle na pagina Aprovacoes (`src/pages/Aprovacoes.tsx`)
-- Na tabela de usuarios aprovados, adicionar coluna ou acao com Switch/toggle "Pode aprovar"
-- Ao ativar/desativar: `UPDATE user_profiles SET pode_aprovar = valor WHERE id = usuario_id`
-- Usar componente `Switch` do shadcn (ja disponivel)
+### Detalhes tecnicos
 
-### Sequencia
-1. Migracao de banco (coluna + update do usuario)
-2. Atualizar `UserProfile` type no hook
-3. Modificar `getVisibleMenuItems` em `auth.ts`
-4. Atualizar `AppSidebar` e `AppLayout` para passar `podeAprovar`
-5. Adicionar protecao de rota e toggle em `Aprovacoes.tsx`
+**Edge function `manage-users/index.ts`:**
+- Usar `supabase.auth.getUser(token)` para autenticar o caller
+- Consultar `user_roles` para verificar se o caller tem role `diretoria`
+- Na acao `list`: fazer JOIN de `user_profiles` com `user_roles`
+- Na acao `create`: usar `supabase.auth.admin.createUser()` + inserir em `user_profiles` e `user_roles`
+- Na acao `update`: atualizar `user_profiles` e `user_roles` (e opcionalmente email/senha via Admin API)
+
+**Pagina `Configuracoes.tsx`:**
+- Importar `useAuth` de `@/hooks/useAuth` e `supabase` do client
+- Usar `session?.access_token` no header Authorization das chamadas
+- Usar `role === 'diretoria'` para controle de acesso
+- Adaptar o formulario para os campos de `user_profiles` (email, nome, telefone, cargo, etc.)
 
