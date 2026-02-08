@@ -13,6 +13,7 @@ export interface UserProfile {
   status: string | null;
   motivo_recusa: string | null;
   created_at: string | null;
+  pode_aprovar: boolean | null;
 }
 
 export interface UseAuthReturn {

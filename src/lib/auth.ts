@@ -58,27 +58,40 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 12, title: "Aprovações", url: "/aprovacoes", icon: UserCheck },
 ];
 
-export function getVisibleMenuItems(cargo: string | null): MenuItem[] {
+export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): MenuItem[] {
   if (!cargo) return [];
+
+  let items: MenuItem[];
 
   switch (cargo) {
     case "diretoria":
-      return ALL_MENU_ITEMS;
+      items = ALL_MENU_ITEMS.filter((item) => item.id !== 12);
+      break;
 
     case "coordenacao":
     case "coord02":
     case "coord03":
-      return ALL_MENU_ITEMS.filter((item) =>
+      items = ALL_MENU_ITEMS.filter((item) =>
         [1, 2, 3, 4, 6, 8].includes(item.id)
       );
+      break;
 
     case "sombra":
-      return ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
+      items = ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
+      break;
 
     case "servidor":
-      return ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
+      items = ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
+      break;
 
     default:
-      return ALL_MENU_ITEMS.filter((item) => [1].includes(item.id));
+      items = ALL_MENU_ITEMS.filter((item) => [1].includes(item.id));
   }
+
+  if (podeAprovar) {
+    const aprovItem = ALL_MENU_ITEMS.find((item) => item.id === 12);
+    if (aprovItem) items.push(aprovItem);
+  }
+
+  return items;
 }

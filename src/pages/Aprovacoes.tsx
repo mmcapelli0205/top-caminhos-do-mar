@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   UserCheck,
@@ -13,6 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -59,8 +61,16 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const Aprovacoes = () => {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Route protection
+  useEffect(() => {
+    if (profile && !profile.pode_aprovar) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [profile, navigate]);
 
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -261,6 +271,20 @@ const Aprovacoes = () => {
     }
   };
 
+  const handleTogglePodeAprovar = async (userId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ pode_aprovar: !currentValue })
+        .eq("id", userId);
+      if (error) throw error;
+      toast({ title: `Permissão de aprovação ${!currentValue ? "concedida" : "removida"}!` });
+      queryClient.invalidateQueries({ queryKey: ["user-profiles"] });
+    } catch {
+      toast({ title: "Erro ao alterar permissão", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -346,19 +370,20 @@ const Aprovacoes = () => {
                   <TableHead className="hidden lg:table-cell">Área</TableHead>
                   <TableHead className="hidden md:table-cell">Data</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Aprovador</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Nenhum cadastro encontrado
                     </TableCell>
                   </TableRow>
@@ -377,8 +402,16 @@ const Aprovacoes = () => {
                         <Badge className={STATUS_COLORS[p.status || "pendente"] || ""}>
                           {p.status || "pendente"}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
+                       </TableCell>
+                       <TableCell className="hidden md:table-cell">
+                         {p.status === "aprovado" && (
+                           <Switch
+                             checked={!!p.pode_aprovar}
+                             onCheckedChange={() => handleTogglePodeAprovar(p.id, !!p.pode_aprovar)}
+                           />
+                         )}
+                       </TableCell>
+                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           {p.status === "pendente" && (
                             <>
