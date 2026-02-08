@@ -53,7 +53,7 @@ const schema = z.object({
   data_nascimento: z.string().min(1, "Data de nascimento é obrigatória"),
   numero_legendario: z.string().min(1, "Número legendário é obrigatório"),
   experiencia: z.string().optional(),
-  tamanho_farda: z.string().optional(),
+  
   pais: z.string(),
   cep: z.string().optional(),
   endereco: z.string().optional(),
@@ -102,7 +102,7 @@ export default function ServidorForm() {
     resolver: zodResolver(schema),
     defaultValues: {
       nome: "", email: "", telefone: "", estrangeiro: false, cpf: "",
-      data_nascimento: "", numero_legendario: "", experiencia: "", tamanho_farda: "",
+      data_nascimento: "", numero_legendario: "", experiencia: "",
       pais: "Brasil", cep: "", endereco: "", cidade: "", estado: "",
       igreja: "", sede: "", habilidades: "[]", areas_servidas: "[]",
       area_preferencia_1: defaultArea, area_preferencia_2: "",
@@ -133,7 +133,7 @@ export default function ServidorForm() {
         nome: data.nome ?? "", email: data.email ?? "", telefone: data.telefone ? maskPhone(data.telefone) : "",
         estrangeiro: data.estrangeiro ?? false, cpf: data.cpf ? maskCPF(data.cpf) : "",
         data_nascimento: data.data_nascimento ?? "", numero_legendario: data.numero_legendario ?? "",
-        experiencia: data.experiencia ?? "", tamanho_farda: data.tamanho_farda ?? "",
+        experiencia: data.experiencia ?? "",
         pais: data.pais ?? "Brasil", cep: data.cep ?? "", endereco: data.endereco ?? "",
         cidade: data.cidade ?? "", estado: data.estado ?? "", igreja: data.igreja ?? "", sede: data.sede ?? "",
         habilidades: data.habilidades ?? "[]", areas_servidas: data.areas_servidas ?? "[]",
@@ -175,7 +175,7 @@ export default function ServidorForm() {
       nome: values.nome.trim(), email: values.email, telefone: telDigits,
       estrangeiro: values.estrangeiro, cpf: values.estrangeiro ? null : cpfDigits,
       data_nascimento: values.data_nascimento || null, numero_legendario: values.numero_legendario,
-      experiencia: values.experiencia || null, tamanho_farda: values.tamanho_farda || null,
+      experiencia: values.experiencia || null,
       pais: values.pais, cep: values.cep?.replace(/\D/g, "") || null,
       endereco: values.endereco || null, cidade: values.cidade || null, estado: values.estado || null,
       igreja: values.igreja || null, sede: values.sede || null,
@@ -286,15 +286,6 @@ export default function ServidorForm() {
                     <Select onValueChange={field.onChange} value={field.value ?? ""}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
                       <SelectContent>{EXPERIENCIAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="tamanho_farda" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tamanho Farda</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                      <SelectContent>{["P", "M", "G", "GG", "XG"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                     </Select>
                   </FormItem>
                 )} />

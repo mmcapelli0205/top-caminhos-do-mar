@@ -66,7 +66,6 @@ export default function ServidorSheet({ servidor, open, onOpenChange }: Props) {
                 <Field label="Data de Nascimento" value={s.data_nascimento} />
                 <Field label="Nº Legendário" value={s.numero_legendario} />
                 <Field label="Experiência" value={s.experiencia} />
-                <Field label="Tamanho Farda" value={s.tamanho_farda} />
                 <Field label="Estrangeiro" value={s.estrangeiro ? "Sim" : "Não"} />
               </Section>
               <Section title="Endereço & Igreja">

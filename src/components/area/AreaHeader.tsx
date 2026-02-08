@@ -70,10 +70,10 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
     queryFn: async () => {
       const { data } = await supabase
         .from("servidores")
-        .select("id, nome")
+        .select("id, nome, numero_legendario")
         .eq("area_servico", area.nome)
         .order("nome");
-      return (data ?? []) as Pick<Servidor, "id" | "nome">[];
+      return (data ?? []) as Pick<Servidor, "id" | "nome" | "numero_legendario">[];
     },
   });
 
@@ -178,7 +178,7 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
                     <SelectContent>
                       <SelectItem value="none">Não definido</SelectItem>
                       {servidoresDaArea.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                        <SelectItem key={s.id} value={s.id}>{s.nome}{s.numero_legendario ? ` - ${s.numero_legendario}` : ""}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
