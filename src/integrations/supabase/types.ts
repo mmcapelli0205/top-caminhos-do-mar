@@ -14,6 +14,390 @@ export type Database = {
   }
   public: {
     Tables: {
+      area_avisos: {
+        Row: {
+          area_id: string | null
+          autor_id: string | null
+          autor_nome: string | null
+          conteudo: string
+          created_at: string | null
+          fixado: boolean | null
+          id: string
+          titulo: string
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          autor_id?: string | null
+          autor_nome?: string | null
+          conteudo: string
+          created_at?: string | null
+          fixado?: boolean | null
+          id?: string
+          titulo: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          autor_id?: string | null
+          autor_nome?: string | null
+          conteudo?: string
+          created_at?: string | null
+          fixado?: boolean | null
+          id?: string
+          titulo?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_avisos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_avisos_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_avisos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      area_comentarios: {
+        Row: {
+          autor_id: string | null
+          autor_nome: string | null
+          aviso_id: string | null
+          conteudo: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          autor_id?: string | null
+          autor_nome?: string | null
+          aviso_id?: string | null
+          conteudo: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          autor_id?: string | null
+          autor_nome?: string | null
+          aviso_id?: string | null
+          conteudo?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_comentarios_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_comentarios_aviso_id_fkey"
+            columns: ["aviso_id"]
+            isOneToOne: false
+            referencedRelation: "area_avisos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      area_designacoes: {
+        Row: {
+          area_id: string | null
+          created_at: string | null
+          criado_por: string | null
+          id: string
+          observacoes: string | null
+          participante_id: string | null
+          servidor_id: string | null
+          status: string | null
+          tipo: string | null
+          top_id: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          id?: string
+          observacoes?: string | null
+          participante_id?: string | null
+          servidor_id?: string | null
+          status?: string | null
+          tipo?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          id?: string
+          observacoes?: string | null
+          participante_id?: string | null
+          servidor_id?: string | null
+          status?: string | null
+          tipo?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_designacoes_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_designacoes_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_designacoes_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_designacoes_servidor_id_fkey"
+            columns: ["servidor_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_designacoes_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      area_documentos: {
+        Row: {
+          area_id: string | null
+          arquivo_url: string
+          created_at: string | null
+          descricao: string | null
+          enviado_por: string | null
+          enviado_por_nome: string | null
+          id: string
+          nome: string
+          tamanho_bytes: number | null
+          tipo_arquivo: string | null
+          top_id: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          arquivo_url: string
+          created_at?: string | null
+          descricao?: string | null
+          enviado_por?: string | null
+          enviado_por_nome?: string | null
+          id?: string
+          nome: string
+          tamanho_bytes?: number | null
+          tipo_arquivo?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          arquivo_url?: string
+          created_at?: string | null
+          descricao?: string | null
+          enviado_por?: string | null
+          enviado_por_nome?: string | null
+          id?: string
+          nome?: string
+          tamanho_bytes?: number | null
+          tipo_arquivo?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_documentos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_documentos_enviado_por_fkey"
+            columns: ["enviado_por"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_documentos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      area_eventos: {
+        Row: {
+          area_id: string | null
+          created_at: string | null
+          criado_por: string | null
+          data_fim: string | null
+          data_inicio: string
+          descricao: string | null
+          id: string
+          local: string | null
+          tipo: string | null
+          titulo: string
+          top_id: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          data_fim?: string | null
+          data_inicio: string
+          descricao?: string | null
+          id?: string
+          local?: string | null
+          tipo?: string | null
+          titulo: string
+          top_id?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          descricao?: string | null
+          id?: string
+          local?: string | null
+          tipo?: string | null
+          titulo?: string
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_eventos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_eventos_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "area_eventos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      areas: {
+        Row: {
+          coordenador_02_id: string | null
+          coordenador_03_id: string | null
+          coordenador_id: string | null
+          cor: string | null
+          created_at: string | null
+          descricao: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+          sombra_id: string | null
+          top_id: string | null
+        }
+        Insert: {
+          coordenador_02_id?: string | null
+          coordenador_03_id?: string | null
+          coordenador_id?: string | null
+          cor?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+          sombra_id?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          coordenador_02_id?: string | null
+          coordenador_03_id?: string | null
+          coordenador_id?: string | null
+          cor?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          sombra_id?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "areas_coordenador_02_id_fkey"
+            columns: ["coordenador_02_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_coordenador_03_id_fkey"
+            columns: ["coordenador_03_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_coordenador_id_fkey"
+            columns: ["coordenador_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_sombra_id_fkey"
+            columns: ["sombra_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artes: {
         Row: {
           arquivo_url: string | null

@@ -267,7 +267,7 @@ export default function Servidores() {
         {AREAS_SERVICO.map(area => {
           const c = areaCounts[area];
           return (
-            <Card key={area} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => { setFilterArea(area); setFilterStatus("todos"); }}>
+            <Card key={area} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}>
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground truncate">{area}</p>
                 <div className="flex items-center justify-between mt-1">
