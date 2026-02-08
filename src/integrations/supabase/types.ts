@@ -1641,6 +1641,7 @@ export type Database = {
           motivo_recusa: string | null
           nome: string
           numero_legendario: string | null
+          pode_aprovar: boolean | null
           status: string | null
           telefone: string | null
           updated_at: string | null
@@ -1656,6 +1657,7 @@ export type Database = {
           motivo_recusa?: string | null
           nome: string
           numero_legendario?: string | null
+          pode_aprovar?: boolean | null
           status?: string | null
           telefone?: string | null
           updated_at?: string | null
@@ -1671,6 +1673,7 @@ export type Database = {
           motivo_recusa?: string | null
           nome?: string
           numero_legendario?: string | null
+          pode_aprovar?: boolean | null
           status?: string | null
           telefone?: string | null
           updated_at?: string | null

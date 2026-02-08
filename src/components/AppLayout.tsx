@@ -69,7 +69,7 @@ export default function AppLayout() {
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full">
-        <AppSidebar cargo={role || profile.cargo} />
+        <AppSidebar cargo={role || profile.cargo} podeAprovar={!!profile.pode_aprovar} />
         <SidebarInset>
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
             <div className="flex items-center gap-3">

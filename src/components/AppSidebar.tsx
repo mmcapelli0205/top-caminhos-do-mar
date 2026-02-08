@@ -14,10 +14,11 @@ import {
 
 interface Props {
   cargo: string | null;
+  podeAprovar?: boolean;
 }
 
-export function AppSidebar({ cargo }: Props) {
-  const items = getVisibleMenuItems(cargo);
+export function AppSidebar({ cargo, podeAprovar = false }: Props) {
+  const items = getVisibleMenuItems(cargo, podeAprovar);
   const location = useLocation();
 
   return (
