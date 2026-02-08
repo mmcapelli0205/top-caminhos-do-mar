@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
+import Cadastro from "./pages/Cadastro";
 import AppLayout from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Participantes from "./pages/Participantes";
@@ -19,6 +20,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Tops from "./pages/Tops";
 import ParticipanteForm from "./pages/ParticipanteForm";
 import AreaPortal from "./pages/AreaPortal";
+import Aprovacoes from "./pages/Aprovacoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/cadastro" element={<Cadastro />} />
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/participantes" element={<Participantes />} />
@@ -47,6 +50,7 @@ const App = () => (
             <Route path="/check-in" element={<CheckIn />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/tops" element={<Tops />} />
+            <Route path="/aprovacoes" element={<Aprovacoes />} />
             <Route path="/areas/:nome" element={<AreaPortal />} />
           </Route>
           <Route path="*" element={<NotFound />} />
