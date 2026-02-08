@@ -819,37 +819,61 @@ export type Database = {
       }
       equipamentos: {
         Row: {
+          categoria: string | null
           created_at: string | null
           data_devolucao: string | null
+          descricao: string | null
           emprestado_por: string | null
+          estado: string | null
+          foto_url: string | null
           id: string
           nome: string
+          observacoes: string | null
+          origem: string | null
+          proprietario: string | null
           quantidade: number | null
           status: string | null
           tipo: string | null
           top_id: string | null
+          valor_estimado: number | null
         }
         Insert: {
+          categoria?: string | null
           created_at?: string | null
           data_devolucao?: string | null
+          descricao?: string | null
           emprestado_por?: string | null
+          estado?: string | null
+          foto_url?: string | null
           id?: string
           nome: string
+          observacoes?: string | null
+          origem?: string | null
+          proprietario?: string | null
           quantidade?: number | null
           status?: string | null
           tipo?: string | null
           top_id?: string | null
+          valor_estimado?: number | null
         }
         Update: {
+          categoria?: string | null
           created_at?: string | null
           data_devolucao?: string | null
+          descricao?: string | null
           emprestado_por?: string | null
+          estado?: string | null
+          foto_url?: string | null
           id?: string
           nome?: string
+          observacoes?: string | null
+          origem?: string | null
+          proprietario?: string | null
           quantidade?: number | null
           status?: string | null
           tipo?: string | null
           top_id?: string | null
+          valor_estimado?: number | null
         }
         Relationships: [
           {
