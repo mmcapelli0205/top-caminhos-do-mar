@@ -1581,6 +1581,7 @@ export type Database = {
           local: string | null
           max_participantes: number | null
           nome: string
+          observacoes: string | null
           status: string | null
         }
         Insert: {
@@ -1591,6 +1592,7 @@ export type Database = {
           local?: string | null
           max_participantes?: number | null
           nome: string
+          observacoes?: string | null
           status?: string | null
         }
         Update: {
@@ -1601,6 +1603,7 @@ export type Database = {
           local?: string | null
           max_participantes?: number | null
           nome?: string
+          observacoes?: string | null
           status?: string | null
         }
         Relationships: []

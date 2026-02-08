@@ -1,0 +1,1 @@
+ALTER TABLE tops ADD COLUMN observacoes text;
