@@ -1288,6 +1288,7 @@ export type Database = {
           area_preferencia_2: string | null
           area_servico: string | null
           areas_servidas: string | null
+          cargo_area: string | null
           cep: string | null
           checkin: boolean | null
           cidade: string | null
@@ -1328,6 +1329,7 @@ export type Database = {
           area_preferencia_2?: string | null
           area_servico?: string | null
           areas_servidas?: string | null
+          cargo_area?: string | null
           cep?: string | null
           checkin?: boolean | null
           cidade?: string | null
@@ -1368,6 +1370,7 @@ export type Database = {
           area_preferencia_2?: string | null
           area_servico?: string | null
           areas_servidas?: string | null
+          cargo_area?: string | null
           cep?: string | null
           checkin?: boolean | null
           cidade?: string | null
