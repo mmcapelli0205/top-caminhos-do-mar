@@ -50,7 +50,7 @@ export default function Tops() {
 
   const activeTop = tops.find(t => t.status !== "Finalizado") || tops[0];
 
-  const fmtDate = (d: string | null) => d ? format(new Date(d), "dd/MM/yyyy", { locale: ptBR }) : "—";
+  const fmtDate = (d: string | null) => d ? format(new Date(d + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR }) : "—";
 
   return (
     <div className="space-y-6">

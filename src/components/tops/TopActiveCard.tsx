@@ -54,8 +54,8 @@ export default function TopActiveCard({ top }: TopActiveCardProps) {
           {top.data_inicio && (
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              {format(new Date(top.data_inicio), "dd/MM/yyyy", { locale: ptBR })}
-              {top.data_fim && ` — ${format(new Date(top.data_fim), "dd/MM/yyyy", { locale: ptBR })}`}
+              {format(new Date(top.data_inicio + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+              {top.data_fim && ` — ${format(new Date(top.data_fim + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}`}
             </span>
           )}
         </div>
