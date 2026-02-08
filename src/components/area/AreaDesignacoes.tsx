@@ -40,7 +40,7 @@ export default function AreaDesignacoes({ area, canEdit, currentUser }: Props) {
   const { data: servidores = [] } = useQuery({
     queryKey: ["servidores-area-desig", area.nome],
     queryFn: async () => {
-      const { data } = await supabase.from("servidores").select("id, nome, telefone").eq("area_servico", area.nome).order("nome");
+      const { data } = await supabase.from("servidores").select("id, nome, telefone, numero_legendario").eq("area_servico", area.nome).order("nome");
       return data ?? [];
     },
   });
@@ -142,7 +142,7 @@ export default function AreaDesignacoes({ area, canEdit, currentUser }: Props) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Users className="h-4 w-4" />
-              {s.nome}
+              {s.nome}{s.numero_legendario ? ` - ${s.numero_legendario}` : ""}
               {s.telefone && <span className="text-xs text-muted-foreground font-normal">{s.telefone}</span>}
               <Badge variant="secondary" className="ml-auto">{s.designados.length}</Badge>
             </CardTitle>
@@ -183,7 +183,7 @@ export default function AreaDesignacoes({ area, canEdit, currentUser }: Props) {
               <Select value={servidorId} onValueChange={setServidorId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {servidores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  {servidores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}{s.numero_legendario ? ` - ${s.numero_legendario}` : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
