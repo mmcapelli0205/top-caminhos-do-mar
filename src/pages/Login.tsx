@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 const BG_URL =
   "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20-%20foto.png";
 const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Logo%20Legendarios.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20sem%20fundo.png";
 
 const Login = () => {
   const navigate = useNavigate();
