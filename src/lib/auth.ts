@@ -10,14 +10,30 @@ import {
   QrCode,
   Calendar,
   Settings,
+  UserCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+// Backward-compatible TopUser type for components not yet migrated
 export interface TopUser {
   id: string;
   nome: string;
   papel: "diretoria" | "coordenacao" | "servidor" | "participante";
   area_servico: string;
+}
+
+// Backward-compatible getUser - reads from localStorage for legacy components
+export function getUser(): TopUser | null {
+  try {
+    const raw = localStorage.getItem("top_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function logout() {
+  localStorage.removeItem("top_user");
 }
 
 export interface MenuItem {
@@ -39,51 +55,30 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 9, title: "Check-in", url: "/check-in", icon: QrCode },
   { id: 11, title: "TOPs", url: "/tops", icon: Calendar },
   { id: 10, title: "Configurações", url: "/configuracoes", icon: Settings },
+  { id: 12, title: "Aprovações", url: "/aprovacoes", icon: UserCheck },
 ];
 
-const COORDENACAO_MAP: Record<string, number[]> = {
-  Eventos: [1, 2, 3, 4, 8],
-  Segurança: [1, 2, 3, 4, 8],
-  Hakunas: [1, 2, 3, 4, 7, 8],
-  Logística: [1, 2, 4, 7, 8],
-  Comunicação: [1, 3, 4, 7, 8, 9],
-  Mídia: [1, 2, 3, 4, 7, 8],
-  Administração: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-  Intercessão: [1, 2, 3, 4, 8],
-};
+export function getVisibleMenuItems(cargo: string | null): MenuItem[] {
+  if (!cargo) return [];
 
-export function getUser(): TopUser | null {
-  try {
-    const raw = localStorage.getItem("top_user");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function logout() {
-  localStorage.removeItem("top_user");
-}
-
-export function getVisibleMenuItems(user: TopUser | null): MenuItem[] {
-  if (!user) return [];
-
-  switch (user.papel) {
+  switch (cargo) {
     case "diretoria":
       return ALL_MENU_ITEMS;
 
-    case "coordenacao": {
-      const allowed = COORDENACAO_MAP[user.area_servico] ?? [1, 8];
-      return ALL_MENU_ITEMS.filter((item) => allowed.includes(item.id));
-    }
+    case "coordenacao":
+    case "coord02":
+    case "coord03":
+      return ALL_MENU_ITEMS.filter((item) =>
+        [1, 2, 3, 4, 6, 8].includes(item.id)
+      );
+
+    case "sombra":
+      return ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
 
     case "servidor":
       return ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
 
-    case "participante":
-      return ALL_MENU_ITEMS.filter((item) => [1].includes(item.id));
-
     default:
-      return [];
+      return ALL_MENU_ITEMS.filter((item) => [1].includes(item.id));
   }
 }

@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
-import { getUser, getVisibleMenuItems } from "@/lib/auth";
+import { getVisibleMenuItems } from "@/lib/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -12,9 +12,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-export function AppSidebar() {
-  const user = getUser();
-  const items = getVisibleMenuItems(user);
+interface Props {
+  cargo: string | null;
+}
+
+export function AppSidebar({ cargo }: Props) {
+  const items = getVisibleMenuItems(cargo);
   const location = useLocation();
 
   return (
