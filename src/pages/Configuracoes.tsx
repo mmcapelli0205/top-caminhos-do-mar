@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Settings, Plus, Pencil, Loader2, UserCheck, UserX } from "lucide-react";
-import { getUser } from "@/lib/auth";
+import { Settings, Plus, Pencil, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -23,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 const API_URL =
   "https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/manage-users";
 
-const PAPEIS = ["diretoria", "coordenacao", "servidor", "participante"];
+const ROLES = ["diretoria", "coordenacao", "coord02", "coord03", "sombra", "servidor"];
 const AREAS = [
   "Eventos",
   "Segurança",
@@ -37,34 +38,41 @@ const AREAS = [
 
 interface Usuario {
   id: string;
-  username: string;
   nome: string;
-  papel: string;
-  area_servico: string | null;
-  ativo: boolean;
+  email: string;
+  telefone: string | null;
+  cargo: string | null;
+  area_preferencia: string | null;
+  numero_legendario: string | null;
+  status: string | null;
+  role: string;
 }
 
 interface FormData {
-  username: string;
+  email: string;
   nome: string;
   senha: string;
-  papel: string;
-  area_servico: string;
-  ativo: boolean;
+  role: string;
+  telefone: string;
+  cargo: string;
+  area_preferencia: string;
+  status: string;
 }
 
 const emptyForm: FormData = {
-  username: "",
+  email: "",
   nome: "",
   senha: "",
-  papel: "servidor",
-  area_servico: "",
-  ativo: true,
+  role: "servidor",
+  telefone: "",
+  cargo: "",
+  area_preferencia: "",
+  status: "aprovado",
 };
 
 const Configuracoes = () => {
-  const currentUser = getUser();
-  const isDiretoria = currentUser?.papel === "diretoria";
+  const { session, role, loading: authLoading } = useAuth();
+  const isDiretoria = role === "diretoria";
 
   const [users, setUsers] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,16 +83,23 @@ const Configuracoes = () => {
 
   const callApi = useCallback(
     async (body: Record<string, unknown>) => {
+      const token = session?.access_token;
+      if (!token) throw new Error("Não autenticado");
+
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, caller_id: currentUser?.id }),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlsa256Z3VwbnN3eWV5bndwb3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NzEyMzEsImV4cCI6MjA4NjA0NzIzMX0.dEr0MFzKtbkqxXu0m5dvMPDZWlB-uddw2UNsUP3UUKQ",
+        },
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro");
       return data;
     },
-    [currentUser?.id]
+    [session?.access_token]
   );
 
   const loadUsers = useCallback(async () => {
@@ -104,8 +119,8 @@ const Configuracoes = () => {
   }, [callApi]);
 
   useEffect(() => {
-    if (isDiretoria) loadUsers();
-  }, [isDiretoria, loadUsers]);
+    if (isDiretoria && session) loadUsers();
+  }, [isDiretoria, session, loadUsers]);
 
   const openCreate = () => {
     setEditing(null);
@@ -116,18 +131,20 @@ const Configuracoes = () => {
   const openEdit = (u: Usuario) => {
     setEditing(u);
     setForm({
-      username: u.username,
+      email: u.email,
       nome: u.nome,
       senha: "",
-      papel: u.papel,
-      area_servico: u.area_servico || "",
-      ativo: u.ativo,
+      role: u.role,
+      telefone: u.telefone || "",
+      cargo: u.cargo || "",
+      area_preferencia: u.area_preferencia || "",
+      status: u.status || "aprovado",
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.username.trim() || !form.nome.trim() || !form.papel) {
+    if (!form.email.trim() || !form.nome.trim() || !form.role) {
       toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
@@ -142,22 +159,26 @@ const Configuracoes = () => {
         await callApi({
           action: "update",
           user_id: editing.id,
-          username: form.username.trim(),
+          email: form.email.trim(),
           nome: form.nome.trim(),
           senha: form.senha || undefined,
-          papel: form.papel,
-          area_servico: form.area_servico || null,
-          ativo: form.ativo,
+          role: form.role,
+          telefone: form.telefone || null,
+          cargo: form.cargo || null,
+          area_preferencia: form.area_preferencia || null,
+          status: form.status,
         });
         toast({ title: "Usuário atualizado" });
       } else {
         await callApi({
           action: "create",
-          username: form.username.trim(),
+          email: form.email.trim(),
           nome: form.nome.trim(),
           senha: form.senha,
-          papel: form.papel,
-          area_servico: form.area_servico || null,
+          role: form.role,
+          telefone: form.telefone || null,
+          cargo: form.cargo || null,
+          area_preferencia: form.area_preferencia || null,
         });
         toast({ title: "Usuário criado" });
       }
@@ -173,6 +194,14 @@ const Configuracoes = () => {
       setSaving(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!isDiretoria) {
     return (
@@ -210,9 +239,9 @@ const Configuracoes = () => {
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Nome</th>
-                <th className="px-4 py-3 font-medium">Username</th>
-                <th className="px-4 py-3 font-medium">Papel</th>
-                <th className="px-4 py-3 font-medium">Área</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 font-medium">Cargo</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium w-16"></th>
               </tr>
@@ -224,25 +253,19 @@ const Configuracoes = () => {
                   className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
                 >
                   <td className="px-4 py-3 text-foreground font-medium">{u.nome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.username}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                   <td className="px-4 py-3">
                     <Badge variant="secondary" className="capitalize">
-                      {u.papel}
+                      {u.role}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {u.area_servico || "—"}
+                    {u.cargo || "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {u.ativo ? (
-                      <span className="flex items-center gap-1 text-green-400">
-                        <UserCheck className="h-4 w-4" /> Ativo
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-destructive">
-                        <UserX className="h-4 w-4" /> Inativo
-                      </span>
-                    )}
+                    <Badge variant={u.status === "aprovado" ? "default" : "outline"} className="capitalize">
+                      {u.status || "pendente"}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <Button
@@ -289,11 +312,12 @@ const Configuracoes = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Username *</Label>
+              <Label>Email *</Label>
               <Input
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="Login de acesso"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="email@exemplo.com"
               />
             </div>
 
@@ -308,30 +332,48 @@ const Configuracoes = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Papel *</Label>
+              <Label>Telefone</Label>
+              <Input
+                value={form.telefone}
+                onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Role *</Label>
               <Select
-                value={form.papel}
-                onValueChange={(v) => setForm({ ...form, papel: v })}
+                value={form.role}
+                onValueChange={(v) => setForm({ ...form, role: v })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PAPEIS.map((p) => (
-                    <SelectItem key={p} value={p} className="capitalize">
-                      {p}
+                  {ROLES.map((r) => (
+                    <SelectItem key={r} value={r} className="capitalize">
+                      {r}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {form.papel === "coordenacao" && (
+            <div className="space-y-2">
+              <Label>Cargo</Label>
+              <Input
+                value={form.cargo}
+                onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                placeholder="Ex: Coordenador de Eventos"
+              />
+            </div>
+
+            {["coordenacao", "coord02", "coord03", "sombra"].includes(form.role) && (
               <div className="space-y-2">
-                <Label>Área de serviço</Label>
+                <Label>Área de preferência</Label>
                 <Select
-                  value={form.area_servico}
-                  onValueChange={(v) => setForm({ ...form, area_servico: v })}
+                  value={form.area_preferencia}
+                  onValueChange={(v) => setForm({ ...form, area_preferencia: v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a área" />
@@ -348,16 +390,21 @@ const Configuracoes = () => {
             )}
 
             {editing && (
-              <div className="flex items-center gap-3">
-                <Label>Ativo</Label>
-                <Button
-                  type="button"
-                  variant={form.ativo ? "default" : "destructive"}
-                  size="sm"
-                  onClick={() => setForm({ ...form, ativo: !form.ativo })}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => setForm({ ...form, status: v })}
                 >
-                  {form.ativo ? "Sim" : "Não"}
-                </Button>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aprovado">Aprovado</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="recusado">Recusado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
