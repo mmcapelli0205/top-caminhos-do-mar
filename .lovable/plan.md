@@ -1,91 +1,109 @@
 
 
-## Modulo Artes & Docs - Galeria de Arquivos
+## Modulo TOPs + Integracao WhatsApp
 
-### Tabela
-A tabela `artes_docs` ja esta criada com todas as colunas necessarias: nome, descricao, categoria, subcategoria, arquivo_url, tipo_arquivo, tamanho_bytes, versao, tags, enviado_por, top_id, created_at, updated_at. Nenhuma migracao necessaria.
+### Migracao de Banco
+
+A tabela `tops` precisa de uma coluna adicional:
+
+```sql
+ALTER TABLE tops ADD COLUMN observacoes text;
+```
+
+As tabelas `whatsapp_templates` e `whatsapp_envios` ja existem com dados seed. Nenhuma outra migracao necessaria.
 
 ### Estrutura de Arquivos
 
 | Arquivo | Acao |
 |---|---|
-| `src/pages/ArtesEDocs.tsx` | Reescrever completamente - pagina principal com header, filtros, grid/lista e dialogs |
-| `src/components/artes-docs/ArteDocFormDialog.tsx` | Novo - Dialog de upload/edicao com campos e upload para Storage |
-| `src/components/artes-docs/ArteDocPreviewDialog.tsx` | Novo - Dialog de preview de imagem em tamanho grande |
+| `src/pages/Tops.tsx` | Reescrever completamente - pagina com 2 abas (Edicoes + WhatsApp) |
+| `src/components/tops/TopFormDialog.tsx` | Novo - Dialog para criar/editar TOP |
+| `src/components/tops/TopActiveCard.tsx` | Novo - Card em destaque do TOP ativo |
+| `src/components/tops/WhatsAppConfigSection.tsx` | Novo - Configuracao da API Evolution + webhook |
+| `src/components/tops/WhatsAppTemplatesSection.tsx` | Novo - Lista e edicao de templates |
+| `src/components/tops/WhatsAppDisparoSection.tsx` | Novo - Disparo manual com selecao de destino |
+| `src/components/tops/WhatsAppLogSection.tsx` | Novo - Log de envios com filtros e reenvio |
+| `src/components/tops/TemplateEditDialog.tsx` | Novo - Dialog para editar mensagem do template |
 
-### Pagina Principal (ArtesEDocs.tsx)
+### Tab 1 - Edicoes
 
-**Header**: Icone Palette + "Artes & Docs" + Badge contador + botao "+ Upload"
+**Card TOP Ativo** (topo da pagina):
+- Mostra o TOP com status != "Finalizado" (ou o mais recente)
+- Exibe: nome, local, datas, contagem de participantes/servidores/familias (queries de contagem), receita total
+- Usa os dados de `participantes`, `servidores`, `familias` filtrados pelo top_id
 
-**Filtros**:
-- Categoria: Select com "Todas", "Arte Visual", "Documento Oficial"
-- Subcategoria: Select dinamico (muda opcoes conforme categoria selecionada)
-  - Arte Visual: Banner, Post Instagram, Post WhatsApp, Convite, Cracha, Certificado, Outro
-  - Documento Oficial: Contrato, Termo de Responsabilidade, Regulamento, Autorizacao, Ficha Medica, Outro
-- Busca por nome ou tag (input text)
+**Tabela de TOPs:**
+- Colunas: Nome | Local | Data Inicio | Data Fim | Participantes (count) | Servidores (count) | Status | Acoes
+- Status com Badge colorido: Planejamento (cinza), Inscricoes Abertas (azul), Em Andamento (amarelo), Finalizado (verde)
+- Botao "+ Novo TOP"
+- Acoes: Editar (abre dialog), Ver Dashboard (navega para /dashboard)
 
-**Toggle de visualizacao**: ToggleGroup com Grid (LayoutGrid) e Lista (List)
+**Dialog Novo/Editar TOP** (TopFormDialog):
+- Campos: nome, local, data_inicio, data_fim, max_participantes, status (Select), observacoes (textarea)
+- INSERT ou UPDATE na tabela `tops`
 
-**Modo Grid** (default):
-- Cards responsivos: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
-- Cada card mostra:
-  - Thumbnail: se imagem (png/jpg/svg/webp) exibe a imagem; se PDF icone FileText; outros icone File
-  - Nome do arquivo
-  - Badge categoria (Arte Visual = roxo, Documento Oficial = azul)
-  - Badge subcategoria (outline)
-  - "v{versao}" badge se versao > 1
-  - "Por [enviado_por] em [data formatada]"
-  - Tamanho formatado (KB ou MB)
-  - Botoes: Download, Editar, Nova Versao, Excluir
+### Tab 2 - WhatsApp
 
-**Modo Lista**:
-- Tabela com colunas: Nome, Categoria, Subcategoria, Versao, Enviado por, Data, Tamanho, Acoes
+Dividida em 4 secoes verticais com Cards:
 
-**Queries**:
-- Buscar todos artes_docs ordenados por created_at desc
-- Filtrar no frontend por categoria, subcategoria, busca (nome ou tags)
+**Secao 1 - Configuracao da API** (WhatsAppConfigSection):
+- Campos salvos em localStorage (chave `whatsapp_config`):
+  - URL da Evolution API (text)
+  - API Key (password input)
+  - Nome da Instancia (text)
+  - URL do Webhook N8N (text)
+- Botao "Testar Conexao": faz GET para `{url}/instance/connectionState/{instancia}` com header apikey
+- Mostra toast com resultado
 
-### Dialog Upload/Editar (ArteDocFormDialog.tsx)
+**Secao 2 - Templates** (WhatsAppTemplatesSection):
+- Lista dos 6 templates do banco (whatsapp_templates)
+- Cada template em um Card mostrando:
+  - Nome + Badge com gatilho (inscricao=verde, ergometrico=laranja, etc)
+  - Toggle Switch ativo/inativo (UPDATE no banco)
+  - Preview da mensagem com variaveis destacadas em amarelo (regex `{{...}}`)
+  - Botao "Editar" abre TemplateEditDialog
+- TemplateEditDialog: textarea com a mensagem, lista de variaveis disponiveis como referencia
 
-Campos:
-- nome (text, required)
-- descricao (textarea)
-- categoria (Select: Arte Visual, Documento Oficial)
-- subcategoria (Select dinamico conforme categoria)
-- arquivo (file upload para bucket "assets" path "artes-docs/{uuid}.{ext}", required para novo)
-- tags (text input, separar por virgula)
+**Secao 3 - Disparo Manual** (WhatsAppDisparoSection):
+- Select template (lista templates ativos)
+- Select destino: Todos Participantes, Todos Servidores, Participantes sem Ergometrico, Familia especifica (Select com familias), Pessoa especifica (Select com participantes)
+- Preview: mostra contagem de destinatarios
+- Botao "Enviar" com Dialog de confirmacao
+- Ao confirmar:
+  1. Busca destinatarios conforme filtro
+  2. Para cada: substitui variaveis no template ({{nome}}, {{telefone}}, etc)
+  3. Faz POST para URL webhook N8N com payload `{ telefone, mensagem, nome, template, top_id }`
+  4. Insere registro em `whatsapp_envios` com status "pendente"
+  5. Toast informando quantidade enviada
 
-Ao salvar:
-- Detecta tipo_arquivo pela extensao do arquivo
-- Calcula tamanho_bytes do arquivo enviado
-- INSERT ou UPDATE no artes_docs
+**Secao 4 - Log de Envios** (WhatsAppLogSection):
+- Tabela: Data | Destinatario | Telefone | Template | Status | Erro | Acoes
+- Filtros: status (Pendente/Enviado/Falha) e template
+- Badges: Pendente (laranja), Enviado (verde), Falha (vermelho)
+- Botao "Reenviar" nos que falharam (reenvia para o webhook)
 
-### Nova Versao
+### Detalhes Tecnicos
 
-- Botao "Nova Versao" no card abre o ArteDocFormDialog em modo especial
-- Mantem nome, categoria, subcategoria, tags do registro original
-- Exige upload de novo arquivo
-- Faz INSERT de novo registro com versao = versao_anterior + 1
-- O registro antigo permanece (historico)
+**Substituicao de variaveis:**
+- Funcao utilitaria que recebe template string e objeto de dados
+- Regex: `/\{\{(\w+)\}\}/g` substituindo pelo valor do objeto
+- Dados vem de joins entre participantes/servidores/familias/tops
 
-### Preview (ArteDocPreviewDialog.tsx)
+**Contagens para o card ativo:**
+- Participantes: `SELECT count(*) FROM participantes WHERE top_id = ?`
+- Servidores: `SELECT count(*) FROM servidores WHERE top_id = ?`
+- Familias: `SELECT count(*) FROM familias WHERE familia_top_id = ?`
+- Receita: `SELECT sum(valor_pago) FROM participantes WHERE top_id = ?`
 
-- Imagens (png/jpg/svg/webp): abre Dialog com imagem em tamanho grande
-- PDF: abre em nova aba (window.open)
-- Outros: download direto
-
-### Excluir
-
-- Confirmacao antes de deletar
-- Remove registro do banco (nao remove arquivo do storage para manter historico)
-
-### Upload de Arquivos
-
-Utilizar bucket "assets" (ja existente e publico) com path `artes-docs/{uuid}.{extensao}`.
+**Disparo via webhook (nao edge function):**
+- O disparo e feito direto do frontend via fetch POST para a URL do webhook N8N configurada pelo usuario
+- Nenhuma edge function necessaria para isso
+- O N8N recebe e chama a Evolution API
 
 ### Responsividade
-
-- Grid: 1 col mobile, 2 tablet, 3-4 desktop
-- Cards: full-width mobile
-- Dialog upload: max-w-lg desktop, overflow-y-auto para scroll
+- Card TOP ativo: full-width, stack vertical em mobile
+- Tabela TOPs: scroll horizontal em mobile
+- Templates: cards empilhados em mobile
+- Secao config: campos full-width
+- Log: tabela com scroll horizontal
 
