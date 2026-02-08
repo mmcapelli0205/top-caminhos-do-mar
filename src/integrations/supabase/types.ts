@@ -1572,6 +1572,27 @@ export type Database = {
           },
         ]
       }
+      system_config: {
+        Row: {
+          chave: string
+          id: string
+          updated_at: string | null
+          valor: string
+        }
+        Insert: {
+          chave: string
+          id?: string
+          updated_at?: string | null
+          valor: string
+        }
+        Update: {
+          chave?: string
+          id?: string
+          updated_at?: string | null
+          valor?: string
+        }
+        Relationships: []
+      }
       tops: {
         Row: {
           created_at: string | null
@@ -1605,6 +1626,54 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           status?: string | null
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          aprovado_por: string | null
+          area_preferencia: string | null
+          cargo: string | null
+          created_at: string | null
+          data_aprovacao: string | null
+          email: string
+          id: string
+          motivo_recusa: string | null
+          nome: string
+          numero_legendario: string | null
+          status: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          aprovado_por?: string | null
+          area_preferencia?: string | null
+          cargo?: string | null
+          created_at?: string | null
+          data_aprovacao?: string | null
+          email: string
+          id: string
+          motivo_recusa?: string | null
+          nome: string
+          numero_legendario?: string | null
+          status?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          aprovado_por?: string | null
+          area_preferencia?: string | null
+          cargo?: string | null
+          created_at?: string | null
+          data_aprovacao?: string | null
+          email?: string
+          id?: string
+          motivo_recusa?: string | null
+          nome?: string
+          numero_legendario?: string | null
+          status?: string | null
+          telefone?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
