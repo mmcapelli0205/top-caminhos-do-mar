@@ -1,0 +1,240 @@
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Heart, Shield, PartyPopper, Camera, MessageSquare, Truck, Music,
+  Briefcase, LifeBuoy, Crown, Clock, FileText, Puzzle, Users, UserCheck, Settings2,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Area = Tables<"areas">;
+type Servidor = Tables<"servidores">;
+
+const AREA_ICONS: Record<string, LucideIcon> = {
+  "Hakuna": Heart,
+  "Segurança": Shield,
+  "Eventos": PartyPopper,
+  "Mídia": Camera,
+  "Comunicação": MessageSquare,
+  "Logística": Truck,
+  "Voz": Music,
+  "ADM": Briefcase,
+  "Resgate": LifeBuoy,
+  "Coordenação Geral": Crown,
+  "Intercessão": Heart,
+  "Alimentação": Briefcase,
+  "Tempo e Execução": Clock,
+  "DOC": FileText,
+  "Outra área": Puzzle,
+};
+
+const COLOR_PALETTE = [
+  "#6366f1", "#8b5cf6", "#ec4899", "#ef4444", "#f97316",
+  "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6",
+];
+
+interface Props {
+  area: Area;
+  canEdit: boolean;
+  servidoresCount: number;
+  designacoesCount: number;
+}
+
+export default function AreaHeader({ area, canEdit, servidoresCount, designacoesCount }: Props) {
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [descricao, setDescricao] = useState(area.descricao ?? "");
+  const [cor, setCor] = useState(area.cor ?? "#6366f1");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Leadership selects
+  const [coordOpen, setCoordOpen] = useState(false);
+
+  const { data: servidoresDaArea = [] } = useQuery({
+    queryKey: ["servidores-area", area.nome],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servidores")
+        .select("id, nome")
+        .eq("area_servico", area.nome)
+        .order("nome");
+      return (data ?? []) as Pick<Servidor, "id" | "nome">[];
+    },
+  });
+
+  const Icon = AREA_ICONS[area.nome] ?? Puzzle;
+
+  async function handleLogoUpload(file: File) {
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `areas/${area.id}/logo.${ext}`;
+    const { error } = await supabase.storage.from("assets").upload(path, file, { upsert: true });
+    if (error) { toast.error("Erro no upload"); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from("assets").getPublicUrl(path);
+    await supabase.from("areas").update({ logo_url: urlData.publicUrl }).eq("id", area.id);
+    queryClient.invalidateQueries({ queryKey: ["area", area.nome] });
+    toast.success("Logo atualizado!");
+    setUploading(false);
+  }
+
+  async function handleSaveEdit() {
+    setSaving(true);
+    const { error } = await supabase.from("areas").update({ descricao, cor }).eq("id", area.id);
+    setSaving(false);
+    if (error) { toast.error("Erro ao salvar"); return; }
+    queryClient.invalidateQueries({ queryKey: ["area", area.nome] });
+    toast.success("Área atualizada!");
+    setEditOpen(false);
+  }
+
+  async function handleSetLeader(field: "coordenador_id" | "coordenador_02_id" | "coordenador_03_id" | "sombra_id", value: string) {
+    const update: Record<string, string | null> = {};
+    update[field] = value === "none" ? null : value;
+    await supabase.from("areas").update(update).eq("id", area.id);
+    queryClient.invalidateQueries({ queryKey: ["area", area.nome] });
+  }
+
+  function getLeaderName(id: string | null) {
+    if (!id) return "Não definido";
+    return servidoresDaArea.find(s => s.id === id)?.nome ?? "—";
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Title row */}
+      <div className="flex items-center gap-4 flex-wrap">
+        {area.logo_url ? (
+          <img src={area.logo_url} alt={area.nome} className="h-12 w-12 rounded-lg object-cover" />
+        ) : (
+          <div className="h-12 w-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: area.cor ?? "#6366f1" }}>
+            <Icon className="h-6 w-6 text-white" />
+          </div>
+        )}
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: area.cor ?? undefined }}>{area.nome}</h1>
+          {area.descricao && <p className="text-sm text-muted-foreground">{area.descricao}</p>}
+        </div>
+        {canEdit && (
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => { setDescricao(area.descricao ?? ""); setCor(area.cor ?? "#6366f1"); setEditOpen(true); }}>
+            <Settings2 className="h-4 w-4 mr-1" /> Editar Área
+          </Button>
+        )}
+      </div>
+
+      {/* Stats + Leadership */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-3 flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-xs text-muted-foreground">Servidores</p>
+              <p className="text-lg font-bold">{servidoresCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-xs text-muted-foreground">Participantes</p>
+              <p className="text-lg font-bold">{designacoesCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Leadership cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {(["coordenador_id", "coordenador_02_id", "coordenador_03_id", "sombra_id"] as const).map((field, idx) => {
+          const labels = ["Coordenador", "Coord. 02", "Coord. 03", "Sombra"];
+          const value = area[field];
+          return (
+            <Card key={field}>
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground mb-1">
+                  {labels[idx]}
+                  {field === "sombra_id" && <Badge variant="outline" className="ml-1 text-[10px]">Em treinamento</Badge>}
+                </p>
+                {canEdit ? (
+                  <Select value={value ?? "none"} onValueChange={v => handleSetLeader(field, v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não definido</SelectItem>
+                      {servidoresDaArea.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm font-medium">{getLeaderName(value)}</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Área</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Logo</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) handleLogoUpload(f);
+                }}
+              />
+            </div>
+            <div>
+              <Label>Descrição</Label>
+              <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={3} />
+            </div>
+            <div>
+              <Label>Cor Tema</Label>
+              <div className="flex gap-2 flex-wrap mt-1">
+                {COLOR_PALETTE.map(c => (
+                  <button
+                    key={c}
+                    className={`h-8 w-8 rounded-full border-2 transition-all ${cor === c ? "border-foreground scale-110" : "border-transparent"}`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => setCor(c)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
