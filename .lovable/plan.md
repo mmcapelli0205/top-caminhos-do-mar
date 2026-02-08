@@ -1,70 +1,91 @@
 
 
-## Modulo Equipamentos - Controle de Emprestimos
+## Modulo Artes & Docs - Galeria de Arquivos
 
-### 1. Migracao de Banco de Dados
+### Tabela
+A tabela `artes_docs` ja esta criada com todas as colunas necessarias: nome, descricao, categoria, subcategoria, arquivo_url, tipo_arquivo, tamanho_bytes, versao, tags, enviado_por, top_id, created_at, updated_at. Nenhuma migracao necessaria.
 
-A tabela `equipamentos` atual tem apenas: id, nome, tipo, quantidade, status, emprestado_por, data_devolucao, top_id, created_at. Precisamos adicionar as colunas faltantes:
+### Estrutura de Arquivos
 
-```sql
-ALTER TABLE public.equipamentos
-  ADD COLUMN IF NOT EXISTS categoria text DEFAULT 'Outros',
-  ADD COLUMN IF NOT EXISTS origem text DEFAULT 'proprio',
-  ADD COLUMN IF NOT EXISTS proprietario text,
-  ADD COLUMN IF NOT EXISTS estado text DEFAULT 'bom',
-  ADD COLUMN IF NOT EXISTS foto_url text,
-  ADD COLUMN IF NOT EXISTS valor_estimado numeric DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS descricao text,
-  ADD COLUMN IF NOT EXISTS observacoes text;
-```
-
-A tabela `equipamento_emprestimos` ja possui todas as colunas necessarias (equipamento_id, responsavel_nome, data_retirada, data_devolucao, estado_saida, estado_devolucao, foto_saida_url, foto_devolucao_url, devolvido, observacoes).
-
-### 2. Estrutura de Arquivos
-
-| Arquivo | Descricao |
+| Arquivo | Acao |
 |---|---|
-| `src/pages/Equipamentos.tsx` | Reescrever completamente - pagina principal com header, cards por categoria, filtros e tabela |
-| `src/components/equipamentos/EquipamentoFormDialog.tsx` | Dialog para criar/editar equipamento |
-| `src/components/equipamentos/EmprestarDialog.tsx` | Dialog para registrar emprestimo |
-| `src/components/equipamentos/DevolverDialog.tsx` | Dialog para registrar devolucao |
-| `src/components/equipamentos/EquipamentoDetalhesDialog.tsx` | Dialog com detalhes + aba historico de emprestimos |
+| `src/pages/ArtesEDocs.tsx` | Reescrever completamente - pagina principal com header, filtros, grid/lista e dialogs |
+| `src/components/artes-docs/ArteDocFormDialog.tsx` | Novo - Dialog de upload/edicao com campos e upload para Storage |
+| `src/components/artes-docs/ArteDocPreviewDialog.tsx` | Novo - Dialog de preview de imagem em tamanho grande |
 
-### 3. Pagina Principal (Equipamentos.tsx)
+### Pagina Principal (ArtesEDocs.tsx)
 
-- **Header**: Icone Wrench + "Equipamentos" + contador + botao "+ Novo Equipamento"
-- **Cards panoramicos**: Grid de cards (2 cols mobile, 4 desktop), um por categoria, mostrando total de itens e valor estimado total
-- **Filtros**: Categoria (dropdown), Origem (Proprio/Emprestado/Alugado), Estado (Bom/Regular/Danificado/Perdido), busca por nome
-- **Tabela**: Foto (thumbnail 40x40), Nome, Categoria, Qtd, Origem, Proprietario, Estado, Emprestimo (badge verde "Disponivel" ou laranja "Em uso por [nome]"), Acoes
-- **Acoes**: Ver detalhes, Editar, Emprestar (se disponivel), Devolver (se emprestado)
-- Queries: buscar equipamentos + emprestimos ativos (devolvido=false) para saber status de emprestimo
+**Header**: Icone Palette + "Artes & Docs" + Badge contador + botao "+ Upload"
 
-### 4. Dialog Novo/Editar Equipamento
+**Filtros**:
+- Categoria: Select com "Todas", "Arte Visual", "Documento Oficial"
+- Subcategoria: Select dinamico (muda opcoes conforme categoria selecionada)
+  - Arte Visual: Banner, Post Instagram, Post WhatsApp, Convite, Cracha, Certificado, Outro
+  - Documento Oficial: Contrato, Termo de Responsabilidade, Regulamento, Autorizacao, Ficha Medica, Outro
+- Busca por nome ou tag (input text)
 
-Campos: nome, descricao, categoria (Select com 7 categorias), origem (Proprio/Emprestado/Alugado), proprietario (visivel se origem != "proprio"), quantidade, estado, foto_url (upload para bucket "assets" path "equipamentos/"), valor_estimado (input monetario R$), observacoes.
+**Toggle de visualizacao**: ToggleGroup com Grid (LayoutGrid) e Lista (List)
 
-### 5. Dialog Emprestar
+**Modo Grid** (default):
+- Cards responsivos: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
+- Cada card mostra:
+  - Thumbnail: se imagem (png/jpg/svg/webp) exibe a imagem; se PDF icone FileText; outros icone File
+  - Nome do arquivo
+  - Badge categoria (Arte Visual = roxo, Documento Oficial = azul)
+  - Badge subcategoria (outline)
+  - "v{versao}" badge se versao > 1
+  - "Por [enviado_por] em [data formatada]"
+  - Tamanho formatado (KB ou MB)
+  - Botoes: Download, Editar, Nova Versao, Excluir
 
-Campos: responsavel_nome (input text), data_retirada (default agora), estado_saida (Select), foto_saida_url (upload opcional), observacoes.
-Ao confirmar: INSERT em equipamento_emprestimos + UPDATE equipamento.estado.
+**Modo Lista**:
+- Tabela com colunas: Nome, Categoria, Subcategoria, Versao, Enviado por, Data, Tamanho, Acoes
 
-### 6. Dialog Devolver
+**Queries**:
+- Buscar todos artes_docs ordenados por created_at desc
+- Filtrar no frontend por categoria, subcategoria, busca (nome ou tags)
 
-Exibe dados da retirada (quem, quando, estado saida). Campos: data_devolucao (default agora), estado_devolucao (Select), foto_devolucao_url (upload opcional), observacoes.
-Ao confirmar: UPDATE emprestimo devolvido=true + data_devolucao + estado_devolucao, UPDATE equipamento.estado.
+### Dialog Upload/Editar (ArteDocFormDialog.tsx)
 
-### 7. Dialog Detalhes + Historico
+Campos:
+- nome (text, required)
+- descricao (textarea)
+- categoria (Select: Arte Visual, Documento Oficial)
+- subcategoria (Select dinamico conforme categoria)
+- arquivo (file upload para bucket "assets" path "artes-docs/{uuid}.{ext}", required para novo)
+- tags (text input, separar por virgula)
 
-- Aba "Detalhes": info completa do equipamento com foto
-- Aba "Historico": lista de todos emprestimos do equipamento ordenados por data, mostrando responsavel, datas, estados, fotos de saida/devolucao, observacoes
+Ao salvar:
+- Detecta tipo_arquivo pela extensao do arquivo
+- Calcula tamanho_bytes do arquivo enviado
+- INSERT ou UPDATE no artes_docs
 
-### 8. Upload de Fotos
+### Nova Versao
 
-Utilizar o bucket "assets" (ja existente e publico) com path `equipamentos/{uuid}`. Componente de upload inline nos dialogs com preview da imagem.
+- Botao "Nova Versao" no card abre o ArteDocFormDialog em modo especial
+- Mantem nome, categoria, subcategoria, tags do registro original
+- Exige upload de novo arquivo
+- Faz INSERT de novo registro com versao = versao_anterior + 1
+- O registro antigo permanece (historico)
 
-### 9. Responsividade
+### Preview (ArteDocPreviewDialog.tsx)
 
-- Cards de categoria: grid-cols-2 em mobile, grid-cols-3 md, grid-cols-4 lg
-- Tabela: overflow-x-auto com coluna Nome sticky
-- Dialogs: classe adicional para fullscreen em mobile
+- Imagens (png/jpg/svg/webp): abre Dialog com imagem em tamanho grande
+- PDF: abre em nova aba (window.open)
+- Outros: download direto
+
+### Excluir
+
+- Confirmacao antes de deletar
+- Remove registro do banco (nao remove arquivo do storage para manter historico)
+
+### Upload de Arquivos
+
+Utilizar bucket "assets" (ja existente e publico) com path `artes-docs/{uuid}.{extensao}`.
+
+### Responsividade
+
+- Grid: 1 col mobile, 2 tablet, 3-4 desktop
+- Cards: full-width mobile
+- Dialog upload: max-w-lg desktop, overflow-y-auto para scroll
 
