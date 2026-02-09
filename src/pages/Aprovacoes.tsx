@@ -96,40 +96,39 @@ const Aprovacoes = () => {
     if (!aprovarDialog) return;
     setAprovando(true);
     try {
-      // 1. Update profile status
-      const { error: profileError } = await supabase.from("user_profiles").update({ status: "aprovado", cargo: cargoSelecionado, aprovado_por: session?.user?.id, data_aprovacao: new Date().toISOString() }).eq("id", aprovarDialog.id);
-      if (profileError) throw profileError;
-
-      // 2. Manage role via edge function (delete old + insert new)
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
-      const edgeFnUrl = "https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/manage-users";
-      const headers = { "Content-Type": "application/json", "Authorization": `Bearer ${token}` };
 
-      const roleRes = await fetch(edgeFnUrl, {
-        method: "POST", headers,
-        body: JSON.stringify({ action: "update", user_id: aprovarDialog.id, role: cargoSelecionado }),
-      });
-      if (!roleRes.ok) {
-        const roleErr = await roleRes.json();
-        console.error("Role update error:", roleErr);
-      }
+      const res = await fetch(
+        "https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/manage-users",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: "approve",
+            user_id: aprovarDialog.id,
+            cargo: cargoSelecionado,
+            aprovado_por: session?.user?.id,
+          }),
+        }
+      );
 
-      // 3. Confirm email via edge function (so user can login immediately)
-      const confirmRes = await fetch(edgeFnUrl, {
-        method: "POST", headers,
-        body: JSON.stringify({ action: "confirm_email", user_id: aprovarDialog.id }),
-      });
-      if (!confirmRes.ok) {
-        const confirmErr = await confirmRes.json();
-        console.error("Email confirm error:", confirmErr);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erro ao aprovar");
       }
 
       toast({ title: `${aprovarDialog.nome} aprovado como ${CARGOS.find(c => c.value === cargoSelecionado)?.label}!` });
       queryClient.invalidateQueries({ queryKey: ["user-profiles"] });
       setAprovarDialog(null);
-    } catch { toast({ title: "Erro ao aprovar", variant: "destructive" }); }
-    finally { setAprovando(false); }
+    } catch (e: any) {
+      toast({ title: e.message || "Erro ao aprovar", variant: "destructive" });
+    } finally {
+      setAprovando(false);
+    }
   };
 
   const handleRecusar = async () => {
