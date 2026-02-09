@@ -1593,6 +1593,73 @@ export type Database = {
         }
         Relationships: []
       }
+      tirolesa_duplas: {
+        Row: {
+          created_at: string | null
+          familia_id: number | null
+          id: string
+          observacao: string | null
+          ordem: number | null
+          participante_1_id: string | null
+          participante_2_id: string | null
+          peso_1: number | null
+          peso_2: number | null
+          peso_total: number | null
+          status: string | null
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          familia_id?: number | null
+          id?: string
+          observacao?: string | null
+          ordem?: number | null
+          participante_1_id?: string | null
+          participante_2_id?: string | null
+          peso_1?: number | null
+          peso_2?: number | null
+          peso_total?: number | null
+          status?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          familia_id?: number | null
+          id?: string
+          observacao?: string | null
+          ordem?: number | null
+          participante_1_id?: string | null
+          participante_2_id?: string | null
+          peso_1?: number | null
+          peso_2?: number | null
+          peso_total?: number | null
+          status?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tirolesa_duplas_familia_id_fkey"
+            columns: ["familia_id"]
+            isOneToOne: false
+            referencedRelation: "familias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tirolesa_duplas_participante_1_id_fkey"
+            columns: ["participante_1_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tirolesa_duplas_participante_2_id_fkey"
+            columns: ["participante_2_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tops: {
         Row: {
           created_at: string | null
