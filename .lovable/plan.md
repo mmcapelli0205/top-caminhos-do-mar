@@ -1,18 +1,34 @@
 
 
-## Alterar limite de peso da dupla de 160kg para 170kg
+## Fix: Arquivos sumidos na aba Artes e Docs
 
-### Alteracao
+### Causa
 
-Atualizar o limite de peso total por dupla de **160kg** para **170kg** em todos os pontos do codigo.
+A tabela `artes_docs` tem **RLS (Row Level Security) ativado**, porem **nenhuma policy** foi criada. Isso bloqueia todas as operacoes (SELECT, INSERT, UPDATE, DELETE) para qualquer usuario, mesmo autenticado. Os 2 arquivos continuam no banco, so nao aparecem na interface.
 
-### Arquivos alterados
+As outras tabelas do sistema possuem uma policy `auth_only` que permite acesso a usuarios autenticados — a `artes_docs` ficou de fora.
 
-| Arquivo | Linha | Alteracao |
-|---|---|---|
-| `src/lib/tiralesaAlgorithm.ts` | Linha 100 | `p.pesoTotal > 160` -> `p.pesoTotal > 170` |
-| `src/lib/tiralesaAlgorithm.ts` | Linha 120 | `total <= 160` -> `total <= 170` |
-| `src/pages/Tirolesa.tsx` | Linha 202 | `d.peso_total > 160` -> `d.peso_total > 170` (icone de aviso na UI) |
+### Correcao
 
-Nenhuma alteracao de logica — apenas o valor numerico muda em 3 pontos.
+Criar uma migration SQL adicionando a policy `auth_only` na tabela `artes_docs`, identica as demais tabelas:
+
+```sql
+CREATE POLICY "auth_only" ON public.artes_docs
+  AS RESTRICTIVE
+  FOR ALL
+  USING (auth.uid() IS NOT NULL)
+  WITH CHECK (auth.uid() IS NOT NULL);
+```
+
+### Resultado
+
+- Os 2 arquivos existentes voltarao a aparecer imediatamente
+- Upload, edicao e exclusao voltarao a funcionar
+- Apenas usuarios autenticados terao acesso (mesmo padrao das outras tabelas)
+
+### Arquivo alterado
+
+| Arquivo | Alteracao |
+|---|---|
+| Nova migration SQL | Adicionar policy `auth_only` na tabela `artes_docs` |
 
