@@ -1,112 +1,132 @@
 
 
-## Fix: Loop na aprovacao - Email nao confirmado
+## Fix: Aprovacao robusta em uma unica chamada
 
-### Problema raiz
+### Problema
 
-Os logs do Supabase Auth mostram erros repetidos `email_not_confirmed` ao tentar login. O fluxo atual:
+A aprovacao atual faz 3 chamadas de rede sequenciais:
+1. `supabase.from("user_profiles").update(...)` (cliente direto)
+2. `fetch(edge fn, action: "update")` (gerenciar roles)
+3. `fetch(edge fn, action: "confirm_email")` (confirmar email)
 
-1. Usuario se cadastra via Cadastro.tsx (auth.signUp)
-2. Supabase Auth envia email de confirmacao (obrigatorio)
-3. Diretor aprova o perfil na pagina de Aprovacoes (atualiza user_profiles e user_roles)
-4. Usuario tenta logar mas NAO CONSEGUE porque o email nao foi confirmado no Supabase Auth
-5. "Loop" - tenta varias vezes, sempre falha
-
-A aprovacao do perfil (user_profiles.status = "aprovado") NAO confirma o email no sistema de autenticacao. Sao duas coisas separadas.
+Isso causa lentidao (cold start da edge function), risco de falha parcial (perfil atualizado mas role/email nao), e o spinner fica "em loop" por varios segundos sem feedback.
 
 ### Solucao
 
-Ao aprovar um usuario, chamar a Admin API do Supabase para confirmar o email automaticamente. Isso sera feito via edge function `manage-users` (que ja existe e tem acesso ao `SUPABASE_SERVICE_ROLE_KEY`).
+Criar uma acao `approve` na edge function que faz tudo de uma vez: atualizar perfil, gerenciar roles e confirmar email. O cliente faz UMA unica chamada.
 
 ### Alteracoes
 
-**1. `supabase/functions/manage-users/index.ts`** - Adicionar acao "confirm_email":
+**1. `supabase/functions/manage-users/index.ts`** - Nova acao "approve":
 
 ```ts
-if (action === "confirm_email") {
-  const { user_id } = body;
-  if (!user_id) return json({ error: "user_id obrigatorio" }, 400);
-  
-  const { error } = await supabase.auth.admin.updateUserById(user_id, {
-    email_confirm: true
+if (action === "approve") {
+  const { user_id, cargo, aprovado_por } = body;
+  if (!user_id || !cargo) return json({ error: "user_id e cargo obrigatorios" }, 400);
+
+  // 1. Update user_profiles
+  const { error: profileError } = await supabase
+    .from("user_profiles")
+    .update({
+      status: "aprovado",
+      cargo,
+      aprovado_por,
+      data_aprovacao: new Date().toISOString(),
+    })
+    .eq("id", user_id);
+  if (profileError) return json({ error: profileError.message }, 500);
+
+  // 2. Delete old roles + insert new
+  await supabase.from("user_roles").delete().eq("user_id", user_id);
+  const { error: roleError } = await supabase
+    .from("user_roles")
+    .insert({ user_id, role: cargo });
+  if (roleError) return json({ error: roleError.message }, 500);
+
+  // 3. Confirm email
+  const { error: confirmError } = await supabase.auth.admin.updateUserById(user_id, {
+    email_confirm: true,
   });
-  
-  if (error) return json({ error: error.message }, 500);
+  if (confirmError) return json({ error: confirmError.message }, 500);
+
   return json({ success: true });
 }
 ```
 
-**2. `src/pages/Aprovacoes.tsx`** - Na funcao `handleAprovar`, apos atualizar perfil e role, chamar a edge function para confirmar o email:
+Tambem alterar a verificacao de permissao: alem de checar role "diretoria", tambem checar `pode_aprovar = true` no `user_profiles`. Isso porque a pagina de Aprovacoes e acessivel a qualquer usuario com `pode_aprovar`, nao apenas diretoria.
 
 ```ts
-// Apos o upsert do role, confirmar email via edge function
-const { data: sessionData } = await supabase.auth.getSession();
-await fetch("https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/manage-users", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${sessionData?.session?.access_token}`,
-  },
-  body: JSON.stringify({ action: "confirm_email", user_id: aprovarDialog.id }),
-});
+// Apos checar roleData para diretoria, tambem verificar pode_aprovar
+if (!roleData) {
+  const { data: approverProfile } = await supabase
+    .from("user_profiles")
+    .select("pode_aprovar")
+    .eq("id", caller.id)
+    .single();
+
+  // Permitir apenas para acoes de aprovacao se tem pode_aprovar
+  if (!approverProfile?.pode_aprovar || !["approve", "confirm_email"].includes(action)) {
+    return json({ error: "Apenas diretoria pode gerenciar usuarios" }, 403);
+  }
+}
 ```
 
-**3. `src/pages/Aprovacoes.tsx`** - Corrigir o gerenciamento de roles na aprovacao:
+**2. `src/pages/Aprovacoes.tsx`** - Simplificar `handleAprovar`:
 
-Problema atual: o upsert com `onConflict: "user_id,role"` nao remove roles anteriores. Se o usuario tiver role "servidor" e for aprovado como "diretoria", fica com duas roles.
-
-Correcao: deletar roles existentes antes de inserir a nova (usando a edge function manage-users que tem permissao de DELETE via service role):
+Substituir as 3 chamadas por uma unica:
 
 ```ts
-// Substituir o upsert por: delete old roles + insert new
-await fetch(".../manage-users", {
-  body: JSON.stringify({ 
-    action: "update", 
-    user_id: aprovarDialog.id, 
-    role: cargoSelecionado 
-  }),
-});
-```
+const handleAprovar = async () => {
+  if (!aprovarDialog) return;
+  setAprovando(true);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
 
-Ou alternativamente, manter o upsert mas antes deletar roles antigas via edge function.
+    const res = await fetch(
+      "https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/manage-users",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "approve",
+          user_id: aprovarDialog.id,
+          cargo: cargoSelecionado,
+          aprovado_por: session?.user?.id,
+        }),
+      }
+    );
 
-**4. `src/pages/Aprovacoes.tsx`** - Mover o setState da linha 78 para um useEffect:
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Erro ao aprovar");
+    }
 
-```ts
-// DE (durante render - anti-pattern):
-if (configData?.valor && !keyword) setKeyword(configData.valor);
-
-// PARA (useEffect):
-useEffect(() => {
-  if (configData?.valor && !keyword) setKeyword(configData.valor);
-}, [configData?.valor]);
-```
-
-### Fluxo corrigido
-
-```text
-Diretor clica "Aprovar"
-       |
-       v
-1. Atualiza user_profiles (status=aprovado, cargo=X)
-       |
-       v
-2. Gerencia roles via edge function (delete old + insert new)
-       |
-       v
-3. Confirma email via edge function (admin.updateUserById)
-       |
-       v
-4. Toast de sucesso + refetch lista
-       |
-       v
-Usuario aprovado consegue logar imediatamente!
+    toast({ title: `${aprovarDialog.nome} aprovado como ${CARGOS.find(c => c.value === cargoSelecionado)?.label}!` });
+    queryClient.invalidateQueries({ queryKey: ["user-profiles"] });
+    setAprovarDialog(null);
+  } catch (e: any) {
+    toast({ title: e.message || "Erro ao aprovar", variant: "destructive" });
+  } finally {
+    setAprovando(false);
+  }
+};
 ```
 
 ### Arquivos alterados
 
 | Arquivo | Alteracao |
 |---|---|
-| `supabase/functions/manage-users/index.ts` | Adicionar acao "confirm_email" |
-| `src/pages/Aprovacoes.tsx` | Chamar confirm_email na aprovacao, corrigir roles, fix useEffect |
+| `supabase/functions/manage-users/index.ts` | Adicionar acao "approve" (tudo em uma chamada) + permitir users com `pode_aprovar` |
+| `src/pages/Aprovacoes.tsx` | Substituir 3 chamadas por 1 unica chamada a acao "approve" |
+
+### Resultado
+
+- Aprovacao em 1 chamada em vez de 3 (mais rapido, sem cold start duplo)
+- Se qualquer etapa falhar, o erro e mostrado ao usuario (nao mais silenciado)
+- Users com `pode_aprovar` (nao apenas diretoria) podem aprovar via edge function
+- Atomicidade: se o role falhar, o usuario vê o erro em vez de ficar com status inconsistente
 
