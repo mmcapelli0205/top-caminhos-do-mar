@@ -72,7 +72,11 @@ export function useAuth(): UseAuthReturn {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
+      async (event, newSession) => {
+        if (event === "TOKEN_REFRESHED") {
+          setSession(newSession);
+          return;
+        }
         setSession(newSession);
         if (newSession?.user) {
           await loadProfile(newSession.user.id);
