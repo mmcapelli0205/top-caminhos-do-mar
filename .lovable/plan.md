@@ -1,41 +1,31 @@
 
 
-## Problema
+## Limpeza de Seguranca - Codigo Legado
 
-A pagina de Configuracoes e a edge function `manage-users` ainda usam o sistema de autenticacao antigo (tabela `usuarios` + localStorage `top_user`). Porem, a autenticacao foi migrada para o Supabase Auth nativo, com dados em `user_profiles` e `user_roles`.
+### Situacao atual
 
-Resultado: a edge function procura o `caller_id` na tabela `usuarios` (que esta vazia ou sem seu usuario), nao encontra, e retorna "Apenas diretoria pode gerenciar usuarios".
+- A tabela `usuarios` so e referenciada na edge function `login/index.ts` e no arquivo de tipos auto-gerado (`types.ts`). Nenhum outro arquivo do projeto a utiliza.
+- Nao existem `console.log` expondo dados sensiveis no codigo.
 
-## Solucao
+### Acoes
 
-Migrar a pagina de Configuracoes e a edge function para usar o sistema de autenticacao atual.
+**1. Deletar a edge function `login/index.ts`**
+- Remover o arquivo `supabase/functions/login/index.ts`
+- Remover a configuracao `[functions.login]` do `supabase/config.toml`
+- Deletar a funcao deployada no Supabase
 
-### 1. Atualizar a edge function `manage-users`
+**2. Tabela `usuarios`**
+- Nao sera deletada (conforme solicitado)
+- Confirmacao: ela NAO e usada em nenhum outro lugar do projeto alem da edge function que sera removida e do arquivo de tipos auto-gerado
 
-- Em vez de receber `caller_id` no body, extrair o usuario autenticado do header `Authorization` (JWT do Supabase Auth)
-- Verificar o papel do usuario na tabela `user_roles` (em vez de `usuarios`)
-- Listar usuarios de `user_profiles` + `user_roles` (em vez de `usuarios`)
-- Criar/atualizar usuarios usando Supabase Auth Admin API + `user_profiles` + `user_roles`
+**3. Console.logs sensiveis**
+- Nao ha nenhum `console.log` no codigo que exponha dados sensiveis — nenhuma acao necessaria
 
-### 2. Atualizar a pagina `Configuracoes.tsx`
+### Resumo das alteracoes
 
-- Substituir `getUser()` (localStorage) por `useAuth()` hook (Supabase Auth)
-- Enviar o token JWT do Supabase nas chamadas a API (header Authorization) em vez de `caller_id` no body
-- Verificar permissao com base no `role` do hook `useAuth` em vez de `currentUser?.papel`
-- Ajustar a interface `Usuario` para refletir os campos de `user_profiles` + `user_roles`
-
-### Detalhes tecnicos
-
-**Edge function `manage-users/index.ts`:**
-- Usar `supabase.auth.getUser(token)` para autenticar o caller
-- Consultar `user_roles` para verificar se o caller tem role `diretoria`
-- Na acao `list`: fazer JOIN de `user_profiles` com `user_roles`
-- Na acao `create`: usar `supabase.auth.admin.createUser()` + inserir em `user_profiles` e `user_roles`
-- Na acao `update`: atualizar `user_profiles` e `user_roles` (e opcionalmente email/senha via Admin API)
-
-**Pagina `Configuracoes.tsx`:**
-- Importar `useAuth` de `@/hooks/useAuth` e `supabase` do client
-- Usar `session?.access_token` no header Authorization das chamadas
-- Usar `role === 'diretoria'` para controle de acesso
-- Adaptar o formulario para os campos de `user_profiles` (email, nome, telefone, cargo, etc.)
+| Arquivo | Acao |
+|---|---|
+| `supabase/functions/login/index.ts` | Deletar |
+| `supabase/config.toml` | Remover secao `[functions.login]` |
+| Edge function deployada `login` | Remover do Supabase |
 
