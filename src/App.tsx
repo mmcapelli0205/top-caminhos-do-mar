@@ -18,6 +18,7 @@ import ArtesEDocs from "./pages/ArtesEDocs";
 import CheckIn from "./pages/CheckIn";
 import Configuracoes from "./pages/Configuracoes";
 import Tops from "./pages/Tops";
+import Tirolesa from "./pages/Tirolesa";
 import ParticipanteForm from "./pages/ParticipanteForm";
 import AreaPortal from "./pages/AreaPortal";
 import Aprovacoes from "./pages/Aprovacoes";
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/check-in" element={<CheckIn />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/tops" element={<Tops />} />
+            <Route path="/tirolesa" element={<Tirolesa />} />
             <Route path="/aprovacoes" element={<Aprovacoes />} />
             <Route path="/areas/:nome" element={<AreaPortal />} />
           </Route>
