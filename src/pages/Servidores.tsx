@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import ServidorSheet from "@/components/ServidorSheet";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -59,6 +60,7 @@ function calcAge(dob: string | null): number | null {
 export default function Servidores() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   const { data: servidores = [], isLoading } = useQuery({
     queryKey: ["servidores"],
@@ -78,16 +80,13 @@ export default function Servidores() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedServidor, setSelectedServidor] = useState<Servidor | null>(null);
 
-  // Recusar dialog
   const [recusarTarget, setRecusarTarget] = useState<Servidor | null>(null);
   const [recusarMotivo, setRecusarMotivo] = useState("");
 
-  // Realocar dialog (single)
   const [realocarTarget, setRealocarTarget] = useState<Servidor | null>(null);
   const [realocarArea, setRealocarArea] = useState("");
   const [realocando, setRealocando] = useState(false);
 
-  // Realocar todos dialog
   const [showRealocarTodos, setShowRealocarTodos] = useState(false);
   const [realocarTodosMap, setRealocarTodosMap] = useState<Record<string, string>>({});
   const [recusando, setRecusando] = useState(false);
@@ -99,7 +98,6 @@ export default function Servidores() {
 
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterArea, filterStatus]);
 
-  // Counts
   const pendentes = useMemo(() => servidores.filter(s => s.status === "pendente"), [servidores]);
   const semArea = useMemo(() => servidores.filter(s => s.status === "sem_area"), [servidores]);
 
@@ -115,23 +113,17 @@ export default function Servidores() {
     return map;
   }, [servidores]);
 
-  // Filter
   const filtered = useMemo(() => {
     let list = servidores;
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
       list = list.filter(s => s.nome.toLowerCase().includes(q) || (s.cpf?.toLowerCase().includes(q) ?? false));
     }
-    if (filterArea !== "todas") {
-      list = list.filter(s => s.area_servico === filterArea);
-    }
-    if (filterStatus !== "todos") {
-      list = list.filter(s => s.status === filterStatus);
-    }
+    if (filterArea !== "todas") list = list.filter(s => s.area_servico === filterArea);
+    if (filterStatus !== "todos") list = list.filter(s => s.status === filterStatus);
     return list;
   }, [servidores, debouncedSearch, filterArea, filterStatus]);
 
-  // Sort
   const sorted = useMemo(() => {
     const copy = [...filtered];
     const dir = sortDir === "asc" ? 1 : -1;
@@ -179,18 +171,15 @@ export default function Servidores() {
     const s = recusarTarget;
     const naFirstOption = s.area_servico === s.area_preferencia_1;
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
-
     if (naFirstOption && s.area_preferencia_2) {
       update.area_servico = s.area_preferencia_2;
       update.status = "pendente";
     } else {
       update.status = "sem_area";
     }
-
     const { error } = await supabase.from("servidores").update(update).eq("id", s.id);
     setRecusando(false);
     if (error) { toast.error("Erro: " + error.message); return; }
-
     if (naFirstOption && s.area_preferencia_2) {
       toast.info(`${s.nome} movido para 2ª opção: ${s.area_preferencia_2}`);
     } else {
@@ -218,17 +207,17 @@ export default function Servidores() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Shield className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Servidores</h1>
           <span className="text-sm text-muted-foreground">({servidores.length} total)</span>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
             <Download className="h-4 w-4 mr-1" /> CSV
           </Button>
-          <Button size="sm" onClick={() => navigate("/servidores/novo")}>
+          <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
             <Plus className="h-4 w-4 mr-1" /> Novo Servidor
           </Button>
         </div>
@@ -245,12 +234,12 @@ export default function Servidores() {
       )}
       {semArea.length > 0 && (
         <Card className="border-red-600/50 bg-red-600/10">
-          <CardContent className="p-3 flex items-center justify-between gap-2">
+          <CardContent className="p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
               <AlertTriangle className="h-5 w-5 text-red-400" />
               <span className="text-sm font-medium text-red-400">⚠️ {semArea.length} servidor(es) sem área!</span>
             </div>
-            <Button size="sm" variant="outline" className="border-red-600/50 text-red-400 hover:bg-red-600/20" onClick={() => {
+            <Button size="sm" variant="outline" className="w-full sm:w-auto border-red-600/50 text-red-400 hover:bg-red-600/20" onClick={() => {
               const map: Record<string, string> = {};
               semArea.forEach(s => { map[s.id] = ""; });
               setRealocarTodosMap(map);
@@ -291,16 +280,16 @@ export default function Servidores() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
         <Select value={filterArea} onValueChange={setFilterArea}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas Áreas</SelectItem>
             {AREAS_SERVICO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Status</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
@@ -309,85 +298,128 @@ export default function Servidores() {
             <SelectItem value="sem_area">Sem Área</SelectItem>
           </SelectContent>
         </Select>
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar por nome ou CPF..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-md border border-border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="cursor-pointer" onClick={() => toggleSort("nome")}>Nome<SortIcon col="nome" /></TableHead>
-              <TableHead className="cursor-pointer hidden md:table-cell" onClick={() => toggleSort("idade")}>Idade<SortIcon col="idade" /></TableHead>
-              <TableHead className="hidden md:table-cell">Telefone</TableHead>
-              <TableHead className="hidden lg:table-cell">1ª Opção</TableHead>
-              <TableHead className="hidden lg:table-cell">2ª Opção</TableHead>
-              <TableHead>Área Atual</TableHead>
-              <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}>Status<SortIcon col="status" /></TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 8 }).map((_, j) => (
-                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : paginated.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
-              </TableRow>
-            ) : paginated.map(s => {
-              const age = calcAge(s.data_nascimento);
-              const st = s.status ?? "ativo";
-              return (
-                <TableRow key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
-                  <TableCell className="font-medium">{s.nome}</TableCell>
-                  <TableCell className="hidden md:table-cell">{age ?? "—"}</TableCell>
-                  <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{s.area_preferencia_1 ?? "—"}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{s.area_preferencia_2 ?? "—"}</TableCell>
-                  <TableCell>{s.area_servico ?? "—"}</TableCell>
-                  <TableCell>
+      {/* Table / Mobile Cards */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+          ) : paginated.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</p>
+          ) : paginated.map(s => {
+            const st = s.status ?? "ativo";
+            return (
+              <Card key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium truncate">{s.nome}</span>
                     <Badge className={statusColors[st] ?? ""}>{statusLabels[st] ?? st}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/servidores/${s.id}/editar`)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {st === "pendente" && (
-                        <>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-400 hover:text-green-300" onClick={() => handleAceitar(s)}>
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => { setRecusarTarget(s); setRecusarMotivo(""); }}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                      {st === "sem_area" && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-400 hover:text-orange-300" onClick={() => { setRealocarTarget(s); setRealocarArea(""); }}>
-                          <RefreshCw className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    <span>Área: {s.area_servico ?? "—"}</span>
+                    <span>Idade: {calcAge(s.data_nascimento) ?? "—"}</span>
+                  </div>
+                  <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedServidor(s)}>
+                      <Eye className="h-4 w-4 mr-1" /> Ver
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/servidores/${s.id}/editar`)}>
+                      <Pencil className="h-4 w-4 mr-1" /> Editar
+                    </Button>
+                    {st === "pendente" && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-400" onClick={() => handleAceitar(s)}>
+                          <Check className="h-4 w-4" />
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => { setRecusarTarget(s); setRecusarMotivo(""); }}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-md border border-border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="cursor-pointer" onClick={() => toggleSort("nome")}>Nome<SortIcon col="nome" /></TableHead>
+                <TableHead className="cursor-pointer hidden md:table-cell" onClick={() => toggleSort("idade")}>Idade<SortIcon col="idade" /></TableHead>
+                <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                <TableHead className="hidden lg:table-cell">1ª Opção</TableHead>
+                <TableHead className="hidden lg:table-cell">2ª Opção</TableHead>
+                <TableHead>Área Atual</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}>Status<SortIcon col="status" /></TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : paginated.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+              ) : paginated.map(s => {
+                const st = s.status ?? "ativo";
+                return (
+                  <TableRow key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
+                    <TableCell className="font-medium">{s.nome}</TableCell>
+                    <TableCell className="hidden md:table-cell">{calcAge(s.data_nascimento) ?? "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{s.area_preferencia_1 ?? "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{s.area_preferencia_2 ?? "—"}</TableCell>
+                    <TableCell>{s.area_servico ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[st] ?? ""}>{statusLabels[st] ?? st}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/servidores/${s.id}/editar`)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {st === "pendente" && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-400 hover:text-green-300" onClick={() => handleAceitar(s)}>
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => { setRecusarTarget(s); setRecusarMotivo(""); }}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {st === "sem_area" && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-400 hover:text-orange-300" onClick={() => { setRealocarTarget(s); setRealocarArea(""); }}>
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Pagination */}
       {!isLoading && sorted.length > 0 && (
@@ -403,9 +435,7 @@ export default function Servidores() {
       {/* Recusar Dialog */}
       <Dialog open={!!recusarTarget} onOpenChange={open => { if (!open) setRecusarTarget(null); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Recusar Servidor</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Recusar Servidor</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
             Recusar <strong>{recusarTarget?.nome}</strong> da área <strong>{recusarTarget?.area_servico}</strong>?
             {recusarTarget?.area_servico === recusarTarget?.area_preferencia_1 && recusarTarget?.area_preferencia_2
@@ -415,22 +445,15 @@ export default function Servidores() {
           <Textarea placeholder="Motivo da recusa (obrigatório)" value={recusarMotivo} onChange={e => setRecusarMotivo(e.target.value)} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRecusarTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" disabled={!recusarMotivo.trim() || recusando} onClick={handleRecusarConfirm}>
-              Confirmar Recusa
-            </Button>
+            <Button variant="destructive" disabled={!recusarMotivo.trim() || recusando} onClick={handleRecusarConfirm}>Confirmar Recusa</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Realocar Single Dialog */}
       <Dialog open={!!realocarTarget} onOpenChange={open => { if (!open) setRealocarTarget(null); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Realocar Servidor</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Este servidor foi recusado nas duas opções. Selecione uma nova área para <strong>{realocarTarget?.nome}</strong>:
-          </p>
+          <DialogHeader><DialogTitle>Realocar Servidor</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Selecione uma nova área para <strong>{realocarTarget?.nome}</strong>:</p>
           <Select value={realocarArea} onValueChange={setRealocarArea}>
             <SelectTrigger><SelectValue placeholder="Selecione a área" /></SelectTrigger>
             <SelectContent>
@@ -443,28 +466,21 @@ export default function Servidores() {
               if (!realocarTarget || !realocarArea) return;
               setRealocando(true);
               const { error } = await supabase.from("servidores").update({
-                area_servico: realocarArea,
-                status: "aprovado",
-                updated_at: new Date().toISOString(),
+                area_servico: realocarArea, status: "aprovado", updated_at: new Date().toISOString(),
               }).eq("id", realocarTarget.id);
               setRealocando(false);
               if (error) { toast.error("Erro: " + error.message); return; }
               toast.success(`Servidor ${realocarTarget.nome} realocado para ${realocarArea}!`);
               setRealocarTarget(null);
               queryClient.invalidateQueries({ queryKey: ["servidores"] });
-            }}>
-              Confirmar Realocação
-            </Button>
+            }}>Confirmar Realocação</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Realocar Todos Dialog */}
       <Dialog open={showRealocarTodos} onOpenChange={open => { if (!open) setShowRealocarTodos(false); }}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Realocar Todos Sem Área</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Realocar Todos Sem Área</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {semArea.map(s => (
               <div key={s.id} className="flex items-center gap-3">
@@ -486,23 +502,18 @@ export default function Servidores() {
               setRealocando(true);
               for (const [id, area] of entries) {
                 await supabase.from("servidores").update({
-                  area_servico: area,
-                  status: "aprovado",
-                  updated_at: new Date().toISOString(),
+                  area_servico: area, status: "aprovado", updated_at: new Date().toISOString(),
                 }).eq("id", id);
               }
               setRealocando(false);
               toast.success(`${entries.length} servidor(es) realocado(s)!`);
               setShowRealocarTodos(false);
               queryClient.invalidateQueries({ queryKey: ["servidores"] });
-            }}>
-              Salvar Todos
-            </Button>
+            }}>Salvar Todos</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Detail Sheet */}
       <ServidorSheet servidor={selectedServidor} open={!!selectedServidor} onOpenChange={open => { if (!open) setSelectedServidor(null); }} />
     </div>
   );
