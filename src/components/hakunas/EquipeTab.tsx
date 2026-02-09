@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { ChevronDown, ChevronRight, Wand2, UserMinus, UserPlus, Eye } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import ServidorSheet from "@/components/ServidorSheet";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -42,6 +43,7 @@ function matchEspecialidade(doenca: string): string | null {
 
 export default function EquipeTab() {
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedServidor, setSelectedServidor] = useState<Servidor | null>(null);
   const [searchPart, setSearchPart] = useState("");
@@ -112,70 +114,43 @@ export default function EquipeTab() {
     return counts;
   }, [servidores, hakunaMap]);
 
-  // Match automático
   const matchMutation = useMutation({
     mutationFn: async () => {
       const partsComDoenca = participantes.filter((p) => p.doenca && p.doenca.trim().length > 0);
       if (partsComDoenca.length === 0) throw new Error("Nenhum participante com doença preenchida");
-
-      // Group hakunas by especialidade
       const hakunasByEsp = new Map<string, string[]>();
       servidores.forEach((s) => {
         const h = hakunaMap.get(s.id);
         const esp = h?.especialidade_medica || "Geral";
         const arr = hakunasByEsp.get(esp) ?? [];
-        arr.push(s.id); // hakuna_id is servidor_id in hakuna_participante
+        arr.push(s.id);
         hakunasByEsp.set(esp, arr);
       });
-
       const counters = new Map<string, number>();
       const inserts: any[] = [];
-
-      // Already linked participant IDs
       const linkedIds = new Set(vinculos.map((v) => v.participante_id));
-
       for (const p of partsComDoenca) {
         if (linkedIds.has(p.id)) continue;
         const targetEsp = matchEspecialidade(p.doenca!) ?? "Geral";
         let pool = hakunasByEsp.get(targetEsp);
-        if (!pool || pool.length === 0) {
-          // fallback to any
-          pool = servidores.map((s) => s.id);
-        }
+        if (!pool || pool.length === 0) pool = servidores.map((s) => s.id);
         if (pool.length === 0) continue;
-
         const idx = (counters.get(targetEsp) ?? 0) % pool.length;
         counters.set(targetEsp, idx + 1);
-
-        inserts.push({
-          hakuna_id: pool[idx],
-          participante_id: p.id,
-          motivo: `Auto: ${p.doenca?.substring(0, 60)} → ${targetEsp}`,
-          prioridade: 1,
-        });
+        inserts.push({ hakuna_id: pool[idx], participante_id: p.id, motivo: `Auto: ${p.doenca?.substring(0, 60)} → ${targetEsp}`, prioridade: 1 });
       }
-
       if (inserts.length === 0) throw new Error("Nenhum novo vínculo a criar");
       const { error } = await supabase.from("hakuna_participante").insert(inserts);
       if (error) throw error;
       return inserts.length;
     },
-    onSuccess: (count) => {
-      qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
-      toast({ title: `${count} vínculo(s) criado(s)` });
-    },
+    onSuccess: (count) => { qc.invalidateQueries({ queryKey: ["hk-vinculos"] }); toast({ title: `${count} vínculo(s) criado(s)` }); },
     onError: (e: any) => toast({ title: "Match", description: e.message, variant: "destructive" }),
   });
 
   const unlinkMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("hakuna_participante").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
-      toast({ title: "Desvinculado" });
-    },
+    mutationFn: async (id: string) => { const { error } = await supabase.from("hakuna_participante").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hk-vinculos"] }); toast({ title: "Desvinculado" }); },
   });
 
   const linkMutation = useMutation({
@@ -183,12 +158,7 @@ export default function EquipeTab() {
       const { error } = await supabase.from("hakuna_participante").insert({ hakuna_id: hakunaId, participante_id: partId, motivo: "Manual" });
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
-      setLinkingFor(null);
-      setSearchPart("");
-      toast({ title: "Vinculado" });
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hk-vinculos"] }); setLinkingFor(null); setSearchPart(""); toast({ title: "Vinculado" }); },
   });
 
   const filteredParts = searchPart.length >= 2
@@ -205,63 +175,96 @@ export default function EquipeTab() {
         ))}
       </div>
 
-      {/* Match Button */}
-      <Button variant="outline" onClick={() => matchMutation.mutate()} disabled={matchMutation.isPending}>
+      <Button variant="outline" className={isMobile ? "w-full" : ""} onClick={() => matchMutation.mutate()} disabled={matchMutation.isPending}>
         <Wand2 className="h-4 w-4 mr-1" /> Gerar Match Automático
       </Button>
 
-      {/* Table */}
-      <div className="rounded-md border border-border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8" />
-              <TableHead>Nome</TableHead>
-              <TableHead>Especialidade</TableHead>
-              <TableHead className="hidden md:table-cell">CRM/Registro</TableHead>
-              <TableHead className="hidden md:table-cell">Telefone</TableHead>
-              <TableHead className="text-center">Vinculados</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loadS ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
-              ))
-            ) : servidores.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum Hakuna aprovado.</TableCell></TableRow>
-            ) : servidores.map((s) => {
-              const h = hakunaMap.get(s.id);
-              const vList = vinculosByHakuna.get(s.id) ?? [];
-              const isExp = expandedId === s.id;
-              return (
-                <TableRow key={s.id} className="group">
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpandedId(isExp ? null : s.id)}>
-                      {isExp ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </Button>
-                  </TableCell>
-                  <TableCell className="font-medium">{s.nome}</TableCell>
-                  <TableCell>{h?.especialidade_medica ?? "—"}</TableCell>
-                  <TableCell className="hidden md:table-cell">{h?.crm || h?.registro_profissional || "—"}</TableCell>
-                  <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
-                  <TableCell className="text-center"><Badge variant="secondary">{vList.length}</Badge></TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Table / Cards */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {loadS ? (
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+          ) : servidores.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum Hakuna aprovado.</p>
+          ) : servidores.map((s) => {
+            const h = hakunaMap.get(s.id);
+            const vList = vinculosByHakuna.get(s.id) ?? [];
+            const isExp = expandedId === s.id;
+            return (
+              <Card key={s.id}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{s.nome}</p>
+                      <p className="text-sm text-muted-foreground">{h?.especialidade_medica ?? "—"}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant="secondary">{vList.length}</Badge>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(isExp ? null : s.id)}>
+                        {isExp ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  {s.telefone && <p className="text-xs text-muted-foreground">{s.telefone}</p>}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-md border border-border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8" />
+                <TableHead>Nome</TableHead>
+                <TableHead>Especialidade</TableHead>
+                <TableHead className="hidden md:table-cell">CRM/Registro</TableHead>
+                <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                <TableHead className="text-center">Vinculados</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loadS ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                ))
+              ) : servidores.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum Hakuna aprovado.</TableCell></TableRow>
+              ) : servidores.map((s) => {
+                const h = hakunaMap.get(s.id);
+                const vList = vinculosByHakuna.get(s.id) ?? [];
+                const isExp = expandedId === s.id;
+                return (
+                  <TableRow key={s.id} className="group">
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpandedId(isExp ? null : s.id)}>
+                        {isExp ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="font-medium">{s.nome}</TableCell>
+                    <TableCell>{h?.especialidade_medica ?? "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{h?.crm || h?.registro_profissional || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{vList.length}</Badge></TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Expanded section */}
       {expandedId && (() => {
         const vList = vinculosByHakuna.get(expandedId) ?? [];
         return (
-          <div className="border border-border rounded-md p-4 space-y-3">
+          <div className="border border-border rounded-md p-3 md:p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm text-foreground">Participantes vinculados</h3>
               <Button variant="outline" size="sm" onClick={() => setLinkingFor(linkingFor === expandedId ? null : expandedId)}>
@@ -280,6 +283,34 @@ export default function EquipeTab() {
             )}
             {vList.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum participante vinculado</p>
+            ) : isMobile ? (
+              <div className="space-y-2">
+                {vList.map((v) => {
+                  const p = partMap.get(v.participante_id ?? "");
+                  if (!p) return null;
+                  return (
+                    <Card key={v.id}>
+                      <CardContent className="p-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{p.nome}</p>
+                            <p className="text-xs text-muted-foreground">Idade: {calcAge(p.data_nascimento) ?? "—"}</p>
+                            {p.doenca && <p className="text-xs text-muted-foreground truncate">{p.doenca}</p>}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Badge variant={v.prioridade === 3 ? "destructive" : v.prioridade === 2 ? "default" : "secondary"}>
+                              {v.prioridade === 3 ? "Alta" : v.prioridade === 2 ? "Média" : "Baixa"}
+                            </Badge>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => unlinkMutation.mutate(v.id)}>
+                              <UserMinus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             ) : (
               <Table>
                 <TableHeader>

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { Upload, FileText, Search as SearchIcon, Info } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Participante = Tables<"participantes">;
@@ -24,15 +25,12 @@ function calcAge(dob: string | null): number | null {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pendente: "secondary",
-  enviado: "default",
-  aprovado: "default",
-  reprovado: "destructive",
-  dispensado: "outline",
+  pendente: "secondary", enviado: "default", aprovado: "default", reprovado: "destructive", dispensado: "outline",
 };
 
 export default function ErgometricosTab() {
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [filter, setFilter] = useState("todos");
   const [analyzeId, setAnalyzeId] = useState<string | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState("aprovado");
@@ -85,7 +83,6 @@ export default function ErgometricosTab() {
     return c;
   }, [parts40, ergMap]);
 
-  // Upload
   const handleUpload = async (partId: string, file: File) => {
     setUploadingFor(partId);
     try {
@@ -93,7 +90,6 @@ export default function ErgometricosTab() {
       const { error: upErr } = await supabase.storage.from("assets").upload(path, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from("assets").getPublicUrl(path);
-
       const existing = ergMap.get(partId);
       if (existing) {
         await supabase.from("ergometricos").update({ arquivo_url: urlData.publicUrl, status: "enviado", data_envio: new Date().toISOString() }).eq("id", existing.id);
@@ -111,7 +107,6 @@ export default function ErgometricosTab() {
     }
   };
 
-  // Analyze
   const analyzeMutation = useMutation({
     mutationFn: async () => {
       if (!analyzeId) return;
@@ -126,8 +121,7 @@ export default function ErgometricosTab() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["erg-registros"] });
       qc.invalidateQueries({ queryKey: ["erg-participantes"] });
-      setAnalyzeId(null);
-      setAnalyzeObs("");
+      setAnalyzeId(null); setAnalyzeObs("");
       toast({ title: "Análise salva" });
     },
   });
@@ -139,23 +133,14 @@ export default function ErgometricosTab() {
         <AlertDescription>Participantes com 40+ anos precisam de teste ergométrico aprovado</AlertDescription>
       </Alert>
 
-      {/* Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          ["Total 40+", counts.total],
-          ["Pendentes", counts.pendente],
-          ["Enviados", counts.enviado],
-          ["Aprovados", counts.aprovado],
-          ["Reprovados", counts.reprovado],
-          ["Dispensados", counts.dispensado],
-        ].map(([label, val]) => (
-          <Card key={label as string}><CardContent className="p-3"><p className="text-xs text-muted-foreground">{label as string}</p><span className="text-lg font-bold text-foreground">{val as number}</span></CardContent></Card>
+        {([["Total 40+", counts.total], ["Pendentes", counts.pendente], ["Enviados", counts.enviado], ["Aprovados", counts.aprovado], ["Reprovados", counts.reprovado], ["Dispensados", counts.dispensado]] as [string, number][]).map(([label, val]) => (
+          <Card key={label}><CardContent className="p-3"><p className="text-xs text-muted-foreground">{label}</p><span className="text-lg font-bold text-foreground">{val}</span></CardContent></Card>
         ))}
       </div>
 
-      {/* Filter */}
       <Select value={filter} onValueChange={setFilter}>
-        <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+        <SelectTrigger className={isMobile ? "w-full" : "w-48"}><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="todos">Todos</SelectItem>
           <SelectItem value="pendente">Pendente</SelectItem>
@@ -166,71 +151,95 @@ export default function ErgometricosTab() {
         </SelectContent>
       </Select>
 
-      {/* Table */}
-      <div className="rounded-md border border-border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="sticky left-0 bg-card z-10">Nome</TableHead>
-              <TableHead>Idade</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Arquivo</TableHead>
-              <TableHead className="hidden lg:table-cell">Observações</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loadP ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
-              ))
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum participante encontrado</TableCell></TableRow>
-            ) : filtered.map((p) => {
-              const erg = ergMap.get(p.id);
-              const status = erg?.status ?? p.ergometrico_status ?? "pendente";
-              return (
-                <TableRow key={p.id}>
-                  <TableCell className="sticky left-0 bg-card z-10 font-medium">{p.nome}</TableCell>
-                  <TableCell>{calcAge(p.data_nascimento)}</TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_COLORS[status] as any ?? "secondary"}>{status}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {erg?.arquivo_url ? (
-                      <a href={erg.arquivo_url} target="_blank" rel="noreferrer" className="text-primary underline flex items-center gap-1">
-                        <FileText className="h-3 w-3" /> Ver PDF
-                      </a>
-                    ) : "—"}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell max-w-[200px] truncate">{erg?.observacoes_medicas ?? "—"}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="outline" size="sm" className="relative" disabled={uploadingFor === p.id}>
-                        <Upload className="h-4 w-4 mr-1" /> Upload
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.png,.jpeg"
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleUpload(p.id, f);
-                          }}
-                        />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => { setAnalyzeId(p.id); setAnalyzeStatus("aprovado"); setAnalyzeObs(erg?.observacoes_medicas ?? ""); }}>
-                        <SearchIcon className="h-4 w-4 mr-1" /> Analisar
-                      </Button>
+      {isMobile ? (
+        <div className="space-y-3">
+          {loadP ? (
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum participante encontrado</p>
+          ) : filtered.map((p) => {
+            const erg = ergMap.get(p.id);
+            const status = erg?.status ?? p.ergometrico_status ?? "pendente";
+            return (
+              <Card key={p.id}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{p.nome}</p>
+                      <p className="text-sm text-muted-foreground">Idade: {calcAge(p.data_nascimento)}</p>
                     </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+                    <Badge variant={STATUS_COLORS[status] as any ?? "secondary"}>{status}</Badge>
+                  </div>
+                  {erg?.arquivo_url && (
+                    <a href={erg.arquivo_url} target="_blank" rel="noreferrer" className="text-primary underline text-sm flex items-center gap-1">
+                      <FileText className="h-3 w-3" /> Ver PDF
+                    </a>
+                  )}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1 relative" disabled={uploadingFor === p.id}>
+                      <Upload className="h-4 w-4 mr-1" /> Upload
+                      <input type="file" accept=".pdf,.jpg,.png,.jpeg" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(p.id, f); }} />
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setAnalyzeId(p.id); setAnalyzeStatus("aprovado"); setAnalyzeObs(erg?.observacoes_medicas ?? ""); }}>
+                      <SearchIcon className="h-4 w-4 mr-1" /> Analisar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-md border border-border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 bg-card z-10">Nome</TableHead>
+                <TableHead>Idade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden md:table-cell">Arquivo</TableHead>
+                <TableHead className="hidden lg:table-cell">Observações</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loadP ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                ))
+              ) : filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum participante encontrado</TableCell></TableRow>
+              ) : filtered.map((p) => {
+                const erg = ergMap.get(p.id);
+                const status = erg?.status ?? p.ergometrico_status ?? "pendente";
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{p.nome}</TableCell>
+                    <TableCell>{calcAge(p.data_nascimento)}</TableCell>
+                    <TableCell><Badge variant={STATUS_COLORS[status] as any ?? "secondary"}>{status}</Badge></TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {erg?.arquivo_url ? (<a href={erg.arquivo_url} target="_blank" rel="noreferrer" className="text-primary underline flex items-center gap-1"><FileText className="h-3 w-3" /> Ver PDF</a>) : "—"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell max-w-[200px] truncate">{erg?.observacoes_medicas ?? "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="outline" size="sm" className="relative" disabled={uploadingFor === p.id}>
+                          <Upload className="h-4 w-4 mr-1" /> Upload
+                          <input type="file" accept=".pdf,.jpg,.png,.jpeg" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(p.id, f); }} />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setAnalyzeId(p.id); setAnalyzeStatus("aprovado"); setAnalyzeObs(erg?.observacoes_medicas ?? ""); }}>
+                          <SearchIcon className="h-4 w-4 mr-1" /> Analisar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
-      {/* Analyze Dialog */}
       <Dialog open={!!analyzeId} onOpenChange={(o) => { if (!o) setAnalyzeId(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Analisar Ergométrico</DialogTitle></DialogHeader>
