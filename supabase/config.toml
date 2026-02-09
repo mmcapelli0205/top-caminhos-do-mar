@@ -1,8 +1,5 @@
 project_id = "ilknzgupnswyeynwpovj"
 
-[functions.login]
-verify_jwt = false
-
 [functions.manage-users]
 verify_jwt = false
 
