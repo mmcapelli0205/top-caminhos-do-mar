@@ -1,132 +1,113 @@
 
 
-## Fix: Aprovacao robusta em uma unica chamada
+## Duplas de Tirolesa
 
-### Problema
+### Resumo
 
-A aprovacao atual faz 3 chamadas de rede sequenciais:
-1. `supabase.from("user_profiles").update(...)` (cliente direto)
-2. `fetch(edge fn, action: "update")` (gerenciar roles)
-3. `fetch(edge fn, action: "confirm_email")` (confirmar email)
+Nova pagina `/tirolesa` com algoritmo de formacao de duplas por familia, respeitando limites de peso (160kg dupla, 120kg individual), com controle de status e impressao PDF.
 
-Isso causa lentidao (cold start da edge function), risco de falha parcial (perfil atualizado mas role/email nao), e o spinner fica "em loop" por varios segundos sem feedback.
+### 1. Banco de dados
 
-### Solucao
+Criar tabela `tirolesa_duplas` via migration:
 
-Criar uma acao `approve` na edge function que faz tudo de uma vez: atualizar perfil, gerenciar roles e confirmar email. O cliente faz UMA unica chamada.
+```sql
+CREATE TABLE tirolesa_duplas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  familia_id INTEGER REFERENCES familias(id),
+  participante_1_id UUID REFERENCES participantes(id),
+  participante_2_id UUID REFERENCES participantes(id),
+  peso_1 NUMERIC,
+  peso_2 NUMERIC,
+  peso_total NUMERIC,
+  ordem INTEGER,
+  status TEXT DEFAULT 'aguardando',
+  observacao TEXT,
+  top_id UUID,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-### Alteracoes
+ALTER TABLE tirolesa_duplas ENABLE ROW LEVEL SECURITY;
 
-**1. `supabase/functions/manage-users/index.ts`** - Nova acao "approve":
-
-```ts
-if (action === "approve") {
-  const { user_id, cargo, aprovado_por } = body;
-  if (!user_id || !cargo) return json({ error: "user_id e cargo obrigatorios" }, 400);
-
-  // 1. Update user_profiles
-  const { error: profileError } = await supabase
-    .from("user_profiles")
-    .update({
-      status: "aprovado",
-      cargo,
-      aprovado_por,
-      data_aprovacao: new Date().toISOString(),
-    })
-    .eq("id", user_id);
-  if (profileError) return json({ error: profileError.message }, 500);
-
-  // 2. Delete old roles + insert new
-  await supabase.from("user_roles").delete().eq("user_id", user_id);
-  const { error: roleError } = await supabase
-    .from("user_roles")
-    .insert({ user_id, role: cargo });
-  if (roleError) return json({ error: roleError.message }, 500);
-
-  // 3. Confirm email
-  const { error: confirmError } = await supabase.auth.admin.updateUserById(user_id, {
-    email_confirm: true,
-  });
-  if (confirmError) return json({ error: confirmError.message }, 500);
-
-  return json({ success: true });
-}
+CREATE POLICY "auth_only" ON tirolesa_duplas
+  AS RESTRICTIVE FOR ALL
+  USING (auth.uid() IS NOT NULL)
+  WITH CHECK (auth.uid() IS NOT NULL);
 ```
 
-Tambem alterar a verificacao de permissao: alem de checar role "diretoria", tambem checar `pode_aprovar = true` no `user_profiles`. Isso porque a pagina de Aprovacoes e acessivel a qualquer usuario com `pode_aprovar`, nao apenas diretoria.
+### 2. Algoritmo (`src/lib/tiralesaAlgorithm.ts`)
 
-```ts
-// Apos checar roleData para diretoria, tambem verificar pode_aprovar
-if (!roleData) {
-  const { data: approverProfile } = await supabase
-    .from("user_profiles")
-    .select("pode_aprovar")
-    .eq("id", caller.id)
-    .single();
+Nova funcao `generateZiplinePairs(families, participantMap)`:
 
-  // Permitir apenas para acoes de aprovacao se tem pode_aprovar
-  if (!approverProfile?.pode_aprovar || !["approve", "confirm_email"].includes(action)) {
-    return json({ error: "Apenas diretoria pode gerenciar usuarios" }, 403);
-  }
-}
-```
+- Para cada familia:
+  1. Filtrar membros com peso registrado e <= 120kg (aptos)
+  2. Marcar membros com peso > 120kg como inaptos
+  3. Ordenar aptos por peso decrescente
+  4. Formar duplas: indice 0 com ultimo, 1 com penultimo, etc
+  5. Se sobrar 1 (impar): marca como solo
+  6. Validar que nenhuma dupla > 160kg; se ultrapassar, tentar reorganizar trocando parceiros
 
-**2. `src/pages/Aprovacoes.tsx`** - Simplificar `handleAprovar`:
+Retorna: `{ pairs: ZiplinePair[], ineligible: IneligibleEntry[] }`
 
-Substituir as 3 chamadas por uma unica:
+### 3. Pagina (`src/pages/Tirolesa.tsx`)
 
-```ts
-const handleAprovar = async () => {
-  if (!aprovarDialog) return;
-  setAprovando(true);
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
+**Painel superior** com 4 cards de resumo:
+- Total duplas | Total aptos | Total inaptos (>120kg) | Peso medio duplas
 
-    const res = await fetch(
-      "https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/manage-users",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          action: "approve",
-          user_id: aprovarDialog.id,
-          cargo: cargoSelecionado,
-          aprovado_por: session?.user?.id,
-        }),
-      }
-    );
+**Botao "Gerar Duplas"**:
+- Se ja existem duplas salvas, mostra AlertDialog "Deseja refazer?"
+- Deleta duplas existentes e insere novas
+- Usa o algoritmo do item 2
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Erro ao aprovar");
-    }
+**Lista por familia** usando Accordion (Collapsible):
+- Cada familia expande para mostrar:
+  - Duplas: "Dupla 1: Joao (75kg) + Maria (80kg) = 155kg" com badge de status
+  - Solo: com icone laranja
+  - Inaptos: com icone vermelho e texto "Acima do limite individual"
 
-    toast({ title: `${aprovarDialog.nome} aprovado como ${CARGOS.find(c => c.value === cargoSelecionado)?.label}!` });
-    queryClient.invalidateQueries({ queryKey: ["user-profiles"] });
-    setAprovarDialog(null);
-  } catch (e: any) {
-    toast({ title: e.message || "Erro ao aprovar", variant: "destructive" });
-  } finally {
-    setAprovando(false);
-  }
-};
-```
+**Acoes por dupla**:
+- Select para mudar status (aguardando/pronto/desceu) - update direto no Supabase
+- Botao "Trocar" abre dialog para selecionar outro membro da mesma familia
 
-### Arquivos alterados
+**Botao "Imprimir Lista"**:
+- Gera PDF com jsPDF (ja instalado) listando duplas por familia, ordenadas
 
-| Arquivo | Alteracao |
+### 4. Menu lateral (`src/lib/auth.ts`)
+
+- Adicionar item id 13: `{ id: 13, title: "Tirolesa", url: "/tirolesa", icon: CableCar }`
+- Visivel para: diretoria, coordenacao, coord02, coord03 (ids [1,2,3,4,6,8,13])
+
+### 5. Rota (`src/App.tsx`)
+
+- Import `Tirolesa` e adicionar `<Route path="/tirolesa" element={<Tirolesa />} />`
+
+### Arquivos
+
+| Arquivo | Acao |
 |---|---|
-| `supabase/functions/manage-users/index.ts` | Adicionar acao "approve" (tudo em uma chamada) + permitir users com `pode_aprovar` |
-| `src/pages/Aprovacoes.tsx` | Substituir 3 chamadas por 1 unica chamada a acao "approve" |
+| Migration SQL | Criar tabela `tirolesa_duplas` com RLS |
+| `src/lib/tiralesaAlgorithm.ts` | Novo - algoritmo de formacao de duplas |
+| `src/pages/Tirolesa.tsx` | Novo - pagina completa |
+| `src/lib/auth.ts` | Adicionar item "Tirolesa" no menu |
+| `src/App.tsx` | Adicionar rota `/tirolesa` |
 
-### Resultado
+### Detalhes tecnicos do algoritmo
 
-- Aprovacao em 1 chamada em vez de 3 (mais rapido, sem cold start duplo)
-- Se qualquer etapa falhar, o erro e mostrado ao usuario (nao mais silenciado)
-- Users com `pode_aprovar` (nao apenas diretoria) podem aprovar via edge function
-- Atomicidade: se o role falhar, o usuario vê o erro em vez de ficar com status inconsistente
+```text
+Por familia:
+  Membros com peso
+       |
+       +-- peso > 120kg --> Lista "Inaptos"
+       |
+       +-- peso <= 120kg --> Ordenar desc
+                |
+                v
+          [85, 80, 75, 70, 65]
+                |
+          Dupla 1: 85 + 65 = 150 OK
+          Dupla 2: 80 + 70 = 150 OK
+          Solo: 75
+                |
+          Se dupla > 160kg:
+            tentar trocar parceiros entre duplas da mesma familia
+```
 
