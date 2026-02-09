@@ -342,7 +342,7 @@ export default function Tirolesa() {
                                     <strong>Dupla {d.ordem}:</strong>{" "}
                                     {p1?.nome ?? "?"} ({d.peso_1}kg) + {p2?.nome ?? "?"} ({d.peso_2}kg) ={" "}
                                     <strong>{d.peso_total}kg</strong>
-                                    {d.peso_total > 160 && " ⚠️"}
+                                    {d.peso_total > 170 && " ⚠️"}
                                   </span>
                                 </>
                               ) : (
