@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ const CARGO_LABELS: Record<string, string> = {
 export default function AppLayout() {
   const navigate = useNavigate();
   const { session, profile, role, loading, signOut } = useAuth();
+  useInactivityTimeout(40);
 
   useEffect(() => {
     if (!loading && !session) {
