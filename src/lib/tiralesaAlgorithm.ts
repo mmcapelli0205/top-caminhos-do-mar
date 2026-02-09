@@ -115,7 +115,7 @@ function validateAndReorganize(
   aptos: Participante[],
   familiaId: number
 ): ZiplinePair[] {
-  const overweight = pairs.some((p) => p.participante2 && p.pesoTotal > 160);
+  const overweight = pairs.some((p) => p.participante2 && p.pesoTotal > 170);
 
   if (!overweight) return pairs;
 
@@ -138,7 +138,7 @@ function validateAndReorganize(
     for (let j = duplaAptos.length - 1; j > i; j--) {
       if (usedIds.has(duplaAptos[j].id)) continue;
       const total = (duplaAptos[i].peso ?? 0) + (duplaAptos[j].peso ?? 0);
-      if (total <= 160) {
+      if (total <= 170) {
         bestJ = j;
         bestTotal = total;
         break;
