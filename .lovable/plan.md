@@ -1,31 +1,30 @@
 
 
-## Limpeza de Seguranca - Codigo Legado
+## Remover Edge Function Legada `login`
 
-### Situacao atual
-
-- A tabela `usuarios` so e referenciada na edge function `login/index.ts` e no arquivo de tipos auto-gerado (`types.ts`). Nenhum outro arquivo do projeto a utiliza.
-- Nao existem `console.log` expondo dados sensiveis no codigo.
+A edge function `login` ainda existe no projeto apesar de ser codigo morto (a autenticacao agora usa Supabase Auth nativo). Ela precisa ser removida.
 
 ### Acoes
 
-**1. Deletar a edge function `login/index.ts`**
-- Remover o arquivo `supabase/functions/login/index.ts`
-- Remover a configuracao `[functions.login]` do `supabase/config.toml`
-- Deletar a funcao deployada no Supabase
-
-**2. Tabela `usuarios`**
-- Nao sera deletada (conforme solicitado)
-- Confirmacao: ela NAO e usada em nenhum outro lugar do projeto alem da edge function que sera removida e do arquivo de tipos auto-gerado
-
-**3. Console.logs sensiveis**
-- Nao ha nenhum `console.log` no codigo que exponha dados sensiveis — nenhuma acao necessaria
-
-### Resumo das alteracoes
-
-| Arquivo | Acao |
+| Arquivo / Recurso | Acao |
 |---|---|
-| `supabase/functions/login/index.ts` | Deletar |
-| `supabase/config.toml` | Remover secao `[functions.login]` |
-| Edge function deployada `login` | Remover do Supabase |
+| `supabase/functions/login/index.ts` | Deletar arquivo |
+| `supabase/config.toml` | Remover linhas 3-4 (`[functions.login]` e `verify_jwt = false`) |
+| Edge function deployada `login` | Deletar do Supabase |
 
+### Detalhes tecnicos
+
+1. Deletar o arquivo `supabase/functions/login/index.ts` (e o diretorio `login/`)
+2. Editar `supabase/config.toml` removendo a secao `[functions.login]`, resultando em:
+```
+project_id = "ilknzgupnswyeynwpovj"
+
+[functions.manage-users]
+verify_jwt = false
+
+[functions.validate-keyword]
+verify_jwt = false
+```
+3. Chamar a ferramenta de delecao de edge functions para remover `login` do Supabase
+
+Nenhum outro arquivo do projeto referencia essa edge function.
