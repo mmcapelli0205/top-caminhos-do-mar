@@ -68,7 +68,7 @@ const Login = () => {
         return;
       }
 
-      navigate("/dashboard");
+      // Session detected by onAuthStateChange — no manual navigate needed
     } catch {
       toast({ title: "Erro ao conectar", description: "Tente novamente.", variant: "destructive" });
     } finally {

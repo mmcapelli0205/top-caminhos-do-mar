@@ -31,74 +31,72 @@ export function useAuth(): UseAuthReturn {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = useCallback(async (userId: string) => {
-    try {
-      const [profileRes, roleRes] = await Promise.all([
-        supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("id", userId)
-          .single(),
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .limit(1)
-          .single(),
-      ]);
-
-      if (profileRes.data) {
-        setProfile(profileRes.data as UserProfile);
-      } else {
-        setProfile(null);
-      }
-
-      if (roleRes.data) {
-        setRole(roleRes.data.role);
-      } else {
-        setRole(null);
-      }
-    } catch {
-      setProfile(null);
-      setRole(null);
-    }
-  }, []);
-
-  const refreshProfile = useCallback(async () => {
-    if (session?.user?.id) {
-      await loadProfile(session.user.id);
-    }
-  }, [session, loadProfile]);
-
+  // Effect 1: Auth listener only — no deps, no profile fetching
   useEffect(() => {
+    let isSubscribed = true;
+
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (isSubscribed) setSession(s);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (event === "TOKEN_REFRESHED") {
-          setSession(newSession);
-          return;
-        }
-        setSession(newSession);
-        if (newSession?.user) {
-          await loadProfile(newSession.user.id);
-        } else {
-          setProfile(null);
-          setRole(null);
-        }
-        setLoading(false);
+      (_event, newSession) => {
+        if (isSubscribed) setSession(newSession);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (s?.user) {
-        loadProfile(s.user.id).then(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+    return () => {
+      isSubscribed = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
-    return () => subscription.unsubscribe();
-  }, [loadProfile]);
+  // Effect 2: Load profile when userId changes
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (!userId) {
+      setProfile(null);
+      setRole(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchProfile = async () => {
+      try {
+        const [profileRes, roleRes] = await Promise.all([
+          supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", userId)
+            .single(),
+          supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .limit(1)
+            .single(),
+        ]);
+
+        if (cancelled) return;
+
+        setProfile(profileRes.data ? (profileRes.data as UserProfile) : null);
+        setRole(roleRes.data ? roleRes.data.role : null);
+      } catch {
+        if (!cancelled) {
+          setProfile(null);
+          setRole(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchProfile();
+
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -106,6 +104,16 @@ export function useAuth(): UseAuthReturn {
     setProfile(null);
     setRole(null);
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!userId) return;
+    const [profileRes, roleRes] = await Promise.all([
+      supabase.from("user_profiles").select("*").eq("id", userId).single(),
+      supabase.from("user_roles").select("role").eq("user_id", userId).limit(1).single(),
+    ]);
+    if (profileRes.data) setProfile(profileRes.data as UserProfile);
+    if (roleRes.data) setRole(roleRes.data.role);
+  }, [userId]);
 
   return { session, profile, role, loading, signOut, refreshProfile };
 }
