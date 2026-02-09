@@ -19,10 +19,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import ParticipanteSheet from "@/components/ParticipanteSheet";
 import ImportCSVDialog from "@/components/ImportCSVDialog";
 import BatchEditDialog from "@/components/BatchEditDialog";
 import { useParticipantes, type Participante } from "@/hooks/useParticipantes";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -53,6 +55,7 @@ const ergoColors: Record<string, string> = {
 export default function Participantes() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const { participantes, familiaMap, familias, isLoading } = useParticipantes();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,7 +85,6 @@ export default function Participantes() {
 
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo]);
 
-  // Clear selection when filters/page change
   useEffect(() => { setSelectedIds(new Set()); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo, currentPage]);
 
   const getFamiliaNumero = useCallback((fid: number | null) => {
@@ -134,7 +136,6 @@ export default function Participantes() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const pageIds = useMemo(() => new Set(paginated.map((p) => p.id)), [paginated]);
   const allPageSelected = paginated.length > 0 && paginated.every((p) => selectedIds.has(p.id));
   const someSelected = selectedIds.size > 0;
 
@@ -204,20 +205,20 @@ export default function Participantes() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Participantes</h1>
           <span className="text-sm text-muted-foreground">({filtered.length})</span>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-1" /> Importar da TicketAndGo
           </Button>
-          <Button variant="outline" size="sm" onClick={exportCSV}>
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
             <Download className="h-4 w-4 mr-1" /> CSV
           </Button>
-          <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white" onClick={() => navigate("/participantes/novo")}>
+          <Button size="sm" className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white" onClick={() => navigate("/participantes/novo")}>
             <Plus className="h-4 w-4 mr-1" /> Novo Participante
           </Button>
         </div>
@@ -235,9 +236,9 @@ export default function Participantes() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Status</SelectItem>
             <SelectItem value="inscrito">Inscrito</SelectItem>
@@ -246,7 +247,7 @@ export default function Participantes() {
           </SelectContent>
         </Select>
         <Select value={filterFamilia} onValueChange={setFilterFamilia}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Família" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Família" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todas Famílias</SelectItem>
             {familias.map((f) => (
@@ -255,7 +256,7 @@ export default function Participantes() {
           </SelectContent>
         </Select>
         <Select value={filterContrato} onValueChange={setFilterContrato}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Contrato" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Contrato" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Contratos</SelectItem>
             <SelectItem value="sim">Assinado</SelectItem>
@@ -263,7 +264,7 @@ export default function Participantes() {
           </SelectContent>
         </Select>
         <Select value={filterErgo} onValueChange={setFilterErgo}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Ergométrico" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Ergométrico" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Ergométricos</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
@@ -276,120 +277,159 @@ export default function Participantes() {
 
       {/* Batch action bar */}
       {someSelected && (
-        <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50 border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-md bg-muted/50 border border-border">
           <span className="text-sm font-medium text-foreground">{selectedIds.size} selecionado(s)</span>
-          <div className="flex gap-2 ml-auto">
-            <Button variant="outline" size="sm" onClick={() => setBatchEditOpen(true)}>
+          <div className="flex gap-2 sm:ml-auto">
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => setBatchEditOpen(true)}>
               <Edit className="h-4 w-4 mr-1" /> Editar em Lote
             </Button>
-            <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmOpen(true)}>
-              <Trash2 className="h-4 w-4 mr-1" /> Excluir Selecionados
+            <Button variant="destructive" size="sm" className="flex-1 sm:flex-none" onClick={() => setDeleteConfirmOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-1" /> Excluir
             </Button>
           </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="rounded-md border border-border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={allPageSelected && paginated.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Selecionar todos"
-                />
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => toggleSort("nome")}>Nome<SortIcon col="nome" /></TableHead>
-              <TableHead className="cursor-pointer hidden md:table-cell" onClick={() => toggleSort("idade")}>Idade<SortIcon col="idade" /></TableHead>
-              <TableHead className="hidden md:table-cell">Telefone</TableHead>
-              <TableHead className="hidden lg:table-cell">Igreja</TableHead>
-              <TableHead className="hidden md:table-cell cursor-pointer" onClick={() => toggleSort("familia")}>Família<SortIcon col="familia" /></TableHead>
-              <TableHead>Contrato</TableHead>
-              <TableHead className="hidden md:table-cell">Ergométrico</TableHead>
-              <TableHead className="hidden lg:table-cell">Check-in</TableHead>
-              <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}>Status<SortIcon col="status" /></TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 11 }).map((_, j) => (
-                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : paginated.length === 0 ? (
+      {/* Table / Mobile Cards */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {paginated.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum participante encontrado.</p>
+          ) : paginated.map((p) => {
+            const age = calcAge(p.data_nascimento);
+            const famNum = getFamiliaNumero(p.familia_id);
+            const isSelected = selectedIds.has(p.id);
+            return (
+              <Card key={p.id} className={`cursor-pointer ${isSelected ? "border-primary" : ""}`} onClick={() => setSelectedParticipant(p)}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(p.id)} />
+                      <span className="font-medium truncate">{p.nome}</span>
+                    </div>
+                    <Badge className={statusColors[p.status ?? "inscrito"] ?? ""}>{p.status ?? "inscrito"}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    {age != null && <span>Idade: {age}</span>}
+                    {famNum != null && <span>Família: {famNum}</span>}
+                    <span className="flex items-center gap-1">
+                      Contrato: {p.contrato_assinado ? <CheckCircle className="h-3.5 w-3.5 text-green-400" /> : <XCircle className="h-3.5 w-3.5 text-red-400" />}
+                    </span>
+                    <span>Ergo: <Badge className={`text-[10px] px-1 py-0 ${ergoColors[p.ergometrico_status ?? "pendente"] ?? ""}`}>{p.ergometrico_status ?? "pendente"}</Badge></span>
+                  </div>
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedParticipant(p)}>
+                      <Eye className="h-4 w-4 mr-1" /> Ver
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/participantes/${p.id}/editar`)}>
+                      <Pencil className="h-4 w-4 mr-1" /> Editar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-md border border-border overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                  Nenhum participante encontrado.
-                </TableCell>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allPageSelected && paginated.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
+                <TableHead className="cursor-pointer" onClick={() => toggleSort("nome")}>Nome<SortIcon col="nome" /></TableHead>
+                <TableHead className="cursor-pointer hidden md:table-cell" onClick={() => toggleSort("idade")}>Idade<SortIcon col="idade" /></TableHead>
+                <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                <TableHead className="hidden lg:table-cell">Igreja</TableHead>
+                <TableHead className="hidden md:table-cell cursor-pointer" onClick={() => toggleSort("familia")}>Família<SortIcon col="familia" /></TableHead>
+                <TableHead>Contrato</TableHead>
+                <TableHead className="hidden md:table-cell">Ergométrico</TableHead>
+                <TableHead className="hidden lg:table-cell">Check-in</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}>Status<SortIcon col="status" /></TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ) : (
-              paginated.map((p) => {
-                const age = calcAge(p.data_nascimento);
-                const famNum = getFamiliaNumero(p.familia_id);
-                const isSelected = selectedIds.has(p.id);
-                return (
-                  <TableRow key={p.id} className={`cursor-pointer ${isSelected ? "bg-muted/40" : ""}`} onClick={() => setSelectedParticipant(p)}>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelect(p.id)}
-                        aria-label={`Selecionar ${p.nome}`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{p.nome}</TableCell>
-                    <TableCell className="hidden md:table-cell">{age ?? "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">{p.telefone ?? "—"}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{p.igreja ?? "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">{famNum != null ? famNum : "—"}</TableCell>
-                    <TableCell>
-                      {p.contrato_assinado
-                        ? <CheckCircle className="h-4 w-4 text-green-400" />
-                        : <XCircle className="h-4 w-4 text-red-400" />}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Badge className={ergoColors[p.ergometrico_status ?? "pendente"] ?? ""}>
-                        {p.ergometrico_status ?? "pendente"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {p.checkin_realizado
-                        ? <CheckCircle className="h-4 w-4 text-green-400" />
-                        : <Circle className="h-4 w-4 text-muted-foreground" />}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[p.status ?? "inscrito"] ?? ""}>
-                        {p.status ?? "inscrito"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedParticipant(p)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/participantes/${p.id}/editar`)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {paginated.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                    Nenhum participante encontrado.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginated.map((p) => {
+                  const age = calcAge(p.data_nascimento);
+                  const famNum = getFamiliaNumero(p.familia_id);
+                  const isSelected = selectedIds.has(p.id);
+                  return (
+                    <TableRow key={p.id} className={`cursor-pointer ${isSelected ? "bg-muted/40" : ""}`} onClick={() => setSelectedParticipant(p)}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(p.id)}
+                          aria-label={`Selecionar ${p.nome}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{p.nome}</TableCell>
+                      <TableCell className="hidden md:table-cell">{age ?? "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{p.telefone ?? "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{p.igreja ?? "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{famNum != null ? famNum : "—"}</TableCell>
+                      <TableCell>
+                        {p.contrato_assinado
+                          ? <CheckCircle className="h-4 w-4 text-green-400" />
+                          : <XCircle className="h-4 w-4 text-red-400" />}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge className={ergoColors[p.ergometrico_status ?? "pendente"] ?? ""}>
+                          {p.ergometrico_status ?? "pendente"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {p.checkin_realizado
+                          ? <CheckCircle className="h-4 w-4 text-green-400" />
+                          : <Circle className="h-4 w-4 text-muted-foreground" />}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusColors[p.status ?? "inscrito"] ?? ""}>
+                          {p.status ?? "inscrito"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedParticipant(p)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/participantes/${p.id}/editar`)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Pagination */}
       {!isLoading && sorted.length > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} de {sorted.length}
+            {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} de {sorted.length}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage((p) => p - 1)}>

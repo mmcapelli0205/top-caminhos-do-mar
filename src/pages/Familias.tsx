@@ -11,36 +11,25 @@ import {
   checkSeparationViolations,
   type FamilyResult,
 } from "@/lib/familiaAlgorithm";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
+  Card, CardHeader, CardTitle, CardContent, CardDescription,
 } from "@/components/ui/card";
 import {
-  Table,
-  TableHeader,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
+  Table, TableHeader, TableHead, TableRow, TableCell, TableBody,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 
 const Familias = () => {
   const { participantes, familias, isLoading } = useParticipantes();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   const [numFamilias, setNumFamilias] = useState(10);
   const [result, setResult] = useState<FamilyResult | null>(null);
@@ -55,13 +44,11 @@ const Familias = () => {
   // Load saved families from Supabase on mount
   useEffect(() => {
     if (isLoading || participantes.length === 0 || familias.length === 0) return;
-    // Don't overwrite if user already generated
     if (result) return;
 
     const famMap = new Map<number, number>();
     familias.forEach((f) => famMap.set(f.id, f.numero));
 
-    // Group participants by familia numero (0-indexed)
     const maxNumero = Math.max(...familias.map((f) => f.numero));
     const families: string[][] = Array.from({ length: maxNumero }, () => []);
 
@@ -72,11 +59,9 @@ const Familias = () => {
       families[numero - 1].push(p.id);
     }
 
-    // Only set if there are actually assigned participants
     const totalAssigned = families.reduce((s, f) => s + f.length, 0);
     if (totalAssigned === 0) return;
 
-    // Build separation pairs from current participants
     const nameToId = new Map<string, string>();
     participantes.forEach((p) => nameToId.set(
       p.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(),
@@ -126,7 +111,6 @@ const Familias = () => {
     newFamilies[toFamily].push(participantId);
     setResult({ ...result, families: newFamilies });
 
-    // Check separation violation in target family
     const violations = checkSeparationViolations(
       [newFamilies[toFamily]],
       result.separationPairs
@@ -140,7 +124,6 @@ const Familias = () => {
     if (!result) return;
     setSaving(true);
     try {
-      // Upsert families
       for (let i = 0; i < result.families.length; i++) {
         const numero = i + 1;
         const { error } = await supabase
@@ -149,7 +132,6 @@ const Familias = () => {
         if (error) throw error;
       }
 
-      // Get familia records to map numero -> id
       const { data: famData, error: famErr } = await supabase
         .from("familias")
         .select("id, numero");
@@ -157,7 +139,6 @@ const Familias = () => {
       const numeroToId = new Map<number, number>();
       famData?.forEach((f) => numeroToId.set(f.numero, f.id));
 
-      // Update each participant's familia_id
       for (let fi = 0; fi < result.families.length; fi++) {
         const familiaId = numeroToId.get(fi + 1);
         if (!familiaId) continue;
@@ -170,7 +151,6 @@ const Familias = () => {
         if (error) throw error;
       }
 
-      // Clear familia_id for unassigned participants
       const allAssigned = new Set(result.families.flat());
       const unassigned = aptos.filter((p) => !allAssigned.has(p.id)).map((p) => p.id);
       if (unassigned.length > 0) {
@@ -190,7 +170,6 @@ const Familias = () => {
     }
   };
 
-  // Compute stats per family
   const familyStats = useMemo(() => {
     if (!result) return [];
     return result.families.map((members, fi) => {
@@ -234,7 +213,6 @@ const Familias = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <UsersRound className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold text-foreground">Famílias</h1>
@@ -243,43 +221,28 @@ const Familias = () => {
       {/* Config Section */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+          <div className="flex flex-col gap-4">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">
-                Número de Famílias
-              </label>
-              <Input
-                type="number"
-                min={2}
-                max={50}
-                value={numFamilias}
-                onChange={(e) => setNumFamilias(Number(e.target.value))}
-                className="w-32"
-              />
+              <label className="text-sm font-medium text-foreground">Número de Famílias</label>
+              <Input type="number" min={2} max={50} value={numFamilias} onChange={(e) => setNumFamilias(Number(e.target.value))} className="w-32" />
             </div>
-            <Button
-              onClick={handleGenerate}
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              <Wand2 className="h-4 w-4 mr-2" />
-              Gerar Famílias Automaticamente
-            </Button>
-            {result && (
-              <>
-                <Button onClick={handleSave} disabled={saving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? "Salvando..." : "Salvar Famílias"}
-                </Button>
-                <Button variant="outline" onClick={() => setEtiquetasOpen(true)}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Gerar Etiquetas
-                </Button>
-              </>
-            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white" onClick={handleGenerate}>
+                <Wand2 className="h-4 w-4 mr-2" /> Gerar Famílias
+              </Button>
+              {result && (
+                <>
+                  <Button className="w-full sm:w-auto" onClick={handleSave} disabled={saving}>
+                    <Save className="h-4 w-4 mr-2" /> {saving ? "Salvando..." : "Salvar"}
+                  </Button>
+                  <Button className="w-full sm:w-auto" variant="outline" onClick={() => setEtiquetasOpen(true)}>
+                    <Printer className="h-4 w-4 mr-2" /> Etiquetas
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-3">
-            Total participantes aptos: <strong>{aptos.length}</strong>
-          </p>
+          <p className="text-sm text-muted-foreground mt-3">Total participantes aptos: <strong>{aptos.length}</strong></p>
         </CardContent>
       </Card>
 
@@ -290,20 +253,13 @@ const Familias = () => {
             const stats = familyStats[fi];
             const hasViolation = violations.has(fi) || hasBalanceViolation.has(fi);
             return (
-              <Card
-                key={fi}
-                className={hasViolation ? "border-destructive border-2" : ""}
-              >
+              <Card key={fi} className={hasViolation ? "border-destructive border-2" : ""}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Família {fi + 1}</CardTitle>
-                    {hasViolation && (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    )}
+                    {hasViolation && <AlertTriangle className="h-4 w-4 text-destructive" />}
                   </div>
-                  <CardDescription>
-                    {stats?.count || 0} membros · Idade média: {stats?.avgAge || 0}
-                  </CardDescription>
+                  <CardDescription>{stats?.count || 0} membros · Idade média: {stats?.avgAge || 0}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -312,59 +268,30 @@ const Familias = () => {
                       if (!p) return null;
                       const age = calcAge(p.data_nascimento);
                       return (
-                        <div
-                          key={id}
-                          className="flex items-center gap-2 text-sm py-1 border-b border-border last:border-0"
-                        >
+                        <div key={id} className="flex items-center gap-2 text-sm py-1 border-b border-border last:border-0">
                           <div className="flex-1 min-w-0">
-                            <span className="font-medium truncate block">
-                              {p.nome}
-                            </span>
-                            <span className="text-muted-foreground text-xs">
-                              {age} anos
-                            </span>
+                            <span className="font-medium truncate block">{p.nome}</span>
+                            <span className="text-muted-foreground text-xs">{age} anos</span>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            {p.doenca && p.doenca.trim() !== "" && (
-                              <Heart className="h-3.5 w-3.5 text-destructive fill-destructive" />
-                            )}
-                            {p.peso != null && p.peso > 100 && (
-                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                                {p.peso}kg
-                              </Badge>
-                            )}
+                            {p.doenca && p.doenca.trim() !== "" && <Heart className="h-3.5 w-3.5 text-destructive fill-destructive" />}
+                            {p.peso != null && p.peso > 100 && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{p.peso}kg</Badge>}
                             {p.condicionamento != null && (
-                              <Badge
-                                variant={p.condicionamento <= 2 ? "destructive" : "secondary"}
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                C{p.condicionamento}
-                              </Badge>
+                              <Badge variant={p.condicionamento <= 2 ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0">C{p.condicionamento}</Badge>
                             )}
                           </div>
-                          <Select
-                            value={String(fi + 1)}
-                            onValueChange={(v) => handleMove(id, fi, Number(v) - 1)}
-                          >
-                            <SelectTrigger className="w-16 h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
+                          <Select value={String(fi + 1)} onValueChange={(v) => handleMove(id, fi, Number(v) - 1)}>
+                            <SelectTrigger className="w-16 h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {Array.from({ length: numFamilias }, (_, i) => (
-                                <SelectItem key={i} value={String(i + 1)}>
-                                  {i + 1}
-                                </SelectItem>
+                                <SelectItem key={i} value={String(i + 1)}>{i + 1}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
                       );
                     })}
-                    {members.length === 0 && (
-                      <p className="text-xs text-muted-foreground italic">
-                        Nenhum membro
-                      </p>
-                    )}
+                    {members.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhum membro</p>}
                   </div>
                 </CardContent>
               </Card>
@@ -380,33 +307,51 @@ const Familias = () => {
             <CardTitle className="text-lg">Resumo de Balanceamento</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Família</TableHead>
-                  <TableHead>Membros</TableHead>
-                  <TableHead>Idade Média</TableHead>
-                  <TableHead>Saúde</TableHead>
-                  <TableHead>Pesados</TableHead>
-                  <TableHead>Baixo Cond.</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            {isMobile ? (
+              <div className="space-y-3">
                 {familyStats.map((s) => (
-                  <TableRow
-                    key={s.fi}
-                    className={hasBalanceViolation.has(s.fi) ? "bg-orange-500/10" : ""}
-                  >
-                    <TableCell className="font-medium">Família {s.fi + 1}</TableCell>
-                    <TableCell>{s.count}</TableCell>
-                    <TableCell>{s.avgAge}</TableCell>
-                    <TableCell>{s.healthCount}</TableCell>
-                    <TableCell>{s.heavyCount}</TableCell>
-                    <TableCell>{s.lowFitCount}</TableCell>
-                  </TableRow>
+                  <Card key={s.fi} className={hasBalanceViolation.has(s.fi) ? "bg-orange-500/10" : ""}>
+                    <CardContent className="p-3 space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">Família {s.fi + 1}</span>
+                        <Badge variant="secondary">{s.count} membros</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        <span>Idade: {s.avgAge}</span>
+                        <span>Saúde: {s.healthCount}</span>
+                        <span>Pesados: {s.heavyCount}</span>
+                        <span>Baixo Cond.: {s.lowFitCount}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Família</TableHead>
+                    <TableHead>Membros</TableHead>
+                    <TableHead>Idade Média</TableHead>
+                    <TableHead>Saúde</TableHead>
+                    <TableHead>Pesados</TableHead>
+                    <TableHead>Baixo Cond.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {familyStats.map((s) => (
+                    <TableRow key={s.fi} className={hasBalanceViolation.has(s.fi) ? "bg-orange-500/10" : ""}>
+                      <TableCell className="font-medium">Família {s.fi + 1}</TableCell>
+                      <TableCell>{s.count}</TableCell>
+                      <TableCell>{s.avgAge}</TableCell>
+                      <TableCell>{s.healthCount}</TableCell>
+                      <TableCell>{s.heavyCount}</TableCell>
+                      <TableCell>{s.lowFitCount}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       )}
