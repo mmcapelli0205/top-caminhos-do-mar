@@ -128,7 +128,7 @@ const Login = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">
       <img
         src={BG_URL}
         alt="Caminhos do Mar"
@@ -136,7 +136,7 @@ const Login = () => {
       />
       <div className="absolute inset-0 bg-black/60" />
 
-      <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/40 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
+      <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/70 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
         <div className="mb-4 flex justify-center">
           <img
             src={LOGO_URL}

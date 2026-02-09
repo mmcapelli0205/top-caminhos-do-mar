@@ -99,6 +99,7 @@ export function useAuth(): UseAuthReturn {
   }, [userId]);
 
   const signOut = useCallback(async () => {
+    localStorage.removeItem("top_user");
     await supabase.auth.signOut();
     setSession(null);
     setProfile(null);
