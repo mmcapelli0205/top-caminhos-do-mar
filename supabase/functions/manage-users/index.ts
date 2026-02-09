@@ -172,6 +172,19 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    // CONFIRM EMAIL - confirm user email via Admin API
+    if (action === "confirm_email") {
+      const { user_id } = body;
+      if (!user_id) return json({ error: "user_id obrigatório" }, 400);
+
+      const { error } = await supabase.auth.admin.updateUserById(user_id, {
+        email_confirm: true,
+      });
+
+      if (error) return json({ error: error.message }, 500);
+      return json({ success: true });
+    }
+
     return json({ error: "Ação inválida" }, 400);
   } catch (err) {
     console.error("manage-users error:", err);
