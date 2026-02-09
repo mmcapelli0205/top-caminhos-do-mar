@@ -81,11 +81,17 @@ const Cadastro = () => {
     setLoading(true);
     try {
       // 1. Sign up
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { error: authError } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: form.senha,
         options: {
           emailRedirectTo: window.location.origin,
+          data: {
+            nome: form.nome.trim(),
+            telefone: form.telefone.trim(),
+            numero_legendario: form.numero_legendario.trim() || null,
+            area_preferencia: form.area_preferencia || null,
+          },
         },
       });
 
@@ -96,29 +102,6 @@ const Cadastro = () => {
           toast({ title: authError.message, variant: "destructive" });
         }
         return;
-      }
-
-      if (!authData.user) {
-        toast({ title: "Erro ao criar conta", variant: "destructive" });
-        return;
-      }
-
-      // 2. Insert profile
-      const { error: profileError } = await supabase.from("user_profiles").insert({
-        id: authData.user.id,
-        nome: form.nome.trim(),
-        email: form.email.trim(),
-        telefone: form.telefone.trim(),
-        numero_legendario: form.numero_legendario.trim() || null,
-        area_preferencia: form.area_preferencia || null,
-        status: "pendente",
-        cargo: "servidor",
-      });
-
-      if (profileError) {
-        console.error("Profile insert error:", profileError);
-        // Profile creation failed but auth user was created
-        // This is handled gracefully - admin can see the user
       }
 
       setSuccess(true);
