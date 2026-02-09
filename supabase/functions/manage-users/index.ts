@@ -40,7 +40,16 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (!roleData) {
-    return json({ error: "Apenas diretoria pode gerenciar usuários" }, 403);
+    // Also allow users with pode_aprovar for approve/confirm actions
+    const { data: approverProfile } = await supabase
+      .from("user_profiles")
+      .select("pode_aprovar")
+      .eq("id", caller.id)
+      .single();
+
+    if (!approverProfile?.pode_aprovar || !["approve", "confirm_email"].includes(action)) {
+      return json({ error: "Apenas diretoria pode gerenciar usuários" }, 403);
+    }
   }
 
   const body = await req.json();
@@ -182,6 +191,39 @@ Deno.serve(async (req) => {
       });
 
       if (error) return json({ error: error.message }, 500);
+      return json({ success: true });
+    }
+
+    // APPROVE - atomic: update profile + manage roles + confirm email
+    if (action === "approve") {
+      const { user_id, cargo, aprovado_por } = body;
+      if (!user_id || !cargo) return json({ error: "user_id e cargo obrigatórios" }, 400);
+
+      // 1. Update user_profiles
+      const { error: profileError } = await supabase
+        .from("user_profiles")
+        .update({
+          status: "aprovado",
+          cargo,
+          aprovado_por: aprovado_por || null,
+          data_aprovacao: new Date().toISOString(),
+        })
+        .eq("id", user_id);
+      if (profileError) return json({ error: profileError.message }, 500);
+
+      // 2. Delete old roles + insert new
+      await supabase.from("user_roles").delete().eq("user_id", user_id);
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id, role: cargo });
+      if (roleError) return json({ error: roleError.message }, 500);
+
+      // 3. Confirm email
+      const { error: confirmError } = await supabase.auth.admin.updateUserById(user_id, {
+        email_confirm: true,
+      });
+      if (confirmError) return json({ error: confirmError.message }, 500);
+
       return json({ success: true });
     }
 
