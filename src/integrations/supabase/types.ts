@@ -1698,53 +1698,6 @@ export type Database = {
         }
         Relationships: []
       }
-      usuarios: {
-        Row: {
-          area_servico: string | null
-          ativo: boolean | null
-          created_at: string | null
-          id: string
-          nome: string
-          papel: string
-          senha_hash: string
-          top_id: string | null
-          updated_at: string | null
-          username: string
-        }
-        Insert: {
-          area_servico?: string | null
-          ativo?: boolean | null
-          created_at?: string | null
-          id?: string
-          nome: string
-          papel: string
-          senha_hash: string
-          top_id?: string | null
-          updated_at?: string | null
-          username: string
-        }
-        Update: {
-          area_servico?: string | null
-          ativo?: boolean | null
-          created_at?: string | null
-          id?: string
-          nome?: string
-          papel?: string
-          senha_hash?: string
-          top_id?: string | null
-          updated_at?: string | null
-          username?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "usuarios_top_id_fkey"
-            columns: ["top_id"]
-            isOneToOne: false
-            referencedRelation: "tops"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       whatsapp_envios: {
         Row: {
           created_at: string | null
