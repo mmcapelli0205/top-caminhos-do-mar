@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Save, X } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Doacao = Tables<"doacoes">;
@@ -15,6 +16,7 @@ const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curren
 
 const ReceitaSection = () => {
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
 
   // Participantes (read-only)
   const { data: participantes } = useQuery({
@@ -75,8 +77,7 @@ const ReceitaSection = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-doacoes-lista"] });
       qc.invalidateQueries({ queryKey: ["fin-doacoes"] });
-      setEditId(null);
-      setNewRow(null);
+      setEditId(null); setNewRow(null);
       toast({ title: "Doação salva" });
     },
   });
@@ -96,6 +97,60 @@ const ReceitaSection = () => {
   const startEdit = (d: Doacao) => {
     setEditId(d.id);
     setEditRow({ doador: d.doador, valor: d.valor, data: d.data ?? "", observacoes: d.observacoes ?? "" });
+  };
+
+  const renderPeopleList = (items: any[], label: string) => {
+    if (isMobile) {
+      return (
+        <div className="space-y-2">
+          {items.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">Nenhum {label}</p>
+          ) : items.map((p: any) => (
+            <Card key={p.id}>
+              <CardContent className="p-3">
+                <div className="flex justify-between items-start">
+                  <span className="font-medium truncate">{p.nome}</span>
+                  <span className="font-bold">{fmt(p.valor_pago ?? 0)}</span>
+                </div>
+                <div className="text-sm text-muted-foreground flex gap-3 mt-1">
+                  <span>{p.forma_pagamento ?? "-"}</span>
+                  {p.cupom_desconto && <span>Cupom: {p.cupom_desconto}</span>}
+                  <span>{p.status}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead className="text-right">Valor Pago</TableHead>
+              <TableHead>Forma Pgto</TableHead>
+              <TableHead>Cupom</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum {label}</TableCell></TableRow>
+            ) : items.map((p: any) => (
+              <TableRow key={p.id}>
+                <TableCell>{p.nome}</TableCell>
+                <TableCell className="text-right">{fmt(p.valor_pago ?? 0)}</TableCell>
+                <TableCell>{p.forma_pagamento ?? "-"}</TableCell>
+                <TableCell>{p.cupom_desconto ?? "-"}</TableCell>
+                <TableCell>{p.status ?? "-"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
   };
 
   return (
@@ -120,31 +175,7 @@ const ReceitaSection = () => {
             </Card>
           ))}
         </div>
-
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead className="text-right">Valor Pago</TableHead>
-                <TableHead>Forma Pgto</TableHead>
-                <TableHead>Cupom</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ativos.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>{p.nome}</TableCell>
-                  <TableCell className="text-right">{fmt(p.valor_pago ?? 0)}</TableCell>
-                  <TableCell>{p.forma_pagamento ?? "-"}</TableCell>
-                  <TableCell>{p.cupom_desconto ?? "-"}</TableCell>
-                  <TableCell>{p.status}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        {renderPeopleList(ativos, "participante")}
       </div>
 
       {/* Inscrições de Servidores */}
@@ -165,37 +196,7 @@ const ReceitaSection = () => {
             </Card>
           ))}
         </div>
-
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead className="text-right">Valor Pago</TableHead>
-                <TableHead>Forma Pgto</TableHead>
-                <TableHead>Cupom</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {servAtivos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum servidor com inscrição</TableCell>
-                </TableRow>
-              ) : (
-                servAtivos.map((s: any) => (
-                  <TableRow key={s.id}>
-                    <TableCell>{s.nome}</TableCell>
-                    <TableCell className="text-right">{fmt(s.valor_pago ?? 0)}</TableCell>
-                    <TableCell>{s.forma_pagamento ?? "-"}</TableCell>
-                    <TableCell>{s.cupom_desconto ?? "-"}</TableCell>
-                    <TableCell>{s.status ?? "-"}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        {renderPeopleList(servAtivos, "servidor")}
         <p className="text-right font-bold">Total Servidores: {fmt(totalServidores)}</p>
       </div>
 
@@ -208,64 +209,113 @@ const ReceitaSection = () => {
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Doador</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Observações</TableHead>
-                <TableHead className="w-[100px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {newRow && (
-                <TableRow>
-                  <TableCell><Input value={newRow.doador} onChange={(e) => setNewRow({ ...newRow, doador: e.target.value })} placeholder="Doador" /></TableCell>
-                  <TableCell><Input type="number" value={newRow.valor || ""} onChange={(e) => setNewRow({ ...newRow, valor: parseFloat(e.target.value) || 0 })} className="text-right" /></TableCell>
-                  <TableCell><Input type="date" value={newRow.data} onChange={(e) => setNewRow({ ...newRow, data: e.target.value })} /></TableCell>
-                  <TableCell><Input value={newRow.observacoes} onChange={(e) => setNewRow({ ...newRow, observacoes: e.target.value })} /></TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => saveMutation.mutate(newRow)}><Save className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => setNewRow(null)}><X className="h-4 w-4" /></Button>
+        {isMobile ? (
+          <div className="space-y-2">
+            {newRow && (
+              <Card>
+                <CardContent className="p-3 space-y-2">
+                  <Input value={newRow.doador} onChange={(e) => setNewRow({ ...newRow, doador: e.target.value })} placeholder="Doador" />
+                  <Input type="number" value={newRow.valor || ""} onChange={(e) => setNewRow({ ...newRow, valor: parseFloat(e.target.value) || 0 })} placeholder="Valor" />
+                  <Input type="date" value={newRow.data} onChange={(e) => setNewRow({ ...newRow, data: e.target.value })} />
+                  <div className="flex gap-2">
+                    <Button className="flex-1" size="sm" onClick={() => saveMutation.mutate(newRow)}><Save className="h-4 w-4 mr-1" /> Salvar</Button>
+                    <Button variant="outline" size="sm" onClick={() => setNewRow(null)}><X className="h-4 w-4" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {(doacoes ?? []).map((d) =>
+              editId === d.id ? (
+                <Card key={d.id}>
+                  <CardContent className="p-3 space-y-2">
+                    <Input value={editRow.doador} onChange={(e) => setEditRow({ ...editRow, doador: e.target.value })} />
+                    <Input type="number" value={editRow.valor || ""} onChange={(e) => setEditRow({ ...editRow, valor: parseFloat(e.target.value) || 0 })} />
+                    <Input type="date" value={editRow.data} onChange={(e) => setEditRow({ ...editRow, data: e.target.value })} />
+                    <div className="flex gap-2">
+                      <Button className="flex-1" size="sm" onClick={() => saveMutation.mutate({ id: d.id, ...editRow })}><Save className="h-4 w-4 mr-1" /> Salvar</Button>
+                      <Button variant="outline" size="sm" onClick={() => setEditId(null)}><X className="h-4 w-4" /></Button>
                     </div>
-                  </TableCell>
-                </TableRow>
-              )}
-              {(doacoes ?? []).map((d) =>
-                editId === d.id ? (
-                  <TableRow key={d.id}>
-                    <TableCell><Input value={editRow.doador} onChange={(e) => setEditRow({ ...editRow, doador: e.target.value })} /></TableCell>
-                    <TableCell><Input type="number" value={editRow.valor || ""} onChange={(e) => setEditRow({ ...editRow, valor: parseFloat(e.target.value) || 0 })} className="text-right" /></TableCell>
-                    <TableCell><Input type="date" value={editRow.data} onChange={(e) => setEditRow({ ...editRow, data: e.target.value })} /></TableCell>
-                    <TableCell><Input value={editRow.observacoes} onChange={(e) => setEditRow({ ...editRow, observacoes: e.target.value })} /></TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => saveMutation.mutate({ id: d.id, ...editRow })}><Save className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => setEditId(null)}><X className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  <TableRow key={d.id}>
-                    <TableCell>{d.doador}</TableCell>
-                    <TableCell className="text-right">{fmt(d.valor)}</TableCell>
-                    <TableCell>{d.data ?? "-"}</TableCell>
-                    <TableCell>{d.observacoes ?? "-"}</TableCell>
-                    <TableCell>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card key={d.id}>
+                  <CardContent className="p-3">
+                    <div className="flex justify-between items-start">
+                      <span className="font-medium">{d.doador}</span>
+                      <span className="font-bold">{fmt(d.valor)}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-sm text-muted-foreground">{d.data ?? "-"}</span>
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" onClick={() => startEdit(d)}><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(d.id)}><Trash2 className="h-4 w-4" /></Button>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Doador</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Observações</TableHead>
+                  <TableHead className="w-[100px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {newRow && (
+                  <TableRow>
+                    <TableCell><Input value={newRow.doador} onChange={(e) => setNewRow({ ...newRow, doador: e.target.value })} placeholder="Doador" /></TableCell>
+                    <TableCell><Input type="number" value={newRow.valor || ""} onChange={(e) => setNewRow({ ...newRow, valor: parseFloat(e.target.value) || 0 })} className="text-right" /></TableCell>
+                    <TableCell><Input type="date" value={newRow.data} onChange={(e) => setNewRow({ ...newRow, data: e.target.value })} /></TableCell>
+                    <TableCell><Input value={newRow.observacoes} onChange={(e) => setNewRow({ ...newRow, observacoes: e.target.value })} /></TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => saveMutation.mutate(newRow)}><Save className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => setNewRow(null)}><X className="h-4 w-4" /></Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                )
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                )}
+                {(doacoes ?? []).map((d) =>
+                  editId === d.id ? (
+                    <TableRow key={d.id}>
+                      <TableCell><Input value={editRow.doador} onChange={(e) => setEditRow({ ...editRow, doador: e.target.value })} /></TableCell>
+                      <TableCell><Input type="number" value={editRow.valor || ""} onChange={(e) => setEditRow({ ...editRow, valor: parseFloat(e.target.value) || 0 })} className="text-right" /></TableCell>
+                      <TableCell><Input type="date" value={editRow.data} onChange={(e) => setEditRow({ ...editRow, data: e.target.value })} /></TableCell>
+                      <TableCell><Input value={editRow.observacoes} onChange={(e) => setEditRow({ ...editRow, observacoes: e.target.value })} /></TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => saveMutation.mutate({ id: d.id, ...editRow })}><Save className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => setEditId(null)}><X className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <TableRow key={d.id}>
+                      <TableCell>{d.doador}</TableCell>
+                      <TableCell className="text-right">{fmt(d.valor)}</TableCell>
+                      <TableCell>{d.data ?? "-"}</TableCell>
+                      <TableCell>{d.observacoes ?? "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => startEdit(d)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(d.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
         <p className="text-right font-bold">Total Doações: {fmt(totalDoacoes)}</p>
       </div>
 
