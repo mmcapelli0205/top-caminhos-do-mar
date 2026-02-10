@@ -1,33 +1,39 @@
 
 
-## Correção: Tela azul ao sair (fallback visual na tela de Login)
+## Correção: Tela azul escura vazia depois do login (mobile e desktop)
 
-### Problema real
+### Problema identificado
 
-As imagens do bucket Storage estão OK e acessíveis publicamente. O problema é que a página de Login depende da imagem de fundo carregar para ficar visível. Quando ela demora ou falha:
-- O fundo fica com a cor padrão do CSS do app (azul escuro HSL 240)
-- O card do formulário tem `bg-black/40` com `backdrop-blur`, que sem imagem fica praticamente invisível
+Depois de fazer login, o `AppLayout.tsx` tem dois problemas:
 
-### Correções
+1. **`return null` sem feedback visual** (linha 45): Quando a sessão ainda não foi detectada, o componente renderiza literalmente nada — o usuário vê apenas o fundo azul escuro do CSS (`hsl(240 60% 10%)`).
 
-**Arquivo: `src/pages/Login.tsx`**
+2. **Spinner de loading quase invisível**: O estado de carregamento mostra um spinner pequeno (`Loader2`) sem nenhum texto ou indicação visual clara, dificultando saber que o app está carregando.
 
-1. Adicionar `bg-black` como cor de fallback no container principal (div raiz), garantindo que mesmo sem a imagem o fundo fique escuro e legível
-2. Aumentar a opacidade do card do formulário de `bg-black/40` para `bg-black/70`, tornando-o visível independente da imagem de fundo
+3. **Possível problema de publicação**: As alterações recentes podem não estar publicadas no domínio customizado `caminhosdomar.site`. O app publicado pode estar com código antigo.
 
-**Arquivo: `src/hooks/useAuth.ts`**
+### Correções planejadas
 
-3. Adicionar `localStorage.removeItem("top_user")` na função `signOut` para limpar estado local ao sair
+**Arquivo: `src/components/AppLayout.tsx`**
 
-### Detalhes das mudanças
+1. Substituir `return null` por uma tela de loading visível com spinner e texto "Carregando..."
+2. Melhorar o estado de loading existente adicionando texto explicativo e o logo/nome do app
+3. Ambos os estados terão fundo escuro explícito para garantir visibilidade
 
-| Arquivo | Linha | De | Para |
-|---|---|---|---|
-| `Login.tsx` | Container principal | `className="relative flex min-h-screen..."` | Adicionar `bg-black` |
-| `Login.tsx` | Card do formulário | `bg-black/40` | `bg-black/70` |
-| `useAuth.ts` | Função signOut | `await supabase.auth.signOut()` | Adicionar `localStorage.removeItem("top_user")` antes do signOut |
+### Detalhes Tecnicos
 
-### Resultado esperado
+| Local | Antes | Depois |
+|---|---|---|
+| `AppLayout.tsx` linha 37-43 (loading) | Spinner sozinho sem texto | Spinner + texto "Carregando..." centralizado |
+| `AppLayout.tsx` linha 45 (`!session`) | `return null` (tela vazia) | Mesma tela de loading com spinner + texto, pois logo em seguida o redirect para "/" acontece |
 
-Ao clicar em "Sair", a tela de login aparecerá com fundo preto sólido e o formulário será visível imediatamente, sem depender do carregamento da imagem de fundo.
+### O que muda na pratica
+
+- O usuario nunca mais vera uma tela completamente vazia/azul
+- Sempre havera um spinner com texto "Carregando..." visivel durante transicoes de estado
+- O redirect para a tela de login continua funcionando normalmente
+
+### Importante
+
+Depois de aprovar e implementar, sera necessario **publicar** o projeto para que as mudancas aparecam no dominio customizado `caminhosdomar.site`.
 
