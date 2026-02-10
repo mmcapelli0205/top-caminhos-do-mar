@@ -34,15 +34,14 @@ export default function AppLayout() {
     navigate("/", { replace: true });
   };
 
-  if (loading) {
+  if (loading || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <span className="text-sm text-muted-foreground">Carregando...</span>
       </div>
     );
   }
-
-  if (!session) return null;
 
   // Check profile status
   if (!profile || profile.status === "pendente") {
