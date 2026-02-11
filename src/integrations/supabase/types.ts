@@ -550,6 +550,39 @@ export type Database = {
           },
         ]
       }
+      bases_legendarios: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          id: string
+          instagram_handle: string
+          logo_url: string | null
+          nome: string
+          regiao: string | null
+          seguidores: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: string
+          instagram_handle: string
+          logo_url?: string | null
+          nome: string
+          regiao?: string | null
+          seguidores?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: string
+          instagram_handle?: string
+          logo_url?: string | null
+          nome?: string
+          regiao?: string | null
+          seguidores?: number | null
+        }
+        Relationships: []
+      }
       bebidas_itens: {
         Row: {
           created_at: string | null
@@ -1438,6 +1471,39 @@ export type Database = {
           },
         ]
       }
+      radar_noticias: {
+        Row: {
+          created_at: string | null
+          data_captura: string | null
+          data_publicacao: string | null
+          fonte_nome: string | null
+          fonte_url: string | null
+          id: string
+          resumo: string | null
+          titulo: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_captura?: string | null
+          data_publicacao?: string | null
+          fonte_nome?: string | null
+          fonte_url?: string | null
+          id?: string
+          resumo?: string | null
+          titulo: string
+        }
+        Update: {
+          created_at?: string | null
+          data_captura?: string | null
+          data_publicacao?: string | null
+          fonte_nome?: string | null
+          fonte_url?: string | null
+          id?: string
+          resumo?: string | null
+          titulo?: string
+        }
+        Relationships: []
+      }
       servidores: {
         Row: {
           area_preferencia_1: string | null
@@ -1695,6 +1761,92 @@ export type Database = {
           status?: string | null
         }
         Relationships: []
+      }
+      tops_legendarios: {
+        Row: {
+          ativo: boolean | null
+          cidade: string | null
+          created_at: string | null
+          data_captura: string | null
+          data_checkin: string | null
+          data_retorno: string | null
+          destaque: boolean | null
+          estado: string | null
+          id: string
+          instagram_base: string | null
+          link_participante: string | null
+          link_servidor: string | null
+          link_servidor_data: string | null
+          link_servidor_encontrado_em: string | null
+          link_servidor_enviado_por: string | null
+          nome_track: string | null
+          numero_top: string | null
+          origem_dados: string | null
+          status: string | null
+          top_id: string | null
+          updated_at: string | null
+          valor_participante: number | null
+          valor_servidor: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          cidade?: string | null
+          created_at?: string | null
+          data_captura?: string | null
+          data_checkin?: string | null
+          data_retorno?: string | null
+          destaque?: boolean | null
+          estado?: string | null
+          id?: string
+          instagram_base?: string | null
+          link_participante?: string | null
+          link_servidor?: string | null
+          link_servidor_data?: string | null
+          link_servidor_encontrado_em?: string | null
+          link_servidor_enviado_por?: string | null
+          nome_track?: string | null
+          numero_top?: string | null
+          origem_dados?: string | null
+          status?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+          valor_participante?: number | null
+          valor_servidor?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          cidade?: string | null
+          created_at?: string | null
+          data_captura?: string | null
+          data_checkin?: string | null
+          data_retorno?: string | null
+          destaque?: boolean | null
+          estado?: string | null
+          id?: string
+          instagram_base?: string | null
+          link_participante?: string | null
+          link_servidor?: string | null
+          link_servidor_data?: string | null
+          link_servidor_encontrado_em?: string | null
+          link_servidor_enviado_por?: string | null
+          nome_track?: string | null
+          numero_top?: string | null
+          origem_dados?: string | null
+          status?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+          valor_participante?: number | null
+          valor_servidor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tops_legendarios_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
