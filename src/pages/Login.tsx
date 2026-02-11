@@ -67,6 +67,7 @@ const Login = () => {
       });
 
       if (error) {
+        console.error("Login error:", error.message);
         if (error.message.includes("Invalid login")) {
           toast({ title: "Email ou senha incorretos", variant: "destructive" });
           setErrors({ password: "Email ou senha incorretos" });
@@ -79,11 +80,10 @@ const Login = () => {
         } else {
           toast({ title: error.message, variant: "destructive" });
         }
-        return;
       }
-
       // Session detected by onAuthStateChange — no manual navigate needed
-    } catch {
+    } catch (err) {
+      console.error("Login catch error:", err);
       toast({ title: "Erro ao conectar", description: "Tente novamente.", variant: "destructive" });
     } finally {
       setLoading(false);
