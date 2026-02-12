@@ -156,7 +156,7 @@ function GerarVideoSection() {
 
   // Poll for status
   useEffect(() => {
-    if (!taskId || status === "Completed" || status === "Failed") {
+    if (!taskId || status === "succeed" || status === "failed") {
       if (pollingRef.current) clearInterval(pollingRef.current);
       return;
     }
@@ -168,12 +168,12 @@ function GerarVideoSection() {
         });
         if (error) return;
         setStatus(data.status);
-        if (data.status === "Completed" && data.video_url) {
+        if (data.status === "succeed" && data.video_url) {
           setVideoUrl(data.video_url);
           toast({ title: "Vídeo pronto!" });
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
-        if (data.status === "Failed") {
+        if (data.status === "failed") {
           toast({ title: "Falha na geração do vídeo", variant: "destructive" });
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
@@ -188,9 +188,9 @@ function GerarVideoSection() {
   }, [taskId, status, toast]);
 
   const progressValue =
-    status === "Completed" ? 100 :
-    status === "Processing" ? 60 :
-    status === "Pending" || status === "Staged" ? 20 : 0;
+    status === "succeed" ? 100 :
+    status === "processing" ? 60 :
+    status === "submitted" ? 20 : 0;
 
   return (
     <Card className="bg-[#2d2d2d] border-[#c9a84c]/20">
@@ -227,14 +227,14 @@ function GerarVideoSection() {
 
         <Button
           onClick={handleGenerate}
-          disabled={loading || !prompt.trim() || (!!taskId && status !== "Completed" && status !== "Failed")}
+          disabled={loading || !prompt.trim() || (!!taskId && status !== "succeed" && status !== "failed")}
           className="w-full bg-[#c9a84c] hover:bg-[#b8973b] text-black font-semibold"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Video className="h-4 w-4 mr-2" />}
           {loading ? "Enviando..." : "Gerar Vídeo"}
         </Button>
 
-        {taskId && status && status !== "Completed" && status !== "Failed" && (
+        {taskId && status && status !== "succeed" && status !== "failed" && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-[#c9a84c]" />
@@ -245,7 +245,7 @@ function GerarVideoSection() {
           </div>
         )}
 
-        {status === "Failed" && (
+        {status === "failed" && (
           <p className="text-sm text-red-400">A geração falhou. Tente novamente com outro prompt.</p>
         )}
 
