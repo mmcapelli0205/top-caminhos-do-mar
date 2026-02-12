@@ -18,6 +18,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 
+const formatPhone = (phone: string | null) => {
+  if (!phone) return "-";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return phone;
+};
+
 const CARGOS = [
   { value: "servidor", label: "Servidor" },
   { value: "coordenacao", label: "Coordenador" },
@@ -56,6 +64,11 @@ const Aprovacoes = () => {
   const [editandoCargo, setEditandoCargo] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [keywordLoading, setKeywordLoading] = useState(false);
+  const [editarPerfilDialog, setEditarPerfilDialog] = useState<{
+    id: string; nome: string; telefone: string; numero_legendario: string; area_preferencia: string; email: string;
+  } | null>(null);
+  const [perfilForm, setPerfilForm] = useState({ nome: "", telefone: "", numero_legendario: "", area_preferencia: "", email: "" });
+  const [salvandoPerfil, setSalvandoPerfil] = useState(false);
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["user-profiles"],
@@ -189,6 +202,29 @@ const Aprovacoes = () => {
     finally { setKeywordLoading(false); }
   };
 
+  const openEditarPerfil = (p: any) => {
+    setEditarPerfilDialog({ id: p.id, nome: p.nome, telefone: p.telefone || "", numero_legendario: p.numero_legendario || "", area_preferencia: p.area_preferencia || "", email: p.email });
+    setPerfilForm({ nome: p.nome, telefone: p.telefone || "", numero_legendario: p.numero_legendario || "", area_preferencia: p.area_preferencia || "", email: p.email });
+  };
+
+  const handleSalvarPerfil = async () => {
+    if (!editarPerfilDialog) return;
+    setSalvandoPerfil(true);
+    try {
+      const { error } = await supabase.from("user_profiles").update({
+        nome: perfilForm.nome.trim(),
+        telefone: perfilForm.telefone.trim() || null,
+        numero_legendario: perfilForm.numero_legendario.trim() || null,
+        area_preferencia: perfilForm.area_preferencia.trim() || null,
+      }).eq("id", editarPerfilDialog.id);
+      if (error) throw error;
+      toast({ title: `Perfil de ${perfilForm.nome} atualizado!` });
+      queryClient.invalidateQueries({ queryKey: ["user-profiles"] });
+      setEditarPerfilDialog(null);
+    } catch { toast({ title: "Erro ao salvar perfil", variant: "destructive" }); }
+    finally { setSalvandoPerfil(false); }
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center gap-3">
@@ -234,7 +270,7 @@ const Aprovacoes = () => {
                   </div>
                   <Badge className={STATUS_COLORS[p.status || "pendente"] || ""}>{p.status || "pendente"}</Badge>
                 </div>
-                {p.telefone && <p className="text-xs text-muted-foreground">{p.telefone}</p>}
+                {p.telefone && <p className="text-xs text-muted-foreground">{formatPhone(p.telefone)}</p>}
                 {p.created_at && <p className="text-xs text-muted-foreground">{format(new Date(p.created_at), "dd/MM/yy")}</p>}
                 <div className="flex gap-1 flex-wrap">
                   {p.status === "pendente" && (
@@ -249,8 +285,11 @@ const Aprovacoes = () => {
                   )}
                   {p.status === "aprovado" && (
                     <>
+                      <Button size="sm" variant="ghost" className="flex-1" onClick={() => openEditarPerfil(p)}>
+                        <Pencil className="h-4 w-4 mr-1" /> Editar
+                      </Button>
                       <Button size="sm" variant="ghost" className="flex-1" onClick={() => { setEditarCargoDialog({ id: p.id, nome: p.nome, cargo: p.cargo || "servidor" }); setNovoCargoEdit(p.cargo || "servidor"); }}>
-                        <Pencil className="h-4 w-4 mr-1" /> Cargo
+                        <Key className="h-4 w-4 mr-1" /> Cargo
                       </Button>
                       <Button size="sm" variant="ghost" className="text-red-600 flex-1" onClick={() => handleRevogar(p.id, p.nome)}>
                         <X className="h-4 w-4 mr-1" /> Revogar
@@ -293,7 +332,7 @@ const Aprovacoes = () => {
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.nome}</TableCell>
                       <TableCell className="text-sm">{p.email}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">{p.telefone || "-"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">{formatPhone(p.telefone)}</TableCell>
                       <TableCell className="hidden lg:table-cell text-sm">{p.numero_legendario || "-"}</TableCell>
                       <TableCell className="hidden lg:table-cell text-sm">{p.area_preferencia || "-"}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm">{p.created_at ? format(new Date(p.created_at), "dd/MM/yy") : "-"}</TableCell>
@@ -311,8 +350,9 @@ const Aprovacoes = () => {
                           )}
                           {p.status === "aprovado" && (
                             <>
-                              <Button size="sm" variant="ghost" onClick={() => { setEditarCargoDialog({ id: p.id, nome: p.nome, cargo: p.cargo || "servidor" }); setNovoCargoEdit(p.cargo || "servidor"); }}><Pencil className="h-4 w-4" /></Button>
-                              <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => handleRevogar(p.id, p.nome)}><X className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="ghost" onClick={() => openEditarPerfil(p)} title="Editar perfil"><Pencil className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="ghost" onClick={() => { setEditarCargoDialog({ id: p.id, nome: p.nome, cargo: p.cargo || "servidor" }); setNovoCargoEdit(p.cargo || "servidor"); }} title="Alterar cargo"><Key className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => handleRevogar(p.id, p.nome)} title="Revogar acesso"><X className="h-4 w-4" /></Button>
                             </>
                           )}
                         </div>
@@ -364,6 +404,20 @@ const Aprovacoes = () => {
           <DialogHeader><DialogTitle>Alterar cargo de {editarCargoDialog?.nome}</DialogTitle></DialogHeader>
           <div><Label>Novo cargo</Label><Select value={novoCargoEdit} onValueChange={setNovoCargoEdit}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{CARGOS.map((c) => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}</SelectContent></Select></div>
           <DialogFooter><Button variant="outline" onClick={() => setEditarCargoDialog(null)}>Cancelar</Button><Button onClick={handleEditarCargo} disabled={editandoCargo} className="gap-2">{editandoCargo && <Loader2 className="h-4 w-4 animate-spin" />} Salvar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editarPerfilDialog} onOpenChange={() => setEditarPerfilDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar perfil de {editarPerfilDialog?.nome}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome</Label><Input value={perfilForm.nome} onChange={(e) => setPerfilForm(f => ({ ...f, nome: e.target.value }))} className="mt-1" /></div>
+            <div><Label>Telefone</Label><Input value={perfilForm.telefone} onChange={(e) => setPerfilForm(f => ({ ...f, telefone: e.target.value }))} className="mt-1" placeholder="(XX) XXXXX-XXXX" /></div>
+            <div><Label>Nº Legendário</Label><Input value={perfilForm.numero_legendario} onChange={(e) => setPerfilForm(f => ({ ...f, numero_legendario: e.target.value }))} className="mt-1" placeholder="Ex: 85402" /></div>
+            <div><Label>Área de preferência</Label><Input value={perfilForm.area_preferencia} onChange={(e) => setPerfilForm(f => ({ ...f, area_preferencia: e.target.value }))} className="mt-1" placeholder="Ex: Administração" /></div>
+            <div><Label>Email</Label><Input value={perfilForm.email} disabled className="mt-1 opacity-60" /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setEditarPerfilDialog(null)}>Cancelar</Button><Button onClick={handleSalvarPerfil} disabled={salvandoPerfil} className="gap-2">{salvandoPerfil && <Loader2 className="h-4 w-4 animate-spin" />} Salvar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
