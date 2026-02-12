@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserCheck, Check, X, Search, Pencil, Loader2, Save, Key } from "lucide-react";
+import { UserCheck, Check, X, Search, Pencil, Loader2, Save, Key, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -69,6 +69,7 @@ const Aprovacoes = () => {
   } | null>(null);
   const [perfilForm, setPerfilForm] = useState({ nome: "", telefone: "", numero_legendario: "", area_preferencia: "", email: "" });
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
+  const [showKeyword, setShowKeyword] = useState(false);
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["user-profiles"],
@@ -373,7 +374,12 @@ const Aprovacoes = () => {
           <div className="flex flex-col sm:flex-row items-end gap-3">
             <div className="flex-1 w-full">
               <Label>Palavra-chave de acesso ao cadastro</Label>
-              <Input type="password" value={keyword || configData?.valor || ""} onChange={(e) => setKeyword(e.target.value)} className="mt-1" placeholder="Palavra-chave" />
+              <div className="relative mt-1">
+                <Input type={showKeyword ? "text" : "password"} value={keyword || configData?.valor || ""} onChange={(e) => setKeyword(e.target.value)} className="pr-10" placeholder="Palavra-chave" />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent" onClick={() => setShowKeyword(v => !v)}>
+                  {showKeyword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </div>
             </div>
             <Button onClick={handleSaveKeyword} disabled={keywordLoading} className={`gap-2 ${isMobile ? "w-full" : ""}`}>
               {keywordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
