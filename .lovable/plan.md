@@ -1,45 +1,68 @@
 
 
-## Atualizar integração Kling AI para API oficial
+## Problema Identificado
 
-### Problema atual
-As edge functions `generate-video` e `check-video-status` estão configuradas para usar o PiAPI (intermediario `api.piapi.ai`), mas voce tem acesso direto a API oficial do Kling com Access Key e Secret Key.
+A funcao de "Imagem de Referencia" na IA Criativa esta decorativa - o upload funciona, mas a imagem nunca chega ao modelo de IA. O DALL-E 3 so gera imagens do zero a partir de texto, nao suporta receber uma imagem base para editar.
 
-### O que muda
+## Solucao
 
-**1. Novos secrets no Supabase**
-- Adicionar `KLING_ACCESS_KEY` (sua Access Key)
-- Adicionar `KLING_SECRET_KEY` (sua Secret Key)
-- O secret `KLING_API_KEY` existente pode ser removido (era para o PiAPI)
+Trocar o backend de geracao de imagens do DALL-E 3 (OpenAI) para o **Lovable AI Gateway com Gemini**, que suporta nativamente receber uma imagem junto com instrucoes de edicao.
 
-**2. Atualizar `supabase/functions/generate-video/index.ts`**
-- Gerar JWT token usando Access Key + Secret Key (algoritmo HS256)
-- Chamar a API oficial `https://api.klingai.com/v1/videos/text2video` em vez de `api.piapi.ai`
-- Enviar o token no header `Authorization: Bearer <jwt>`
-- Body adaptado para o formato da API oficial do Kling
+### Como vai funcionar
 
-**3. Atualizar `supabase/functions/check-video-status/index.ts`**
-- Mesma logica de JWT
-- Chamar `https://api.klingai.com/v1/videos/text2video/<task_id>` para consultar status
-- Adaptar parsing da resposta ao formato oficial
+- **Sem imagem de referencia**: Gera imagem do zero a partir do prompt (como hoje)
+- **Com imagem de referencia**: Envia a imagem + prompt para o Gemini, que edita/modifica a imagem conforme pedido (ex: "adicionar fundo de mar atras deste logo")
 
-### Detalhes tecnicos
+## Etapas
 
-A API oficial do Kling exige um JWT gerado assim:
+### 1. Atualizar a Edge Function `generate-image`
 
+Substituir a chamada ao DALL-E 3 pela chamada ao Lovable AI Gateway:
+
+- Endpoint: `https://ai.gateway.lovable.dev/v1/chat/completions`
+- Modelo: `google/gemini-2.5-flash-image` (geracao de imagens)
+- Autenticacao: `LOVABLE_API_KEY` (ja disponivel automaticamente)
+- Quando houver `reference_image_url`, enviar como conteudo multimodal (tipo `image_url` + `text`)
+- Quando nao houver, enviar apenas o prompt de texto
+- Parametro `modalities: ["image", "text"]` para receber imagem na resposta
+- A resposta vem em base64 - fazer upload automatico para o bucket `assets` e retornar a URL publica
+
+### 2. Atualizar o Frontend `AreaIACriativa.tsx`
+
+- Remover os seletores de "Tamanho" e "Qualidade" (nao se aplicam ao Gemini)
+- Manter o campo de prompt e o upload de referencia como estao
+- Ajustar o parsing da resposta (a URL agora vira do storage, nao da OpenAI)
+
+### 3. Resultado Esperado
+
+Ao enviar o logo "Caminhos do Mar" + prompt "Adicionar um fundo de mar atras deste logo", o Gemini vai receber a imagem real e edita-la conforme o pedido, mantendo o logo original.
+
+---
+
+### Detalhes Tecnicos
+
+**Edge Function - Payload sem referencia:**
 ```text
-Header: { alg: "HS256", typ: "JWT" }
-Payload: { iss: ACCESS_KEY, exp: now + 1800, iat: now }
-Assinado com: SECRET_KEY
+messages: [{ role: "user", content: "prompt do usuario" }]
+modalities: ["image", "text"]
+model: "google/gemini-2.5-flash-image"
 ```
 
-O JWT e gerado em cada chamada dentro da edge function usando uma lib Deno compativel.
+**Edge Function - Payload com referencia:**
+```text
+messages: [{
+  role: "user",
+  content: [
+    { type: "text", text: "prompt do usuario" },
+    { type: "image_url", image_url: { url: "URL da imagem de referencia" } }
+  ]
+}]
+modalities: ["image", "text"]
+```
 
-### Arquivos modificados
-- `supabase/functions/generate-video/index.ts`
-- `supabase/functions/check-video-status/index.ts`
+**Resposta:** A imagem gerada vem como base64, sera salva no bucket `assets/ia-criativa/` e a URL publica sera retornada ao frontend.
 
-### Arquivos inalterados
-- `src/components/area/AreaIACriativa.tsx` (nenhuma mudanca no frontend)
-- `supabase/functions/generate-image/index.ts` (DALL-E nao muda)
+**Arquivos modificados:**
+- `supabase/functions/generate-image/index.ts` - reescrever para usar Lovable AI
+- `src/components/area/AreaIACriativa.tsx` - remover opcoes de tamanho/qualidade do DALL-E
 
