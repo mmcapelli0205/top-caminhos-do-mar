@@ -100,7 +100,11 @@ export function useAuth(): UseAuthReturn {
 
   const signOut = useCallback(async () => {
     localStorage.removeItem("top_user");
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Erro ao deslogar (ignorado):", err);
+    }
     setSession(null);
     setProfile(null);
     setRole(null);
