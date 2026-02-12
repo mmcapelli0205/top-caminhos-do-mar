@@ -1,89 +1,45 @@
 
 
-## Radar + IA Criativa dentro de Servidores > Midia
+## Atualizar integração Kling AI para API oficial
 
-### Resumo
+### Problema atual
+As edge functions `generate-video` e `check-video-status` estão configuradas para usar o PiAPI (intermediario `api.piapi.ai`), mas voce tem acesso direto a API oficial do Kling com Access Key e Secret Key.
 
-Mover o Radar para dentro do portal da area "Midia" e adicionar ferramentas de IA (DALL-E para imagens, Kling AI para videos). O item Radar sai do menu lateral.
+### O que muda
 
-### Etapa 1 - Armazenar API Keys
+**1. Novos secrets no Supabase**
+- Adicionar `KLING_ACCESS_KEY` (sua Access Key)
+- Adicionar `KLING_SECRET_KEY` (sua Secret Key)
+- O secret `KLING_API_KEY` existente pode ser removido (era para o PiAPI)
 
-Solicitar que voce insira as duas chaves de forma segura:
-- **OPENAI_API_KEY** (sua chave `sk-...`)
-- **KLING_API_KEY** (chave do Kling AI)
+**2. Atualizar `supabase/functions/generate-video/index.ts`**
+- Gerar JWT token usando Access Key + Secret Key (algoritmo HS256)
+- Chamar a API oficial `https://api.klingai.com/v1/videos/text2video` em vez de `api.piapi.ai`
+- Enviar o token no header `Authorization: Bearer <jwt>`
+- Body adaptado para o formato da API oficial do Kling
 
-Elas ficam armazenadas como secrets do Supabase, nunca expostas no codigo.
+**3. Atualizar `supabase/functions/check-video-status/index.ts`**
+- Mesma logica de JWT
+- Chamar `https://api.klingai.com/v1/videos/text2video/<task_id>` para consultar status
+- Adaptar parsing da resposta ao formato oficial
 
-### Etapa 2 - Criar Edge Functions
+### Detalhes tecnicos
 
-**`supabase/functions/generate-image/index.ts`**
-- Recebe um prompt (e opcionalmente uma imagem base64 para edicao)
-- Chama a API da OpenAI (DALL-E 3) usando sua OPENAI_API_KEY
-- Retorna a URL da imagem gerada
-- Parametros: prompt, size (1024x1024, 1792x1024, etc.), quality (standard/hd)
-
-**`supabase/functions/generate-video/index.ts`**
-- Recebe prompt textual (e opcionalmente imagem de referencia)
-- Chama a API do Kling AI para criar tarefa de geracao de video
-- Retorna o task_id para acompanhamento
-
-**`supabase/functions/check-video-status/index.ts`**
-- Recebe task_id
-- Consulta o status da tarefa no Kling AI
-- Retorna status (processing/completed/failed) e URL do video quando pronto
-
-### Etapa 3 - Remover Radar do menu e rotas
-
-**`src/lib/auth.ts`**
-- Remover item 14 (Radar) do ALL_MENU_ITEMS
-- Remover id 14 dos filtros de cargo (coordenacao, etc.)
-
-**`src/App.tsx`**
-- Remover a rota `/radar`
-- Remover import de RadarLegendarios
-
-### Etapa 4 - Criar componentes de aba
-
-**`src/components/area/AreaRadar.tsx`**
-- Extrai o conteudo de RadarLegendarios como componente reutilizavel
-- Usa os mesmos hooks (useTopLegendarios, useBasesLegendarios, useRadarNoticias)
-- Remove o wrapper de pagina para se integrar ao portal
-
-**`src/components/area/AreaIACriativa.tsx`**
-- Interface com 3 secoes em cards:
-  - **Gerar Imagem (DALL-E)**: campo de prompt, selecao de tamanho, botao gerar, preview e download
-  - **Editar Imagem (DALL-E)**: upload de imagem + instrucao, resultado editado
-  - **Gerar Video (Kling AI)**: campo de prompt, botao gerar, indicador de progresso com polling, player de video quando pronto
-
-### Etapa 5 - Integrar abas no AreaPortal
-
-**`src/pages/AreaPortal.tsx`**
-- Quando `decodedNome === "Mídia"`, exibir 2 abas extras:
-  - **Radar** (componente AreaRadar)
-  - **IA Criativa** (componente AreaIACriativa)
-
-### Estrutura final das abas (area Midia)
+A API oficial do Kling exige um JWT gerado assim:
 
 ```text
-Painel | Mural | Calendario | Participantes | Docs | Radar | IA Criativa
+Header: { alg: "HS256", typ: "JWT" }
+Payload: { iss: ACCESS_KEY, exp: now + 1800, iat: now }
+Assinado com: SECRET_KEY
 ```
 
-### Custos
+O JWT e gerado em cada chamada dentro da edge function usando uma lib Deno compativel.
 
-- Imagens DALL-E: cobrados na sua conta OpenAI (~$0.04-0.08 por imagem)
-- Videos Kling AI: cobrados na sua conta Kling
-- Nenhum credito do Lovable sera consumido por essas geracoes
-
-### Arquivos criados
-- `src/components/area/AreaRadar.tsx`
-- `src/components/area/AreaIACriativa.tsx`
-- `supabase/functions/generate-image/index.ts`
+### Arquivos modificados
 - `supabase/functions/generate-video/index.ts`
 - `supabase/functions/check-video-status/index.ts`
 
-### Arquivos modificados
-- `src/lib/auth.ts`
-- `src/App.tsx`
-- `src/pages/AreaPortal.tsx`
-- `supabase/config.toml`
+### Arquivos inalterados
+- `src/components/area/AreaIACriativa.tsx` (nenhuma mudanca no frontend)
+- `supabase/functions/generate-image/index.ts` (DALL-E nao muda)
 
