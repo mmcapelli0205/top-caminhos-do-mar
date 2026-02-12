@@ -60,7 +60,7 @@ const Aprovacoes = () => {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["user-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_profiles").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("user_profiles").select("*").neq("status", "recusado").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -88,7 +88,6 @@ const Aprovacoes = () => {
   const counts = {
     pendentes: profiles.filter((p) => p.status === "pendente").length,
     aprovados: profiles.filter((p) => p.status === "aprovado").length,
-    recusados: profiles.filter((p) => p.status === "recusado").length,
     total: profiles.length,
   };
 
@@ -198,10 +197,9 @@ const Aprovacoes = () => {
         {counts.pendentes > 0 && <Badge className="bg-amber-500 text-white">{counts.pendentes} pendente{counts.pendentes > 1 ? "s" : ""}</Badge>}
       </div>
 
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-3">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Pendentes</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-amber-500">{counts.pendentes}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Aprovados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-green-500">{counts.aprovados}</p></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Recusados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-red-500">{counts.recusados}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-foreground">{counts.total}</p></CardContent></Card>
       </div>
 
@@ -212,7 +210,6 @@ const Aprovacoes = () => {
             <SelectItem value="todos">Todos</SelectItem>
             <SelectItem value="pendente">Pendentes</SelectItem>
             <SelectItem value="aprovado">Aprovados</SelectItem>
-            <SelectItem value="recusado">Recusados</SelectItem>
           </SelectContent>
         </Select>
         <div className="relative flex-1">
