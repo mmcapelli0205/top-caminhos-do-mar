@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { ImageIcon, Video, Download, Loader2, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ImageIcon, Video, Download, Loader2, Sparkles, Upload, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,91 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+function useImageUpload() {
+  const [uploading, setUploading] = useState(false);
+  const [refImageUrl, setRefImageUrl] = useState<string | null>(null);
+  const [refImageName, setRefImageName] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Apenas imagens são aceitas", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `ia-criativa/ref-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("assets").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("assets").getPublicUrl(path);
+      setRefImageUrl(urlData.publicUrl);
+      setRefImageName(file.name);
+      toast({ title: "Imagem de referência carregada!" });
+    } catch (e: any) {
+      toast({ title: "Erro no upload", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }, [toast]);
+
+  const clearRef = useCallback(() => {
+    setRefImageUrl(null);
+    setRefImageName(null);
+  }, []);
+
+  return { uploading, refImageUrl, refImageName, handleUpload, clearRef };
+}
+
+function RefImageUploader({ uploading, refImageUrl, refImageName, onUpload, onClear }: {
+  uploading: boolean;
+  refImageUrl: string | null;
+  refImageName: string | null;
+  onUpload: (file: File) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-gray-300 text-sm">Imagem de Referência (opcional)</Label>
+      {refImageUrl ? (
+        <div className="relative flex items-center gap-3 p-2 rounded-md border border-[#444] bg-[#1a1a1a]">
+          <img src={refImageUrl} alt="Ref" className="h-16 w-16 object-cover rounded" />
+          <span className="text-sm text-gray-300 truncate flex-1">{refImageName}</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-400" onClick={onClear}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onUpload(f);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-[#444] text-gray-300 hover:text-white"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+            {uploading ? "Enviando..." : "Upload de referência"}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function AreaIACriativa() {
   return (
@@ -26,15 +111,17 @@ function GerarImagemSection() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [revisedPrompt, setRevisedPrompt] = useState<string | null>(null);
   const { toast } = useToast();
+  const { uploading, refImageUrl, refImageName, handleUpload, clearRef } = useImageUpload();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
     setImageUrl(null);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-image", {
-        body: { prompt, size, quality },
-      });
+      const body: Record<string, unknown> = { prompt, size, quality };
+      if (refImageUrl) body.reference_image_url = refImageUrl;
+
+      const { data, error } = await supabase.functions.invoke("generate-image", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setImageUrl(data.url);
@@ -47,6 +134,12 @@ function GerarImagemSection() {
     }
   };
 
+  const handleDelete = () => {
+    setImageUrl(null);
+    setRevisedPrompt(null);
+    toast({ title: "Imagem descartada." });
+  };
+
   return (
     <Card className="bg-[#2d2d2d] border-[#c9a84c]/20">
       <CardHeader className="pb-3">
@@ -56,6 +149,14 @@ function GerarImagemSection() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <RefImageUploader
+          uploading={uploading}
+          refImageUrl={refImageUrl}
+          refImageName={refImageName}
+          onUpload={handleUpload}
+          onClear={clearRef}
+        />
+
         <div>
           <Label className="text-gray-300 text-sm">Prompt</Label>
           <Textarea
@@ -110,11 +211,16 @@ function GerarImagemSection() {
             {revisedPrompt && (
               <p className="text-xs text-gray-400 italic">Prompt revisado: {revisedPrompt}</p>
             )}
-            <a href={imageUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="border-[#c9a84c]/30 text-[#c9a84c]">
-                <Download className="h-4 w-4 mr-1" /> Abrir em nova aba
+            <div className="flex gap-2">
+              <a href={imageUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="border-[#c9a84c]/30 text-[#c9a84c]">
+                  <Download className="h-4 w-4 mr-1" /> Abrir em nova aba
+                </Button>
+              </a>
+              <Button variant="outline" size="sm" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4 mr-1" /> Descartar
               </Button>
-            </a>
+            </div>
           </div>
         )}
       </CardContent>
@@ -131,6 +237,7 @@ function GerarVideoSection() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
+  const { uploading, refImageUrl, refImageName, handleUpload, clearRef } = useImageUpload();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -139,9 +246,10 @@ function GerarVideoSection() {
     setStatus(null);
     setTaskId(null);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-video", {
-        body: { prompt, duration },
-      });
+      const body: Record<string, unknown> = { prompt, duration };
+      if (refImageUrl) body.image_url = refImageUrl;
+
+      const { data, error } = await supabase.functions.invoke("generate-video", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setTaskId(data.task_id);
@@ -154,7 +262,6 @@ function GerarVideoSection() {
     }
   };
 
-  // Poll for status
   useEffect(() => {
     if (!taskId || status === "succeed" || status === "failed") {
       if (pollingRef.current) clearInterval(pollingRef.current);
@@ -192,6 +299,13 @@ function GerarVideoSection() {
     status === "processing" ? 60 :
     status === "submitted" ? 20 : 0;
 
+  const handleDeleteVideo = () => {
+    setVideoUrl(null);
+    setTaskId(null);
+    setStatus(null);
+    toast({ title: "Vídeo descartado." });
+  };
+
   return (
     <Card className="bg-[#2d2d2d] border-[#c9a84c]/20">
       <CardHeader className="pb-3">
@@ -201,6 +315,14 @@ function GerarVideoSection() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <RefImageUploader
+          uploading={uploading}
+          refImageUrl={refImageUrl}
+          refImageName={refImageName}
+          onUpload={handleUpload}
+          onClear={clearRef}
+        />
+
         <div>
           <Label className="text-gray-300 text-sm">Prompt</Label>
           <Textarea
@@ -252,11 +374,16 @@ function GerarVideoSection() {
         {videoUrl && (
           <div className="space-y-2">
             <video src={videoUrl} controls className="w-full rounded-lg" />
-            <a href={videoUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="border-[#c9a84c]/30 text-[#c9a84c]">
-                <Download className="h-4 w-4 mr-1" /> Baixar vídeo
+            <div className="flex gap-2">
+              <a href={videoUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="border-[#c9a84c]/30 text-[#c9a84c]">
+                  <Download className="h-4 w-4 mr-1" /> Baixar vídeo
+                </Button>
+              </a>
+              <Button variant="outline" size="sm" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={handleDeleteVideo}>
+                <Trash2 className="h-4 w-4 mr-1" /> Descartar
               </Button>
-            </a>
+            </div>
           </div>
         )}
       </CardContent>
