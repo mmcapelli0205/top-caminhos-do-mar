@@ -333,7 +333,7 @@ const Aprovacoes = () => {
           <div className="flex flex-col sm:flex-row items-end gap-3">
             <div className="flex-1 w-full">
               <Label>Palavra-chave de acesso ao cadastro</Label>
-              <Input value={keyword || configData?.valor || ""} onChange={(e) => setKeyword(e.target.value)} className="mt-1" placeholder="Palavra-chave" />
+              <Input type="password" value={keyword || configData?.valor || ""} onChange={(e) => setKeyword(e.target.value)} className="mt-1" placeholder="Palavra-chave" />
             </div>
             <Button onClick={handleSaveKeyword} disabled={keywordLoading} className={`gap-2 ${isMobile ? "w-full" : ""}`}>
               {keywordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
