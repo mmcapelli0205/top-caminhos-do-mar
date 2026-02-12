@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,56 +13,118 @@ serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { prompt, size = "1024x1024", quality = "standard", image_base64, edit_prompt } = await req.json();
+    const { prompt, reference_image_url } = await req.json();
 
-    if (!prompt && !edit_prompt) {
+    if (!prompt) {
       return new Response(JSON.stringify({ error: "prompt is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Image generation with DALL-E 3
-    const body: Record<string, unknown> = {
-      model: "dall-e-3",
-      prompt: edit_prompt || prompt,
-      n: 1,
-      size,
-      quality,
-      response_format: "url",
-    };
+    // Build message content - multimodal if reference image exists
+    let content: unknown;
+    if (reference_image_url) {
+      content = [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: reference_image_url } },
+      ];
+    } else {
+      content = prompt;
+    }
 
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content }],
+        modalities: ["image", "text"],
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
-      return new Response(JSON.stringify({ error: `OpenAI error: ${response.status}`, details: errorText }), {
+      console.error("AI Gateway error:", response.status, errorText);
+
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit excedido. Tente novamente em alguns segundos." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `AI Gateway error: ${response.status}`, details: errorText }), {
         status: response.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await response.json();
-    const imageUrl = data.data?.[0]?.url;
-    const revisedPrompt = data.data?.[0]?.revised_prompt;
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const textResponse = data.choices?.[0]?.message?.content;
 
-    return new Response(JSON.stringify({ url: imageUrl, revised_prompt: revisedPrompt }), {
+    if (!imageData) {
+      return new Response(JSON.stringify({ error: "Nenhuma imagem foi gerada", details: textResponse }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Upload base64 image to Supabase Storage
+    const base64Match = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!base64Match) {
+      return new Response(JSON.stringify({ error: "Formato de imagem inválido" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const ext = base64Match[1] === "jpeg" ? "jpg" : base64Match[1];
+    const base64Content = base64Match[2];
+    const binaryStr = atob(base64Content);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const filePath = `ia-criativa/gen-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("assets")
+      .upload(filePath, bytes, { contentType: `image/${base64Match[1]}`, upsert: false });
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      return new Response(JSON.stringify({ error: "Erro ao salvar imagem", details: uploadError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: urlData } = supabase.storage.from("assets").getPublicUrl(filePath);
+
+    return new Response(JSON.stringify({ url: urlData.publicUrl, revised_prompt: textResponse }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

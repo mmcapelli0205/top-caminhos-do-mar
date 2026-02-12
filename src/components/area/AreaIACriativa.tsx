@@ -105,8 +105,6 @@ export default function AreaIACriativa() {
 
 function GerarImagemSection() {
   const [prompt, setPrompt] = useState("");
-  const [size, setSize] = useState("1024x1024");
-  const [quality, setQuality] = useState("standard");
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [revisedPrompt, setRevisedPrompt] = useState<string | null>(null);
@@ -118,7 +116,7 @@ function GerarImagemSection() {
     setLoading(true);
     setImageUrl(null);
     try {
-      const body: Record<string, unknown> = { prompt, size, quality };
+      const body: Record<string, unknown> = { prompt };
       if (refImageUrl) body.reference_image_url = refImageUrl;
 
       const { data, error } = await supabase.functions.invoke("generate-image", { body });
@@ -145,7 +143,7 @@ function GerarImagemSection() {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2 text-white">
           <ImageIcon className="h-5 w-5 text-[#c9a84c]" />
-          Gerar Imagem (DALL-E 3)
+          Gerar Imagem (IA Criativa)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -166,34 +164,6 @@ function GerarImagemSection() {
             className="bg-[#1a1a1a] border-[#444] text-white mt-1"
             rows={3}
           />
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Label className="text-gray-300 text-sm">Tamanho</Label>
-            <Select value={size} onValueChange={setSize}>
-              <SelectTrigger className="bg-[#1a1a1a] border-[#444] text-white mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1024x1024">1024×1024</SelectItem>
-                <SelectItem value="1792x1024">1792×1024 (paisagem)</SelectItem>
-                <SelectItem value="1024x1792">1024×1792 (retrato)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1">
-            <Label className="text-gray-300 text-sm">Qualidade</Label>
-            <Select value={quality} onValueChange={setQuality}>
-              <SelectTrigger className="bg-[#1a1a1a] border-[#444] text-white mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="hd">HD</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         <Button
