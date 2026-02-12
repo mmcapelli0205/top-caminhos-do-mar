@@ -15,6 +15,8 @@ import AreaMural from "@/components/area/AreaMural";
 import AreaCalendario from "@/components/area/AreaCalendario";
 import AreaDesignacoes from "@/components/area/AreaDesignacoes";
 import AreaDocumentos from "@/components/area/AreaDocumentos";
+import AreaRadar from "@/components/area/AreaRadar";
+import AreaIACriativa from "@/components/area/AreaIACriativa";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Area = Tables<"areas">;
@@ -154,6 +156,8 @@ export default function AreaPortal() {
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="participantes">Participantes</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          {decodedNome === "Mídia" && <TabsTrigger value="radar">Radar</TabsTrigger>}
+          {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
         </TabsList>
 
         {/* Tab Painel */}
@@ -283,6 +287,18 @@ export default function AreaPortal() {
         <TabsContent value="documentos">
           <AreaDocumentos area={area} canEdit={canEdit} currentUser={currentUser} />
         </TabsContent>
+
+        {decodedNome === "Mídia" && (
+          <TabsContent value="radar">
+            <AreaRadar />
+          </TabsContent>
+        )}
+
+        {decodedNome === "Mídia" && (
+          <TabsContent value="ia-criativa">
+            <AreaIACriativa />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

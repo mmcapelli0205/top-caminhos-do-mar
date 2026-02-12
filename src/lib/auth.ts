@@ -12,7 +12,6 @@ import {
   Settings,
   UserCheck,
   CableCar,
-  Radio,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -59,7 +58,6 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 10, title: "Configurações", url: "/configuracoes", icon: Settings },
   { id: 12, title: "Aprovações", url: "/aprovacoes", icon: UserCheck },
   { id: 13, title: "Tirolesa", url: "/tirolesa", icon: CableCar },
-  { id: 14, title: "Radar", url: "/radar", icon: Radio },
 ];
 
 export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): MenuItem[] {
@@ -78,7 +76,7 @@ export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): 
     case "coord02":
     case "coord03":
       items = ALL_MENU_ITEMS.filter((item) =>
-        [1, 2, 3, 4, 6, 8, 13, 14].includes(item.id)
+        [1, 2, 3, 4, 6, 8, 13].includes(item.id)
       );
       break;
 
