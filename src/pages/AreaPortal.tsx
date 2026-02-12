@@ -158,8 +158,8 @@ export default function AreaPortal() {
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="participantes">Participantes</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
-          <TabsTrigger value="familias">Famílias</TabsTrigger>
-          <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>
+          {(decodedNome === "Segurança" || decodedNome === "Eventos") && <TabsTrigger value="familias">Famílias</TabsTrigger>}
+          {(decodedNome === "Segurança" || decodedNome === "Eventos") && <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="radar">Radar</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
         </TabsList>
@@ -292,13 +292,17 @@ export default function AreaPortal() {
           <AreaDocumentos area={area} canEdit={canEdit} currentUser={currentUser} />
         </TabsContent>
 
-        <TabsContent value="familias">
-          <Familias />
-        </TabsContent>
+        {(decodedNome === "Segurança" || decodedNome === "Eventos") && (
+          <TabsContent value="familias">
+            <Familias />
+          </TabsContent>
+        )}
 
-        <TabsContent value="tirolesa">
-          <Tirolesa />
-        </TabsContent>
+        {(decodedNome === "Segurança" || decodedNome === "Eventos") && (
+          <TabsContent value="tirolesa">
+            <Tirolesa />
+          </TabsContent>
+        )}
 
         {decodedNome === "Mídia" && (
           <TabsContent value="radar">

@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Users,
-  UsersRound,
   Shield,
   HeartPulse,
   DollarSign,
@@ -11,7 +10,6 @@ import {
   Calendar,
   Settings,
   UserCheck,
-  CableCar,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -47,7 +45,6 @@ export interface MenuItem {
 const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 1, title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { id: 2, title: "Participantes", url: "/participantes", icon: Users },
-  { id: 3, title: "Famílias", url: "/familias", icon: UsersRound },
   { id: 4, title: "Servidores", url: "/servidores", icon: Shield },
   { id: 5, title: "Hakunas", url: "/hakunas", icon: HeartPulse },
   { id: 6, title: "Financeiro", url: "/financeiro", icon: DollarSign },
@@ -57,7 +54,6 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 11, title: "TOPs", url: "/tops", icon: Calendar },
   { id: 10, title: "Configurações", url: "/configuracoes", icon: Settings },
   { id: 12, title: "Aprovações", url: "/aprovacoes", icon: UserCheck },
-  { id: 13, title: "Tirolesa", url: "/tirolesa", icon: CableCar },
 ];
 
 export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): MenuItem[] {
@@ -76,7 +72,7 @@ export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): 
     case "coord02":
     case "coord03":
       items = ALL_MENU_ITEMS.filter((item) =>
-        [1, 2, 3, 4, 6, 8, 13].includes(item.id)
+        [1, 2, 4, 6, 8].includes(item.id)
       );
       break;
 
