@@ -1,45 +1,80 @@
 
+## Problema Real Identificado
 
-## Problema
+O erro "Algo deu errado" (ErrorBoundary) no mobile e causado por **duas vulnerabilidades** no `AppLayout.tsx`:
 
-Ao fazer login no mobile, a tela trava no spinner "Carregando..." indefinidamente. Isso acontece porque:
+### 1. `localStorage.setItem` executado durante o render (linha 103)
 
-1. O login via Supabase Auth funciona normalmente
-2. O `onAuthStateChange` redireciona para `/dashboard`
-3. O `AppLayout` renderiza e o hook `useAuth` começa a buscar o perfil (`user_profiles`) e papel (`user_roles`)
-4. Se essa busca falhar silenciosamente (erro de rede, timeout no mobile, etc.), o estado `loading` nunca muda para `false` e o spinner fica infinito
+No corpo da funcao de render do `AppLayout`, existe esta chamada direta:
 
-O `useAuth` tem um `try/catch` que faz `setLoading(false)` no `finally`, mas o `catch` vazio pode engolir erros sem dar feedback ao usuario.
+```text
+localStorage.setItem("top_user", JSON.stringify(legacyUser));
+```
+
+Isso causa dois problemas:
+- **Safari iOS em navegacao privada** lanca excecao ao tentar escrever no localStorage, derrubando o componente inteiro
+- **E um anti-pattern React** - efeitos colaterais nao devem ocorrer durante o render
+
+Como o `ErrorBoundary` envolve toda a aplicacao, qualquer excecao no render do `AppLayout` mostra a tela "Algo deu errado" sem possibilidade de recuperacao.
+
+### 2. Falta de handler global para rejeicoes nao capturadas
+
+Promises rejeitadas sem tratamento (ex: falha de rede durante fetch de perfil) podem causar crashes silenciosos no React, especialmente em Safari mobile.
 
 ## Solucao
 
-### 1. Adicionar timeout de seguranca no `useAuth.ts`
+### Etapa 1: Mover `localStorage.setItem` para um `useEffect` com `try/catch`
 
-Se o carregamento do perfil demorar mais de 10 segundos, forcar `loading = false` e mostrar o app (mesmo sem perfil, o que redirecionaria para a tela de "Aguardando Aprovacao" ou permitiria retry).
+Tirar a chamada do corpo do render e colocar dentro de um `useEffect` que depende de `profile` e `role`. Envolver em `try/catch` para que falhas de storage (Safari privado) nao derrubem o app.
 
-### 2. Adicionar tratamento de erro visivel no `useAuth.ts`
+### Etapa 2: Adicionar handler global de `unhandledrejection`
 
-No `catch` do `fetchProfile`, logar o erro no console e opcionalmente mostrar um toast para o usuario saber que algo deu errado.
-
-### 3. Adicionar botao de retry no AppLayout
-
-Se o perfil nao carregar apos o timeout, mostrar um botao "Tentar novamente" em vez do spinner infinito, para que o usuario possa retentar sem recarregar a pagina.
+Adicionar um listener em `App.tsx` para capturar promises rejeitadas nao tratadas, evitando crashes silenciosos no mobile. O handler vai logar o erro no console sem mostrar nada ao usuario (o ErrorBoundary ja cobre a UI).
 
 ---
 
 ### Detalhes Tecnicos
 
-**Arquivo: `src/hooks/useAuth.ts`**
-- Adicionar um `setTimeout` de 10 segundos dentro do `useEffect` que busca o perfil
-- Se o timer disparar antes do `fetchProfile` completar, forcar `setLoading(false)`
-- Adicionar `console.error` no catch para facilitar debug
-
 **Arquivo: `src/components/AppLayout.tsx`**
-- Adicionar estado `timedOut` que ativa apos 12 segundos de loading
-- Quando `timedOut === true`, mostrar botao "Tentar novamente" e "Sair" em vez do spinner infinito
-- O botao "Tentar novamente" chama `refreshProfile()` do hook useAuth
+
+Substituir o bloco de localStorage (linhas 96-103) por um `useEffect`:
+
+```text
+useEffect(() => {
+  if (!profile) return;
+  try {
+    const legacyUser = {
+      id: profile.id,
+      nome: profile.nome,
+      papel: role || profile.cargo || "servidor",
+      area_servico: profile.area_preferencia || "",
+    };
+    localStorage.setItem("top_user", JSON.stringify(legacyUser));
+  } catch {
+    // Safari private browsing - ignorar silenciosamente
+  }
+}, [profile, role]);
+```
+
+Remover o bloco original do corpo do render.
+
+**Arquivo: `src/App.tsx`**
+
+Adicionar handler global de rejeicao no componente App:
+
+```text
+useEffect(() => {
+  const handler = (event: PromiseRejectionEvent) => {
+    console.error("Unhandled rejection:", event.reason);
+    event.preventDefault();
+  };
+  window.addEventListener("unhandledrejection", handler);
+  return () => window.removeEventListener("unhandledrejection", handler);
+}, []);
+```
 
 **Arquivos modificados:**
-- `src/hooks/useAuth.ts`
-- `src/components/AppLayout.tsx`
+- `src/components/AppLayout.tsx` - mover localStorage para useEffect com try/catch
+- `src/App.tsx` - adicionar handler global de unhandledrejection
 
+Apos implementar, sera necessario **publicar** o projeto para que as correcoes cheguem ao site de producao.
