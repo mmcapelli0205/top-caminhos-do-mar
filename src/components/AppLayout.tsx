@@ -40,6 +40,22 @@ export default function AppLayout() {
     return () => clearTimeout(timer);
   }, [loading]);
 
+  // Store profile info in localStorage for backward-compatible legacy components
+  useEffect(() => {
+    if (!profile) return;
+    try {
+      const legacyUser = {
+        id: profile.id,
+        nome: profile.nome,
+        papel: role || profile.cargo || "servidor",
+        area_servico: profile.area_preferencia || "",
+      };
+      localStorage.setItem("top_user", JSON.stringify(legacyUser));
+    } catch {
+      // Safari private browsing - ignorar silenciosamente
+    }
+  }, [profile, role]);
+
   const handleLogout = async () => {
     await signOut();
     navigate("/", { replace: true });
@@ -92,15 +108,6 @@ export default function AppLayout() {
       />
     );
   }
-
-  // Store profile info in localStorage for backward-compatible legacy components
-  const legacyUser = {
-    id: profile.id,
-    nome: profile.nome,
-    papel: role || profile.cargo || "servidor",
-    area_servico: profile.area_preferencia || "",
-  };
-  localStorage.setItem("top_user", JSON.stringify(legacyUser));
 
   return (
     <SidebarProvider>
