@@ -1,80 +1,70 @@
 
-## Problema Real Identificado
 
-O erro "Algo deu errado" (ErrorBoundary) no mobile e causado por **duas vulnerabilidades** no `AppLayout.tsx`:
+## Problema Raiz Identificado
 
-### 1. `localStorage.setItem` executado durante o render (linha 103)
-
-No corpo da funcao de render do `AppLayout`, existe esta chamada direta:
+O crash "Algo deu errado" acontece **antes mesmo da tela de login aparecer** porque o arquivo `src/integrations/supabase/client.ts` referencia `localStorage` diretamente na configuracao do cliente Supabase (linha 13):
 
 ```text
-localStorage.setItem("top_user", JSON.stringify(legacyUser));
+storage: localStorage,
 ```
 
-Isso causa dois problemas:
-- **Safari iOS em navegacao privada** lanca excecao ao tentar escrever no localStorage, derrubando o componente inteiro
-- **E um anti-pattern React** - efeitos colaterais nao devem ocorrer durante o render
+Quando o modulo e importado (isso acontece antes de qualquer componente renderizar), se o navegador bloqueia acesso ao `localStorage` (Safari iOS em navegacao privada, ou outros cenarios restritivos no mobile), uma excecao e lancada no nivel do modulo. Isso derruba toda a aplicacao instantaneamente, ativando o ErrorBoundary com "Algo deu errado".
 
-Como o `ErrorBoundary` envolve toda a aplicacao, qualquer excecao no render do `AppLayout` mostra a tela "Algo deu errado" sem possibilidade de recuperacao.
-
-### 2. Falta de handler global para rejeicoes nao capturadas
-
-Promises rejeitadas sem tratamento (ex: falha de rede durante fetch de perfil) podem causar crashes silenciosos no React, especialmente em Safari mobile.
+Isso explica por que nenhum mobile consegue carregar — basta o usuario estar em navegacao privada ou ter restricoes de storage.
 
 ## Solucao
 
-### Etapa 1: Mover `localStorage.setItem` para um `useEffect` com `try/catch`
+### Etapa 1: Criar storage seguro no `client.ts`
 
-Tirar a chamada do corpo do render e colocar dentro de um `useEffect` que depende de `profile` e `role`. Envolver em `try/catch` para que falhas de storage (Safari privado) nao derrubem o app.
+Substituir `storage: localStorage` por um wrapper seguro que tenta usar `localStorage` mas, se falhar, usa um fallback em memoria (os dados nao persistem, mas o app funciona normalmente).
 
-### Etapa 2: Adicionar handler global de `unhandledrejection`
+### Etapa 2: Remover configuracao explicita desnecessaria
 
-Adicionar um listener em `App.tsx` para capturar promises rejeitadas nao tratadas, evitando crashes silenciosos no mobile. O handler vai logar o erro no console sem mostrar nada ao usuario (o ErrorBoundary ja cobre a UI).
+As opcoes `persistSession: true`, `autoRefreshToken: true` e `detectSessionInUrl: true` ja sao os valores padrao do Supabase. Manter apenas o `storage` com o wrapper seguro.
 
 ---
 
 ### Detalhes Tecnicos
 
-**Arquivo: `src/components/AppLayout.tsx`**
+**Arquivo: `src/integrations/supabase/client.ts`**
 
-Substituir o bloco de localStorage (linhas 96-103) por um `useEffect`:
+Adicionar um helper `safeStorage` que:
+- Tenta acessar `localStorage` dentro de um `try/catch`
+- Se falhar, retorna um objeto `Map`-based que implementa a interface `Storage` (`getItem`, `setItem`, `removeItem`)
+- Usa esse helper como `storage` na configuracao do Supabase
+
+Codigo resultante:
 
 ```text
-useEffect(() => {
-  if (!profile) return;
+function getSafeStorage(): Storage {
   try {
-    const legacyUser = {
-      id: profile.id,
-      nome: profile.nome,
-      papel: role || profile.cargo || "servidor",
-      area_servico: profile.area_preferencia || "",
-    };
-    localStorage.setItem("top_user", JSON.stringify(legacyUser));
+    // Test access
+    const key = "__storage_test__";
+    localStorage.setItem(key, "1");
+    localStorage.removeItem(key);
+    return localStorage;
   } catch {
-    // Safari private browsing - ignorar silenciosamente
+    // Fallback: in-memory storage
+    const store = new Map<string, string>();
+    return {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, v); },
+      removeItem: (k: string) => { store.delete(k); },
+      clear: () => { store.clear(); },
+      get length() { return store.size; },
+      key: (i: number) => [...store.keys()][i] ?? null,
+    };
   }
-}, [profile, role]);
-```
+}
 
-Remover o bloco original do corpo do render.
-
-**Arquivo: `src/App.tsx`**
-
-Adicionar handler global de rejeicao no componente App:
-
-```text
-useEffect(() => {
-  const handler = (event: PromiseRejectionEvent) => {
-    console.error("Unhandled rejection:", event.reason);
-    event.preventDefault();
-  };
-  window.addEventListener("unhandledrejection", handler);
-  return () => window.removeEventListener("unhandledrejection", handler);
-}, []);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storage: getSafeStorage(),
+  },
+});
 ```
 
 **Arquivos modificados:**
-- `src/components/AppLayout.tsx` - mover localStorage para useEffect com try/catch
-- `src/App.tsx` - adicionar handler global de unhandledrejection
+- `src/integrations/supabase/client.ts`
 
-Apos implementar, sera necessario **publicar** o projeto para que as correcoes cheguem ao site de producao.
+Apos implementar, sera necessario **publicar** o projeto para que a correcao chegue ao site de producao (caminhosdomar.site).
