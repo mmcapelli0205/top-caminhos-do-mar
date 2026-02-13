@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,40 +34,51 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/cadastro" element={<Cadastro />} />
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/participantes" element={<Participantes />} />
-            <Route path="/participantes/novo" element={<ParticipanteForm />} />
-            <Route path="/participantes/:id/editar" element={<ParticipanteForm />} />
-            <Route path="/servidores" element={<Servidores />} />
-            <Route path="/servidores/novo" element={<ServidorForm />} />
-            <Route path="/servidores/:id/editar" element={<ServidorForm />} />
-            <Route path="/hakunas" element={<Hakunas />} />
-            <Route path="/financeiro" element={<Financeiro />} />
-            <Route path="/equipamentos" element={<Equipamentos />} />
-            <Route path="/artes-docs" element={<ArtesEDocs />} />
-            <Route path="/check-in" element={<CheckIn />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
-            <Route path="/tops" element={<Tops />} />
-            <Route path="/aprovacoes" element={<Aprovacoes />} />
-            <Route path="/areas/:nome" element={<AreaPortal />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+const App = () => {
+  useEffect(() => {
+    const handler = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled rejection:", event.reason);
+      event.preventDefault();
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/cadastro" element={<Cadastro />} />
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/participantes" element={<Participantes />} />
+              <Route path="/participantes/novo" element={<ParticipanteForm />} />
+              <Route path="/participantes/:id/editar" element={<ParticipanteForm />} />
+              <Route path="/servidores" element={<Servidores />} />
+              <Route path="/servidores/novo" element={<ServidorForm />} />
+              <Route path="/servidores/:id/editar" element={<ServidorForm />} />
+              <Route path="/hakunas" element={<Hakunas />} />
+              <Route path="/financeiro" element={<Financeiro />} />
+              <Route path="/equipamentos" element={<Equipamentos />} />
+              <Route path="/artes-docs" element={<ArtesEDocs />} />
+              <Route path="/check-in" element={<CheckIn />} />
+              <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/tops" element={<Tops />} />
+              <Route path="/aprovacoes" element={<Aprovacoes />} />
+              <Route path="/areas/:nome" element={<AreaPortal />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;
