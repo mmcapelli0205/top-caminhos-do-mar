@@ -5,14 +5,30 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://ilknzgupnswyeynwpovj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlsa256Z3VwbnN3eWV5bndwb3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NzEyMzEsImV4cCI6MjA4NjA0NzIzMX0.dEr0MFzKtbkqxXu0m5dvMPDZWlB-uddw2UNsUP3UUKQ";
 
+function getSafeStorage(): Storage {
+  try {
+    const key = "__storage_test__";
+    localStorage.setItem(key, "1");
+    localStorage.removeItem(key);
+    return localStorage;
+  } catch {
+    const store = new Map<string, string>();
+    return {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, v); },
+      removeItem: (k: string) => { store.delete(k); },
+      clear: () => { store.clear(); },
+      get length() { return store.size; },
+      key: (i: number) => [...store.keys()][i] ?? null,
+    } as Storage;
+  }
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  }
+    storage: getSafeStorage(),
+  },
 });
