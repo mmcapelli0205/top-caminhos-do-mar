@@ -1,68 +1,45 @@
 
 
-## Problema Identificado
+## Problema
 
-A funcao de "Imagem de Referencia" na IA Criativa esta decorativa - o upload funciona, mas a imagem nunca chega ao modelo de IA. O DALL-E 3 so gera imagens do zero a partir de texto, nao suporta receber uma imagem base para editar.
+Ao fazer login no mobile, a tela trava no spinner "Carregando..." indefinidamente. Isso acontece porque:
+
+1. O login via Supabase Auth funciona normalmente
+2. O `onAuthStateChange` redireciona para `/dashboard`
+3. O `AppLayout` renderiza e o hook `useAuth` começa a buscar o perfil (`user_profiles`) e papel (`user_roles`)
+4. Se essa busca falhar silenciosamente (erro de rede, timeout no mobile, etc.), o estado `loading` nunca muda para `false` e o spinner fica infinito
+
+O `useAuth` tem um `try/catch` que faz `setLoading(false)` no `finally`, mas o `catch` vazio pode engolir erros sem dar feedback ao usuario.
 
 ## Solucao
 
-Trocar o backend de geracao de imagens do DALL-E 3 (OpenAI) para o **Lovable AI Gateway com Gemini**, que suporta nativamente receber uma imagem junto com instrucoes de edicao.
+### 1. Adicionar timeout de seguranca no `useAuth.ts`
 
-### Como vai funcionar
+Se o carregamento do perfil demorar mais de 10 segundos, forcar `loading = false` e mostrar o app (mesmo sem perfil, o que redirecionaria para a tela de "Aguardando Aprovacao" ou permitiria retry).
 
-- **Sem imagem de referencia**: Gera imagem do zero a partir do prompt (como hoje)
-- **Com imagem de referencia**: Envia a imagem + prompt para o Gemini, que edita/modifica a imagem conforme pedido (ex: "adicionar fundo de mar atras deste logo")
+### 2. Adicionar tratamento de erro visivel no `useAuth.ts`
 
-## Etapas
+No `catch` do `fetchProfile`, logar o erro no console e opcionalmente mostrar um toast para o usuario saber que algo deu errado.
 
-### 1. Atualizar a Edge Function `generate-image`
+### 3. Adicionar botao de retry no AppLayout
 
-Substituir a chamada ao DALL-E 3 pela chamada ao Lovable AI Gateway:
-
-- Endpoint: `https://ai.gateway.lovable.dev/v1/chat/completions`
-- Modelo: `google/gemini-2.5-flash-image` (geracao de imagens)
-- Autenticacao: `LOVABLE_API_KEY` (ja disponivel automaticamente)
-- Quando houver `reference_image_url`, enviar como conteudo multimodal (tipo `image_url` + `text`)
-- Quando nao houver, enviar apenas o prompt de texto
-- Parametro `modalities: ["image", "text"]` para receber imagem na resposta
-- A resposta vem em base64 - fazer upload automatico para o bucket `assets` e retornar a URL publica
-
-### 2. Atualizar o Frontend `AreaIACriativa.tsx`
-
-- Remover os seletores de "Tamanho" e "Qualidade" (nao se aplicam ao Gemini)
-- Manter o campo de prompt e o upload de referencia como estao
-- Ajustar o parsing da resposta (a URL agora vira do storage, nao da OpenAI)
-
-### 3. Resultado Esperado
-
-Ao enviar o logo "Caminhos do Mar" + prompt "Adicionar um fundo de mar atras deste logo", o Gemini vai receber a imagem real e edita-la conforme o pedido, mantendo o logo original.
+Se o perfil nao carregar apos o timeout, mostrar um botao "Tentar novamente" em vez do spinner infinito, para que o usuario possa retentar sem recarregar a pagina.
 
 ---
 
 ### Detalhes Tecnicos
 
-**Edge Function - Payload sem referencia:**
-```text
-messages: [{ role: "user", content: "prompt do usuario" }]
-modalities: ["image", "text"]
-model: "google/gemini-2.5-flash-image"
-```
+**Arquivo: `src/hooks/useAuth.ts`**
+- Adicionar um `setTimeout` de 10 segundos dentro do `useEffect` que busca o perfil
+- Se o timer disparar antes do `fetchProfile` completar, forcar `setLoading(false)`
+- Adicionar `console.error` no catch para facilitar debug
 
-**Edge Function - Payload com referencia:**
-```text
-messages: [{
-  role: "user",
-  content: [
-    { type: "text", text: "prompt do usuario" },
-    { type: "image_url", image_url: { url: "URL da imagem de referencia" } }
-  ]
-}]
-modalities: ["image", "text"]
-```
-
-**Resposta:** A imagem gerada vem como base64, sera salva no bucket `assets/ia-criativa/` e a URL publica sera retornada ao frontend.
+**Arquivo: `src/components/AppLayout.tsx`**
+- Adicionar estado `timedOut` que ativa apos 12 segundos de loading
+- Quando `timedOut === true`, mostrar botao "Tentar novamente" e "Sair" em vez do spinner infinito
+- O botao "Tentar novamente" chama `refreshProfile()` do hook useAuth
 
 **Arquivos modificados:**
-- `supabase/functions/generate-image/index.ts` - reescrever para usar Lovable AI
-- `src/components/area/AreaIACriativa.tsx` - remover opcoes de tamanho/qualidade do DALL-E
+- `src/hooks/useAuth.ts`
+- `src/components/AppLayout.tsx`
 
