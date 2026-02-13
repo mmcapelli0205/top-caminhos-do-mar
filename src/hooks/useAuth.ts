@@ -30,18 +30,25 @@ export function useAuth(): UseAuthReturn {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialSessionChecked, setInitialSessionChecked] = useState(false);
 
   // Effect 1: Auth listener only — no deps, no profile fetching
   useEffect(() => {
     let isSubscribed = true;
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (isSubscribed) setSession(s);
+      if (isSubscribed) {
+        setSession(s);
+        setInitialSessionChecked(true);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
-        if (isSubscribed) setSession(newSession);
+        if (isSubscribed) {
+          setSession(newSession);
+          setInitialSessionChecked(true);
+        }
       }
     );
 
@@ -54,6 +61,9 @@ export function useAuth(): UseAuthReturn {
   // Effect 2: Load profile when userId changes
   const userId = session?.user?.id;
   useEffect(() => {
+    // Don't do anything until initial session check completes
+    if (!initialSessionChecked) return;
+
     if (!userId) {
       setProfile(null);
       setRole(null);
@@ -108,7 +118,7 @@ export function useAuth(): UseAuthReturn {
       cancelled = true;
       clearTimeout(safetyTimeout);
     };
-  }, [userId]);
+  }, [userId, initialSessionChecked]);
 
   const signOut = useCallback(async () => {
     localStorage.removeItem("top_user");
