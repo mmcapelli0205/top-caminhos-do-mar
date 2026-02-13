@@ -1,70 +1,60 @@
 
 
-## Problema Raiz Identificado
+## Problema
 
-O crash "Algo deu errado" acontece **antes mesmo da tela de login aparecer** porque o arquivo `src/integrations/supabase/client.ts` referencia `localStorage` diretamente na configuracao do cliente Supabase (linha 13):
+O erro "Algo deu errado" aparece **apos o login** no mobile. O ErrorBoundary global captura um crash em algum componente que renderiza depois da autenticacao (Dashboard, Sidebar, ou Charts), mas nao mostra **qual** erro ocorreu, impossibilitando o diagnostico.
 
-```text
-storage: localStorage,
-```
+## Solucao em 3 Etapas
 
-Quando o modulo e importado (isso acontece antes de qualquer componente renderizar), se o navegador bloqueia acesso ao `localStorage` (Safari iOS em navegacao privada, ou outros cenarios restritivos no mobile), uma excecao e lancada no nivel do modulo. Isso derruba toda a aplicacao instantaneamente, ativando o ErrorBoundary com "Algo deu errado".
+### 1. Mostrar o erro real na tela do ErrorBoundary
 
-Isso explica por que nenhum mobile consegue carregar — basta o usuario estar em navegacao privada ou ter restricoes de storage.
+Atualmente o ErrorBoundary so mostra "Algo deu errado" sem detalhes. Vamos adicionar a mensagem de erro real na tela (em texto pequeno), para que voce possa tirar um screenshot e eu saiba exatamente o que esta quebrando.
 
-## Solucao
+### 2. ErrorBoundary interno no AppLayout
 
-### Etapa 1: Criar storage seguro no `client.ts`
+Adicionar um segundo ErrorBoundary envolvendo apenas o `<Outlet />` (conteudo da pagina). Assim, se o Dashboard crashar, o menu lateral e o botao de logout continuam funcionando - voce nao fica preso.
 
-Substituir `storage: localStorage` por um wrapper seguro que tenta usar `localStorage` mas, se falhar, usa um fallback em memoria (os dados nao persistem, mas o app funciona normalmente).
+### 3. Proteger cookie do Sidebar
 
-### Etapa 2: Remover configuracao explicita desnecessaria
-
-As opcoes `persistSession: true`, `autoRefreshToken: true` e `detectSessionInUrl: true` ja sao os valores padrao do Supabase. Manter apenas o `storage` com o wrapper seguro.
+O componente Sidebar escreve um cookie (`document.cookie = ...`) que pode falhar em alguns navegadores mobile. Vamos proteger isso com try/catch.
 
 ---
 
 ### Detalhes Tecnicos
 
-**Arquivo: `src/integrations/supabase/client.ts`**
+**Arquivo: `src/components/ErrorBoundary.tsx`**
 
-Adicionar um helper `safeStorage` que:
-- Tenta acessar `localStorage` dentro de um `try/catch`
-- Se falhar, retorna um objeto `Map`-based que implementa a interface `Storage` (`getItem`, `setItem`, `removeItem`)
-- Usa esse helper como `storage` na configuracao do Supabase
+Adicionar a mensagem de erro (`this.state.error?.message` e `this.state.error?.stack`) na tela em um bloco colapsavel/texto pequeno para diagnostico.
 
-Codigo resultante:
+**Arquivo: `src/components/AppLayout.tsx`**
+
+Envolver `<Outlet />` com um ErrorBoundary local:
 
 ```text
-function getSafeStorage(): Storage {
-  try {
-    // Test access
-    const key = "__storage_test__";
-    localStorage.setItem(key, "1");
-    localStorage.removeItem(key);
-    return localStorage;
-  } catch {
-    // Fallback: in-memory storage
-    const store = new Map<string, string>();
-    return {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => { store.set(k, v); },
-      removeItem: (k: string) => { store.delete(k); },
-      clear: () => { store.clear(); },
-      get length() { return store.size; },
-      key: (i: number) => [...store.keys()][i] ?? null,
-    };
-  }
-}
+<main className="flex-1 p-2 md:p-6">
+  <PageErrorBoundary>
+    <Outlet />
+  </PageErrorBoundary>
+</main>
+```
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: getSafeStorage(),
-  },
-});
+O `PageErrorBoundary` mostra o erro da pagina com botao de "Tentar novamente" sem derrubar o layout inteiro.
+
+**Arquivo: `src/components/ui/sidebar.tsx`**
+
+Proteger a escrita de cookie (linha 68) com try/catch:
+
+```text
+try {
+  document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+} catch {
+  // Ignorar falha de cookie em navegadores restritivos
+}
 ```
 
 **Arquivos modificados:**
-- `src/integrations/supabase/client.ts`
+- `src/components/ErrorBoundary.tsx` - mostrar mensagem de erro real
+- `src/components/AppLayout.tsx` - ErrorBoundary interno no Outlet
+- `src/components/ui/sidebar.tsx` - proteger escrita de cookie
 
-Apos implementar, sera necessario **publicar** o projeto para que a correcao chegue ao site de producao (caminhosdomar.site).
+Apos publicar, quando o erro aparecer novamente no mobile, a tela vai mostrar **exatamente qual componente crashou e por que**, permitindo corrigir a causa raiz de forma definitiva.
