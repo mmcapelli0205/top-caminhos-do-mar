@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { LogOut, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import AguardandoAprovacao from "@/pages/AguardandoAprovacao";
 
 const CARGO_LABELS: Record<string, string> = {
@@ -136,7 +137,12 @@ export default function AppLayout() {
           </header>
 
           <main className="flex-1 p-2 md:p-6">
-            <Outlet />
+            <ErrorBoundary
+              fallbackTitle="Erro na página"
+              onReset={() => navigate(0)}
+            >
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </SidebarInset>
       </div>
