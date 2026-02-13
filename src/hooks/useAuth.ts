@@ -63,6 +63,13 @@ export function useAuth(): UseAuthReturn {
 
     let cancelled = false;
 
+    const safetyTimeout = setTimeout(() => {
+      if (!cancelled) {
+        console.warn("[useAuth] Profile fetch timed out after 10s — forcing loading=false");
+        setLoading(false);
+      }
+    }, 10_000);
+
     const fetchProfile = async () => {
       try {
         const [profileRes, roleRes] = await Promise.all([
@@ -83,19 +90,24 @@ export function useAuth(): UseAuthReturn {
 
         setProfile(profileRes.data ? (profileRes.data as UserProfile) : null);
         setRole(roleRes.data ? roleRes.data.role : null);
-      } catch {
+      } catch (err) {
+        console.error("[useAuth] Erro ao buscar perfil/role:", err);
         if (!cancelled) {
           setProfile(null);
           setRole(null);
         }
       } finally {
+        clearTimeout(safetyTimeout);
         if (!cancelled) setLoading(false);
       }
     };
 
     fetchProfile();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(safetyTimeout);
+    };
   }, [userId]);
 
   const signOut = useCallback(async () => {
