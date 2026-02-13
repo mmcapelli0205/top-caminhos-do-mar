@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Loader2 } from "lucide-react";
+import { LogOut, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -20,8 +20,9 @@ const CARGO_LABELS: Record<string, string> = {
 
 export default function AppLayout() {
   const navigate = useNavigate();
-  const { session, profile, role, loading, signOut } = useAuth();
+  const { session, profile, role, loading, signOut, refreshProfile } = useAuth();
   useInactivityTimeout(40);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) {
@@ -29,12 +30,46 @@ export default function AppLayout() {
     }
   }, [loading, session, navigate]);
 
+  // Timeout de 12s para mostrar botão de retry
+  useEffect(() => {
+    if (!loading) {
+      setTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => setTimedOut(true), 12_000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   const handleLogout = async () => {
     await signOut();
     navigate("/", { replace: true });
   };
 
+  const handleRetry = async () => {
+    setTimedOut(false);
+    await refreshProfile();
+  };
+
   if (loading || !session) {
+    if (timedOut && session) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-4">
+          <p className="text-center text-sm text-muted-foreground">
+            O carregamento está demorando mais que o esperado.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={handleRetry} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente
+            </Button>
+            <Button variant="ghost" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
