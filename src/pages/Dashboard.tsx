@@ -1,13 +1,19 @@
 import {
   Users, FileCheck, AlertTriangle, QrCode,
-  UsersRound, LayoutDashboard,
+  UsersRound, Home,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useAuth } from "@/hooks/useAuth";
 import type { LucideIcon } from "lucide-react";
+
+import CountdownSection from "@/components/inicio/CountdownSection";
+import QuickActions from "@/components/inicio/QuickActions";
+import MuralAvisos from "@/components/inicio/MuralAvisos";
+import CalendarioMensal from "@/components/inicio/CalendarioMensal";
 
 const STATUS_COLORS: Record<string, string> = {
   inscrito: "hsl(45 90% 55%)",
@@ -37,12 +43,9 @@ function KpiCard({
   );
 }
 
-function fmt(n: number) {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
 const Dashboard = () => {
   const d = useDashboardData();
+  const { profile } = useAuth();
 
   const pct = (part: number, total: number) =>
     total === 0 ? "0%" : `${Math.round((part / total) * 100)}%`;
@@ -50,10 +53,26 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <LayoutDashboard className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+      <div className="flex flex-col md:flex-row items-center gap-5">
+        <img
+          src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
+          alt="Caminhos do Mar"
+          className="h-[100px] md:h-[120px] object-contain shrink-0"
+        />
+        <div className="text-center md:text-left space-y-1">
+          <div className="flex items-center gap-2 justify-center md:justify-start">
+            <Home className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">TOP Manager</h1>
+          </div>
+          <p className="text-sm font-medium text-primary">TOP 1575 — Caminhos do Mar</p>
+          <p className="text-xs text-muted-foreground max-w-lg">
+            Centro de comando do TOP 1575. Gerencie participantes, famílias, equipes, pedidos, estoque e cronograma em um único lugar. Tudo que sua equipe precisa para entregar uma experiência legendária.
+          </p>
+        </div>
       </div>
+
+      {/* Countdown */}
+      <CountdownSection />
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -87,25 +106,32 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Summary Row */}
-      <div className="grid grid-cols-1 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Famílias Formadas</CardTitle>
-            <UsersRound className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {d.isLoading ? (
-              <Skeleton className="h-8 w-48" />
-            ) : (
-              <>
-                <p className="text-2xl font-bold text-foreground">{d.familiasFormadas} famílias</p>
-                <p className="text-sm text-muted-foreground">{d.participantesAlocados} participantes alocados</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Famílias */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Famílias Formadas</CardTitle>
+          <UsersRound className="h-5 w-5 text-primary" />
+        </CardHeader>
+        <CardContent>
+          {d.isLoading ? (
+            <Skeleton className="h-8 w-48" />
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-foreground">{d.familiasFormadas} famílias</p>
+              <p className="text-sm text-muted-foreground">{d.participantesAlocados} participantes alocados</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <QuickActions userEmail={profile?.email ?? null} />
+
+      {/* Mural */}
+      <MuralAvisos />
+
+      {/* Calendário */}
+      <CalendarioMensal />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
