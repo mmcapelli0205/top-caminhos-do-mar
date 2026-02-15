@@ -1,69 +1,87 @@
 
 
-## Nova Funcionalidade: Aba Homologacao no Portal ADM
+## Cronograma do TOP - Planejamento e Visualizacao
 
 ### Resumo
-Criar componente `HomologacaoTimeline` com visual de timeline vertical mostrando as 12 etapas de homologacao da pista, e adicionar aba "Homologacao" no AreaPortal quando a area for "ADM".
+Criar sistema de cronograma completo dos 4 dias do TOP com visualizacao por dia, edicao inline, filtros e cores por tipo de atividade. Acessivel em todas as areas como aba "Cronograma".
 
 ### Arquivos
 
-**1. Novo: `src/components/area/HomologacaoTimeline.tsx`**
+**1. Novo: `src/components/cronograma/CronogramaTop.tsx`**
 
-Componente principal com:
+Componente principal que recebe props `{ canEdit: boolean; cronogramaTipo: string }`.
 
-- **Query**: Busca as 12 etapas de `homologacao_etapas` ordenadas por `numero`
-- **Permissoes**: Usa `useAuth()` para verificar se usuario e diretoria ou servidor ADM. Se sim, `canEdit = true`, senao readonly
-- **Logica de "atrasada"**: No front-end, ao carregar dados, se `data_prevista < hoje` e `status != "concluida"` -> tratar como atrasada visualmente
-- **Barra de progresso no topo**:
-  - Card com titulo "Homologacao da Pista" (text-2xl font-bold)
-  - Subtexto "X de 12 etapas concluidas"
-  - Componente `Progress` do shadcn com cor laranja via className
-  - Percentual ao lado
-  - `transition-all duration-500` na barra
-- **Timeline vertical**:
-  - Cada etapa renderizada com circulo numerado a esquerda + linha vertical conectando
-  - Cores dos circulos: verde (concluida), laranja (em_andamento), cinza (pendente), vermelho (atrasada)
-  - Animacao `animate-pulse` nos circulos de "em_andamento" e "atrasada"
-  - Icones: Check (concluida), Clock (em_andamento), AlertTriangle (atrasada), numero (pendente)
-  - Linha vertical verde ate ultima concluida, cinza depois
-- **Card de cada etapa** (lado direito):
-  - Nome da etapa (font-bold text-lg)
-  - Badge de status colorido
-  - Se `canEdit`:
-    - Responsavel: input text (responsavel_nome)
-    - Data Prevista: input date
-    - Data Conclusao: input date
-    - Observacao: textarea compacto
-    - Checkbox "Marcar como concluida": ao clicar, atualiza `status = "concluida"`, `concluida = true`, `data_conclusao = hoje`
-  - Se readonly: exibe dados sem inputs
-- **Salvar**: Cada campo salva individualmente via `supabase.from("homologacao_etapas").update(...)` e invalida query
-- **Notificacao de atrasadas**: Ao detectar etapas atrasadas, verifica se ja existe aviso com mesmo titulo na `area_avisos` nos ultimos 7 dias. Se nao, insere aviso automatico com titulo "Etapa Atrasada: {nome}" e conteudo descritivo.
+- **Queries**:
+  - `cronograma_atividades` filtrado por `dia` e `cronograma_tipo`
+  - `cronograma_locais` para combobox
+  - `servidores` (id, nome) para dropdown de responsavel
+- **Estado**: `diaSelecionado` (D1-D4), filtros (tipo, equipe, busca texto)
+- **Header**: Titulo, subtitulo com contagem, botao "+ Nova Atividade" se `canEdit`
+- **Seletor de Dia**: 4 botoes com cores (D1=laranja, D2=azul, D3=verde, D4=amarelo), badge com contagem
+- **Barra de Filtros**: Selects para tipo e equipe, input busca, botao limpar
+- **Timeline**: Lista vertical de cards com:
+  - Borda lateral colorida por tipo (Trilha=#B6D7A8, Predica=#FFE599, Instrucao=#A4C2F4, Trajeto=#D9D9D9, Dinamica=#D5A6E6, Refeicao=#F97316, Montagem=#D2B48C, Atividade=default)
+  - Layout horizontal (4 colunas) no desktop, empilhado no mobile
+  - Coluna horarios (font-mono), coluna principal (tipo badge + titulo + local + cenario + agua), coluna equipe (badge colorido via CORES_EQUIPES), coluna acoes (editar/excluir se canEdit)
+  - Separador de intervalo quando gap > 0 entre atividades consecutivas
+- **Mapa de cores por tipo**: constante `CORES_TIPO`
 
-**2. Alteracao: `src/pages/AreaPortal.tsx`**
+**2. Novo: `src/components/cronograma/CronogramaFormDialog.tsx`**
 
-- Importar `HomologacaoTimeline`
-- Adicionar tab condicional para area "ADM":
+Modal de criar/editar atividade:
+
+- Campos: dia (select D1-D4), ordem (auto-proximo), horario_inicio/fim (time inputs), tempo previsto (calculado auto), tipo (select), titulo, local (combobox com locais existentes + "Adicionar novo" que insere em `cronograma_locais`), equipe_responsavel (select), responsavel_nome (combobox servidores + texto livre), cenario_recursos (textarea), reposicao_agua (select Sim/Nao + campo texto), cronograma_tipo (hidden)
+- Insert/Update em `cronograma_atividades`
+- Invalida query `["cronograma-atividades"]`
+
+**3. Alteracao: `src/pages/AreaPortal.tsx`**
+
+- Importar `CronogramaTop`
+- Adicionar logica de visibilidade da aba:
+  - Coordenadores (`isCoord`) e diretoria veem a aba em TODAS as areas
+  - Servidores comuns NAO veem
+- Aba "Cronograma" no TabsList (condicional: `canEdit || isCoord`)
+- TabsContent:
+  - Se area "ADM" e usuario ADM/Diretoria: `<CronogramaTop canEdit={true} cronogramaTipo="adm" />`
+  - Se area "Logistica" e usuario coord Logistica/Diretoria: renderizar com sub-tabs "Oficial" (readonly, tipo=adm) e "Logistica" (editavel, tipo=logistica)
+  - Todas as outras areas: `<CronogramaTop canEdit={false} cronogramaTipo="adm" />`
+
+### Logica de Permissoes
+
 ```text
-{decodedNome === "ADM" && <TabsTrigger value="homologacao">Homologacao</TabsTrigger>}
+Area ADM + (coord ADM ou diretoria) -> canEdit=true, tipo=adm
+Area Logistica + (coord Logistica ou diretoria):
+  Sub-tab "Oficial" -> canEdit=false, tipo=adm
+  Sub-tab "Logistica" -> canEdit=true, tipo=logistica
+Qualquer outra area + coordenador -> canEdit=false, tipo=adm
+Servidor comum -> aba nao aparece
 ```
-- Adicionar TabsContent:
-```text
-{decodedNome === "ADM" && (
-  <TabsContent value="homologacao">
-    <HomologacaoTimeline areaId={area.id} />
-  </TabsContent>
-)}
-```
-
-### Responsividade
-- Desktop: timeline com linha vertical, cards largos ao lado dos circulos
-- Mobile: cards full-width empilhados, circulos menores (h-8 w-8 vs h-10 w-10)
 
 ### Detalhes Tecnicos
 
-- Nenhuma migration necessaria (tabela ja existe com 12 etapas)
+- Nenhuma migration (tabelas ja existem com 123 atividades e 39 locais)
 - Nenhuma dependencia nova
-- Query key: `["homologacao-etapas"]`
-- Cores: verde `#22c55e`, laranja `#f97316`, cinza `#6b7280`, vermelho `#ef4444`
-- Usa `useAuth()` para permissoes (role === "diretoria" ou profile.area_preferencia === "ADM")
-- Usa `getUser()` ja disponivel no AreaPortal para verificar `currentUser?.papel === "diretoria"`
+- Query keys: `["cronograma-atividades", dia, cronogramaTipo]`, `["cronograma-locais"]`
+- Usa `CORES_EQUIPES` de `@/lib/coresEquipes` para badges de equipe
+- Confirmacao antes de excluir (AlertDialog)
+- Responsividade: grid 4 colunas desktop, empilhado mobile; filtros colapsaveis no mobile via Collapsible
+- Animacao: `transition-all duration-300` ao trocar de dia (fade)
+
+### Constantes de Cores por Tipo
+
+```text
+Trilha = #B6D7A8
+Predica = #FFE599
+Instrucao = #A4C2F4
+Trajeto/Translado = #D9D9D9
+Atividade = transparent (borda default)
+Dinamica = #D5A6E6
+Refeicao = #F97316
+Montagem/Desmontagem = #D2B48C
+```
+
+### Dados existentes
+- D1: 32 atividades, D2: 38, D3: 38, D4: 15 (total 123, todas tipo 'adm')
+- 39 locais pre-cadastrados
+- Campos relevantes: dia, ordem, horario_inicio, horario_fim, tempo_previsto_min, tipo, titulo, local, equipe_responsavel, responsavel_nome, cenario_recursos, reposicao_agua, cronograma_tipo
+
