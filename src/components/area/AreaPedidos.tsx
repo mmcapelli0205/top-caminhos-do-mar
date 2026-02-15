@@ -102,6 +102,7 @@ export default function AreaPedidos({ areaNome }: AreaPedidosProps) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["area-pedidos", areaNome] });
+      qc.invalidateQueries({ queryKey: ["adm-pedidos-todos"] });
       setDialogOpen(false);
       setEditingId(null);
       setForm(emptyForm);
