@@ -57,15 +57,15 @@ const Dashboard = () => {
         <img
           src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
           alt="Caminhos do Mar"
-          className="h-[100px] md:h-[120px] object-contain shrink-0"
+          className="h-32 w-32 md:h-40 md:w-40 object-contain shrink-0"
         />
-        <div className="text-center md:text-left space-y-1">
+        <div className="text-center md:text-left space-y-3">
           <div className="flex items-center gap-2 justify-center md:justify-start">
-            <Home className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">TOP Manager</h1>
+            <Home className="h-7 w-7 text-primary" />
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">TOP Manager</h1>
           </div>
-          <p className="text-sm font-medium text-primary">TOP 1575 — Caminhos do Mar</p>
-          <p className="text-xs text-muted-foreground max-w-lg">
+          <p className="text-xl md:text-2xl text-orange-500 font-semibold">TOP 1575 — Caminhos do Mar</p>
+          <p className="text-base md:text-lg text-muted-foreground max-w-lg">
             Centro de comando do TOP 1575. Gerencie participantes, famílias, equipes, pedidos, estoque e cronograma em um único lugar. Tudo que sua equipe precisa para entregar uma experiência legendária.
           </p>
         </div>
@@ -75,7 +75,7 @@ const Dashboard = () => {
       <CountdownSection />
 
       {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <KpiCard
           title="Total Inscritos"
           value={d.totalInscritos}
@@ -104,25 +104,14 @@ const Dashboard = () => {
           borderColor="hsl(210 80% 55%)"
           isLoading={d.isLoading}
         />
+        <KpiCard
+          title="Famílias Formadas"
+          value={`${d.familiasFormadas} famílias`}
+          icon={UsersRound}
+          borderColor="hsl(270 60% 55%)"
+          isLoading={d.isLoading}
+        />
       </div>
-
-      {/* Famílias */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Famílias Formadas</CardTitle>
-          <UsersRound className="h-5 w-5 text-primary" />
-        </CardHeader>
-        <CardContent>
-          {d.isLoading ? (
-            <Skeleton className="h-8 w-48" />
-          ) : (
-            <>
-              <p className="text-2xl font-bold text-foreground">{d.familiasFormadas} famílias</p>
-              <p className="text-sm text-muted-foreground">{d.participantesAlocados} participantes alocados</p>
-            </>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Quick Actions */}
       <QuickActions userEmail={profile?.email ?? null} />
