@@ -13,19 +13,13 @@ import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
+import type { CategoriaDespesa } from "@/types/pedidos";
 
 type Despesa = Tables<"despesas">;
 
-const CATEGORIAS = [
-  "Administrativas", "Juridicas", "Papelaria", "Comunicação", "Equipamentos",
-  "Combustível", "Montanha", "Locação da Base", "Banheiros Químicos",
-  "Fogos/Decoração", "Fardas", "Gorras", "Patchs", "Pins",
-  "Taxa Global", "Taxa Ticket and Go", "Diversos",
-];
-
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const emptyForm = { item: "", categoria: CATEGORIAS[0], quantidade: 1, valor_unitario: 0, fornecedor: "", data_aquisicao: "", observacoes: "", comprovante_url: "" };
+const emptyForm = { item: "", categoria: "", quantidade: 1, valor_unitario: 0, fornecedor: "", data_aquisicao: "", observacoes: "", comprovante_url: "" };
 
 const DespesasSection = () => {
   const qc = useQueryClient();
@@ -36,6 +30,20 @@ const DespesasSection = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
+
+  const { data: categoriasDb = [] } = useQuery({
+    queryKey: ["categorias-despesas"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("categorias_despesas")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("ordem");
+      return (data ?? []) as unknown as CategoriaDespesa[];
+    },
+  });
+
+  const CATEGORIAS = categoriasDb.map((c) => c.nome);
 
   const { data: despesas } = useQuery({
     queryKey: ["fin-despesas-lista"],
@@ -115,7 +123,7 @@ const DespesasSection = () => {
   const openEdit = (d: Despesa) => {
     setEditingId(d.id);
     setForm({
-      item: d.item ?? d.descricao, categoria: d.categoria ?? CATEGORIAS[0],
+      item: d.item ?? d.descricao, categoria: d.categoria ?? (CATEGORIAS[0] || ""),
       quantidade: d.quantidade ?? 1, valor_unitario: d.valor_unitario ?? 0,
       fornecedor: d.fornecedor ?? "", data_aquisicao: d.data_aquisicao ?? "",
       observacoes: d.observacoes ?? "", comprovante_url: d.comprovante_url ?? "",
