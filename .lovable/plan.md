@@ -1,139 +1,152 @@
 
-## Estoque Hakunas - Plano de Implementacao
 
-Transformar as abas Medicamentos e Equipamentos do modulo Hakunas em sistema de estoque em tempo real, usando as tabelas ja existentes no Supabase.
+## Etapa 3: Dashboard Financeiro ADM + Relatorio Consolidado + Controle de Acesso
 
----
-
-### Arquivos a criar
-
-**1. `src/components/hakunas/MedicamentosEstoqueTab.tsx`**
-Substituicao completa do `MedicamentosTab.tsx`. Contera:
-
-- **Cards de resumo** no topo: Total de Itens, Total de Unidades, Alertas de Estoque Baixo (card vermelho pulsante quando ha itens abaixo do minimo)
-- **Tabela de inventario** consultando `hakuna_estoque_medicamentos`: Nome, Quantidade, Unidade, Estoque Minimo, Origem, Acoes
-  - Linha fica vermelha quando `quantidade <= estoque_minimo`
-  - Responsivo: tabela no desktop, cards no mobile
-- **Botao "+ Novo Medicamento"** abre modal com campos: nome, quantidade, unidade (dropdown: un/cx/fr/amp/cp), estoque minimo, origem (Doacao ou Manual), nome do doador (se doacao). Ao salvar: insere em `hakuna_estoque_medicamentos` e cria movimentacao de entrada em `hakuna_estoque_movimentacoes`
-- **Botao "Dar Baixa"** por item abre modal com: medicamento (readonly), quantidade utilizada, tipo de paciente (Participante ou Servidor), dropdown de nome (consulta `participantes` ou `servidores`), familia/area preenchidos automaticamente, hakuna responsavel (dropdown de `hakunas`), data automatica, observacao. Ao salvar: cria movimentacao de saida e decrementa quantidade
-- **Botao "Adicionar Estoque"** por item: quantidade a adicionar, origem (Doacao/Manual), doador. Cria movimentacao de entrada e incrementa quantidade
-- **Historico de Movimentacoes**: secao expansivel (Collapsible) abaixo da tabela, listando `hakuna_estoque_movimentacoes` ordenadas por data. Entradas em verde, saidas em vermelho. Colunas: Data, Medicamento, Tipo, Qtd, Paciente/Doador, Responsavel
-
-**2. `src/components/hakunas/EquipamentosEstoqueTab.tsx`**
-Substituicao completa do `EquipamentosTab.tsx`. Contera:
-
-- **Tabela de inventario** consultando `hakuna_estoque_equipamentos`: Nome, Quantidade, Estado (badge colorido: Novo=verde, Bom=azul, Regular=amarelo, Ruim=vermelho), Observacao, Acoes
-  - Responsivo: tabela no desktop, cards no mobile
-- **Botao "+ Novo Equipamento"** abre modal: nome, quantidade, estado (dropdown: Novo/Bom/Regular/Ruim), observacao
-- **Edicao**: clicar no item abre modal para editar quantidade, estado e observacao
+Esta etapa envolve 3 partes interligadas: remover financeiro do dashboard principal e bloquear acesso, adicionar dashboard financeiro profissional no ADM, e criar relatorio consolidado de despesas.
 
 ---
 
-### Arquivos a modificar
+### Alteracao no Banco de Dados
 
-**3. `src/pages/Hakunas.tsx`**
-- Trocar imports de `MedicamentosTab` e `EquipamentosTab` pelos novos componentes `MedicamentosEstoqueTab` e `EquipamentosEstoqueTab`
+Adicionar coluna `acesso_financeiro` na tabela `user_profiles`:
 
-**4. `src/components/area/AdmPedidosDashboard.tsx`**
-- Na funcao `marcarComprado`, apos criar a despesa, adicionar logica de integracao com estoque:
-  - Se a categoria do pedido for "Medicamentos": buscar se ja existe item com mesmo nome em `hakuna_estoque_medicamentos`. Se existir, incrementar quantidade. Se nao, criar novo item. Em ambos os casos, criar movimentacao de entrada com `tipo='entrada'` e `origem_entrada='compra'`
-  - Invalidar caches do estoque (`["hk-estoque-medicamentos"]`, `["hk-estoque-movimentacoes"]`)
+```text
+ALTER TABLE public.user_profiles ADD COLUMN acesso_financeiro BOOLEAN DEFAULT false;
+```
+
+Usar a tabela `user_profiles` (ja existente) em vez de `user_roles` para manter consistencia com o padrao do campo `pode_aprovar`.
+
+---
+
+### Arquivos a Modificar
+
+**1. `src/pages/Dashboard.tsx`**
+- Remover o card "Balanco Financeiro" (linhas 109-128)
+- Remover imports `DollarSign` e dados financeiros (`receita`, `totalDespesas`, `balanco`)
+- O grid "Summary Row" passa a ter apenas o card "Familias Formadas" em largura total
+
+**2. `src/hooks/useDashboardData.ts`**
+- Remover query de despesas (`dashboard-despesas`)
+- Remover campos `receita`, `totalDespesas`, `balanco` do retorno
+- Manter apenas KPIs operacionais
+
+**3. `src/pages/Financeiro.tsx`**
+- Adicionar verificacao de acesso no componente
+- Usar `useAuth()` para obter `profile` e `role`
+- Verificar: `role === "diretoria"` OU `profile?.area_preferencia === "ADM"` OU `profile?.acesso_financeiro === true`
+- Se nao tem acesso: renderizar tela com icone de cadeado (`Lock` do lucide) e mensagem "Acesso restrito a Diretoria e equipe ADM"
+- Buscar tambem na tabela `servidores` se o usuario logado tem `area_servico = "ADM"` como verificacao adicional
+
+**4. `src/pages/Aprovacoes.tsx`**
+- Na tabela desktop: adicionar coluna "Financeiro" com Switch para usuarios aprovados
+- No card mobile: adicionar toggle "Acesso Financeiro" abaixo do toggle "Pode aprovar"
+- Ao mudar: `supabase.from("user_profiles").update({ acesso_financeiro: !current }).eq("id", userId)`
+- Atualizar `UserProfile` type em `useAuth.ts` para incluir `acesso_financeiro`
+
+**5. `src/hooks/useAuth.ts`**
+- Adicionar `acesso_financeiro: boolean | null` ao interface `UserProfile`
+
+---
+
+### Arquivos a Criar
+
+**6. `src/components/area/AdmFinanceiroDashboard.tsx`**
+Componente profissional de dashboard financeiro para o painel ADM. Contera:
+
+- **Cards de resumo** (5 cards em linha): Receita Total (verde), Despesa Total (vermelho), Saldo (verde/vermelho), Pedidos Pendentes (amarelo - soma valores estimados de pedidos nao comprados), Budget Comprometido (azul - saldo menos pedidos pendentes)
+- **Grafico de despesas por categoria**: PieChart ou BarChart horizontal usando Recharts, cores diferentes por categoria
+- **Mini tabela "Ultimas Despesas"**: 5 ultimas despesas com colunas Item, Categoria, Valor, Data. Link "Ver tudo" para `/financeiro`
+- **Alertas**: Card vermelho pulsante se pedidos urgentes (>7 dias sem orcamento), card amarelo se despesas > 80% da receita
+
+Queries:
+```text
+// Receita
+supabase.from("participantes").select("valor_pago, status")
+supabase.from("servidores").select("valor_pago")
+supabase.from("doacoes").select("valor")
+// Despesas
+supabase.from("despesas").select("valor, categoria").eq("auto_calculado", false)
+// Pedidos pendentes
+supabase.from("pedidos_orcamentos").select("valor_total_estimado, status, data_solicitacao")
+  .in("status", ["aguardando", "em_orcamento", "aprovado"])
+// Ultimas despesas
+supabase.from("despesas").select("*").eq("auto_calculado", false)
+  .order("created_at", { ascending: false }).limit(5)
+```
+
+**7. `src/components/financeiro/RelatorioConsolidado.tsx`**
+Componente de relatorio consolidado dentro da aba Despesas. Contera:
+
+- **Cabecalho**: Titulo "Relatorio Consolidado de Despesas - TOP 1575", data de geracao, totais
+- **Barra de filtros**: Categoria (multi-select), Faixa de valor (min-max), Data de compra (de-ate), botao "Limpar Filtros", botao "Exportar PDF" (jsPDF ja instalado), botao "Exportar CSV" (papaparse ja instalado, substitui Excel por simplicidade)
+- **Tabela agrupada**: Colunas: Item, Categoria, Qtd, Valor Unitario, Valor Total, Fornecedor, Data da Compra. Agrupamento visual por categoria com subtotal. Linha de TOTAL GERAL no final. Ordenavel por coluna
+- **Rodape**: Resumo por categoria com percentual sobre o total
+
+Exportar PDF: usar jsPDF (ja instalado)
+Exportar CSV/Excel: usar papaparse (ja instalado) para gerar CSV compativel com Excel
+
+---
+
+### Integracao no AreaPortal
+
+**8. `src/pages/AreaPortal.tsx`**
+- Importar `AdmFinanceiroDashboard`
+- Dentro da aba "painel", quando `decodedNome === "ADM"`, adicionar `<AdmFinanceiroDashboard />` abaixo do `<AdmPedidosDashboard />`
+
+---
+
+### Integracao no DespesasSection
+
+**9. `src/components/financeiro/DespesasSection.tsx`**
+- Adicionar botao "Relatorio Consolidado" na barra de filtros
+- Ao clicar, alternar entre a visualizacao normal de despesas e o componente `RelatorioConsolidado`
+- Usar estado `showRelatorio` para controlar a exibicao
 
 ---
 
 ### Detalhes Tecnicos
 
-**Queries principais:**
-
-Inventario de medicamentos:
+**Verificacao de acesso ao Financeiro (`Financeiro.tsx`):**
 ```text
-supabase.from("hakuna_estoque_medicamentos")
-  .select("*")
-  .order("nome")
+const { profile, role } = useAuth();
+const { data: servidor } = useQuery({
+  queryKey: ["fin-check-servidor", profile?.id],
+  queryFn: async () => {
+    const { data } = await supabase.from("servidores")
+      .select("area_servico")
+      .eq("email", profile!.email)
+      .maybeSingle();
+    return data;
+  },
+  enabled: !!profile?.email,
+});
+
+const temAcesso = role === "diretoria"
+  || servidor?.area_servico === "ADM"
+  || profile?.acesso_financeiro === true;
 ```
 
-Movimentacoes:
+**Tela de bloqueio:**
 ```text
-supabase.from("hakuna_estoque_movimentacoes")
-  .select("*")
-  .order("data_movimentacao", { ascending: false })
+<div className="flex flex-col items-center justify-center py-20 space-y-4">
+  <Lock className="h-16 w-16 text-muted-foreground" />
+  <h2 className="text-xl font-bold">Acesso Restrito</h2>
+  <p className="text-muted-foreground text-center max-w-md">
+    Acesso restrito a Diretoria e equipe ADM. Solicite acesso ao seu coordenador.
+  </p>
+</div>
 ```
 
-Inventario de equipamentos:
-```text
-supabase.from("hakuna_estoque_equipamentos")
-  .select("*")
-  .order("nome")
-```
+**Tipagem**: Adicionar `acesso_financeiro` ao tipo gerado sera feito automaticamente pela migration. Tambem atualizar a interface `UserProfile` em `useAuth.ts`.
 
-Participantes (para dropdown de dar baixa):
-```text
-supabase.from("participantes")
-  .select("id, nome, familia_id")
-  .order("nome")
-```
-
-Servidores (para dropdown de dar baixa):
-```text
-supabase.from("servidores")
-  .select("id, nome, area_servico")
-  .order("nome")
-```
-
-Hakunas aprovados (para dropdown de responsavel):
-```text
-supabase.from("servidores")
-  .select("id, nome")
-  .eq("area_servico", "Hakuna")
-  .eq("status", "aprovado")
-  .order("nome")
-```
-
-**Integracao Pedidos -> Estoque (em AdmPedidosDashboard):**
-```text
-// Dentro de marcarComprado, apos criar despesa:
-if (selectedPedido.categoria === "Medicamentos") {
-  const { data: existing } = await supabase
-    .from("hakuna_estoque_medicamentos")
-    .select("id, quantidade")
-    .eq("nome", selectedPedido.nome_item)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from("hakuna_estoque_medicamentos")
-      .update({ quantidade: existing.quantidade + (qtdComprada || selectedPedido.quantidade) })
-      .eq("id", existing.id);
-  } else {
-    await supabase.from("hakuna_estoque_medicamentos")
-      .insert({
-        nome: selectedPedido.nome_item,
-        quantidade: qtdComprada || selectedPedido.quantidade,
-        origem: "compra",
-        unidade: "un",
-        estoque_minimo: 5,
-      });
-  }
-
-  await supabase.from("hakuna_estoque_movimentacoes").insert({
-    medicamento_id: existing?.id || null,
-    tipo: "entrada",
-    quantidade: qtdComprada || selectedPedido.quantidade,
-    origem_entrada: "compra",
-  });
-}
-```
-
-**Tipagem**: As tabelas `hakuna_estoque_medicamentos`, `hakuna_estoque_movimentacoes` e `hakuna_estoque_equipamentos` ja estao no arquivo de tipos gerado. Usar `Tables<"hakuna_estoque_medicamentos">` etc.
-
-**Responsividade**: Desktop usa tabela, mobile usa cards empilhados (padrao consistente com o resto do app).
-
-**Componentes reutilizados**: Collapsible (para historico), Badge (estados/tipos), Dialog (modais), useIsMobile (responsividade).
+**Dependencias**: Nenhuma nova dependencia necessaria. jsPDF e papaparse ja estao instalados.
 
 ---
 
 ### Resumo
 
-- **Arquivos criados:** 2 (MedicamentosEstoqueTab.tsx, EquipamentosEstoqueTab.tsx)
-- **Arquivos modificados:** 2 (Hakunas.tsx, AdmPedidosDashboard.tsx)
-- **Nenhuma migration necessaria**
-- **Abas Equipe, Ergometricos e Autorizacoes NAO sao alteradas**
+- **Arquivos criados:** 2 (AdmFinanceiroDashboard.tsx, RelatorioConsolidado.tsx)
+- **Arquivos modificados:** 7 (Dashboard.tsx, useDashboardData.ts, Financeiro.tsx, Aprovacoes.tsx, useAuth.ts, AreaPortal.tsx, DespesasSection.tsx)
+- **1 alteracao no banco:** adicionar coluna `acesso_financeiro` em `user_profiles`
+- **Nenhuma dependencia nova**
+
