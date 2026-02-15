@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard,
+  Home,
   Users,
   Shield,
   HeartPulse,
@@ -43,7 +43,7 @@ export interface MenuItem {
 }
 
 const ALL_MENU_ITEMS: MenuItem[] = [
-  { id: 1, title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { id: 1, title: "Início", url: "/dashboard", icon: Home },
   { id: 2, title: "Participantes", url: "/participantes", icon: Users },
   { id: 4, title: "Servidores", url: "/servidores", icon: Shield },
   { id: 5, title: "Hakunas", url: "/hakunas", icon: HeartPulse },
