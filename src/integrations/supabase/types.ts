@@ -627,6 +627,30 @@ export type Database = {
           },
         ]
       }
+      categorias_despesas: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          id: string
+          nome: string
+          ordem: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          ordem?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          ordem?: number | null
+        }
+        Relationships: []
+      }
       cela_itens: {
         Row: {
           id: string
@@ -1464,6 +1488,126 @@ export type Database = {
           },
           {
             foreignKeyName: "participantes_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_orcamentos: {
+        Row: {
+          aprovado_por: string | null
+          area_solicitante: string
+          categoria: string
+          comprado: boolean | null
+          comprovante_nf_url: string | null
+          comprovante_url: string | null
+          created_at: string | null
+          data_compra: string | null
+          data_solicitacao: string | null
+          finalidade: string | null
+          fornecedor_aprovado: string | null
+          id: string
+          is_obrigatorio_global: boolean | null
+          migrado_despesas: boolean | null
+          motivo_reprovacao: string | null
+          nome_item: string
+          orcamento_1_fornecedor: string | null
+          orcamento_1_valor: number | null
+          orcamento_2_fornecedor: string | null
+          orcamento_2_valor: number | null
+          orcamento_3_fornecedor: string | null
+          orcamento_3_valor: number | null
+          quantidade: number
+          quantidade_comprada: number | null
+          responsavel_id: string | null
+          responsavel_nome: string
+          status: string
+          top_id: string | null
+          updated_at: string | null
+          valor_pago: number | null
+          valor_total_estimado: number | null
+          valor_unitario_estimado: number | null
+        }
+        Insert: {
+          aprovado_por?: string | null
+          area_solicitante: string
+          categoria: string
+          comprado?: boolean | null
+          comprovante_nf_url?: string | null
+          comprovante_url?: string | null
+          created_at?: string | null
+          data_compra?: string | null
+          data_solicitacao?: string | null
+          finalidade?: string | null
+          fornecedor_aprovado?: string | null
+          id?: string
+          is_obrigatorio_global?: boolean | null
+          migrado_despesas?: boolean | null
+          motivo_reprovacao?: string | null
+          nome_item: string
+          orcamento_1_fornecedor?: string | null
+          orcamento_1_valor?: number | null
+          orcamento_2_fornecedor?: string | null
+          orcamento_2_valor?: number | null
+          orcamento_3_fornecedor?: string | null
+          orcamento_3_valor?: number | null
+          quantidade?: number
+          quantidade_comprada?: number | null
+          responsavel_id?: string | null
+          responsavel_nome: string
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+          valor_pago?: number | null
+          valor_total_estimado?: number | null
+          valor_unitario_estimado?: number | null
+        }
+        Update: {
+          aprovado_por?: string | null
+          area_solicitante?: string
+          categoria?: string
+          comprado?: boolean | null
+          comprovante_nf_url?: string | null
+          comprovante_url?: string | null
+          created_at?: string | null
+          data_compra?: string | null
+          data_solicitacao?: string | null
+          finalidade?: string | null
+          fornecedor_aprovado?: string | null
+          id?: string
+          is_obrigatorio_global?: boolean | null
+          migrado_despesas?: boolean | null
+          motivo_reprovacao?: string | null
+          nome_item?: string
+          orcamento_1_fornecedor?: string | null
+          orcamento_1_valor?: number | null
+          orcamento_2_fornecedor?: string | null
+          orcamento_2_valor?: number | null
+          orcamento_3_fornecedor?: string | null
+          orcamento_3_valor?: number | null
+          quantidade?: number
+          quantidade_comprada?: number | null
+          responsavel_id?: string | null
+          responsavel_nome?: string
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+          valor_pago?: number | null
+          valor_total_estimado?: number | null
+          valor_unitario_estimado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_orcamentos_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_orcamentos_top_id_fkey"
             columns: ["top_id"]
             isOneToOne: false
             referencedRelation: "tops"

@@ -17,6 +17,8 @@ import AreaDesignacoes from "@/components/area/AreaDesignacoes";
 import AreaDocumentos from "@/components/area/AreaDocumentos";
 import AreaRadar from "@/components/area/AreaRadar";
 import AreaIACriativa from "@/components/area/AreaIACriativa";
+import AreaPedidos from "@/components/area/AreaPedidos";
+import AdmPedidosDashboard from "@/components/area/AdmPedidosDashboard";
 import Familias from "@/pages/Familias";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
@@ -162,10 +164,16 @@ export default function AreaPortal() {
           {(decodedNome === "Segurança" || decodedNome === "Eventos") && <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="radar">Radar</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
+          <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
         </TabsList>
 
         {/* Tab Painel */}
         <TabsContent value="painel">
+          {decodedNome === "ADM" && (
+            <div className="mb-6">
+              <AdmPedidosDashboard />
+            </div>
+          )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card className="cursor-pointer" onClick={() => navigate(`/servidores?area=${encodeURIComponent(decodedNome)}&status=pendente`)}>
               <CardContent className="p-4">
@@ -315,6 +323,10 @@ export default function AreaPortal() {
             <AreaIACriativa />
           </TabsContent>
         )}
+
+        <TabsContent value="pedidos">
+          <AreaPedidos areaNome={decodedNome} />
+        </TabsContent>
       </Tabs>
     </div>
   );
