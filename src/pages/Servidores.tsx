@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { CORES_EQUIPES, getTextColor } from "@/lib/coresEquipes";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ServidorSheet from "@/components/ServidorSheet";
 import type { Tables } from "@/integrations/supabase/types";
@@ -33,6 +34,23 @@ const AREAS_SERVICO = [
   "Logística", "Voz", "ADM", "Coordenação Geral",
   "Intercessão", "DOC", "Outra área",
 ];
+
+const LOGOS_EQUIPES: Record<string, string> = {
+  "ADM": "adm.png",
+  "Eventos": "eventos.png",
+  "Hakuna": "hakunas.png",
+  "Intercessão": "intercessao.png",
+  "DOC": "intercessao.png",
+  "Louvor": "intercessao.png",
+  "Logística": "logistica.png",
+  "Mídia": "midia.png",
+  "Comunicação": "midia.png",
+  "Segurança": "seguranca.png",
+  "Voz": "voz.png",
+  "Coordenação Geral": "adm.png",
+};
+
+const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
 
 const PAGE_SIZE = 20;
 type SortKey = "nome" | "idade" | "status";
@@ -90,6 +108,7 @@ export default function Servidores() {
   const [showRealocarTodos, setShowRealocarTodos] = useState(false);
   const [realocarTodosMap, setRealocarTodosMap] = useState<Record<string, string>>({});
   const [recusando, setRecusando] = useState(false);
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -252,28 +271,64 @@ export default function Servidores() {
       )}
 
       {/* Area Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {AREAS_SERVICO.map(area => {
           const c = areaCounts[area];
+          const logoFile = LOGOS_EQUIPES[area];
+          const corEquipe = CORES_EQUIPES[area] || "#6B7280";
           return (
-            <Card key={area} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}>
-              <CardContent className="p-3">
-                <p className="text-xs text-muted-foreground truncate">{area}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-lg font-bold text-foreground">{c.aprovados}</span>
-                  {c.pendentes > 0 && (
-                    <Badge className="bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs">{c.pendentes} pend.</Badge>
-                  )}
-                </div>
+            <Card
+              key={area}
+              className="cursor-pointer relative aspect-square flex flex-col items-center justify-center border-2 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
+              style={{ borderColor: corEquipe }}
+              onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
+            >
+              {/* Badge aprovados */}
+              <Badge className="absolute top-2 right-2 bg-primary/20 text-primary border-primary/30 text-xs">
+                {c.aprovados}
+              </Badge>
+              {/* Badge pendentes */}
+              {c.pendentes > 0 && (
+                <Badge className="absolute top-2 left-2 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs">
+                  {c.pendentes} pend.
+                </Badge>
+              )}
+              <CardContent className="p-3 flex flex-col items-center justify-center gap-2 h-full w-full">
+                {logoFile && !imgErrors[area] ? (
+                  <img
+                    src={`${ASSET_BASE}${logoFile}`}
+                    alt={area}
+                    className="h-20 w-20 object-contain"
+                    onError={() => setImgErrors(prev => ({ ...prev, [area]: true }))}
+                  />
+                ) : (
+                  <div
+                    className="h-20 w-20 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: corEquipe }}
+                  >
+                    <span className="text-3xl font-bold" style={{ color: getTextColor(corEquipe) }}>
+                      {area.charAt(0)}
+                    </span>
+                  </div>
+                )}
+                <p className="text-sm font-bold text-foreground text-center truncate w-full">{area}</p>
               </CardContent>
             </Card>
           );
         })}
         {semArea.length > 0 && (
-          <Card className="cursor-pointer border-red-600/40 hover:border-red-500/60" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
-            <CardContent className="p-3">
-              <p className="text-xs text-red-400">Sem Área</p>
-              <span className="text-lg font-bold text-red-400">{semArea.length}</span>
+          <Card
+            className="cursor-pointer relative aspect-square flex flex-col items-center justify-center border-2 border-red-600/40 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
+            onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}
+          >
+            <Badge className="absolute top-2 right-2 bg-red-600/20 text-red-400 border-red-600/30 text-xs">
+              {semArea.length}
+            </Badge>
+            <CardContent className="p-3 flex flex-col items-center justify-center gap-2 h-full">
+              <div className="h-20 w-20 rounded-full flex items-center justify-center bg-red-600/20">
+                <AlertTriangle className="h-10 w-10 text-red-400" />
+              </div>
+              <p className="text-sm font-bold text-red-400">Sem Área</p>
             </CardContent>
           </Card>
         )}
