@@ -1,25 +1,16 @@
 
-## Ajuste: Logos das Equipes no QuickActions
 
-### Arquivo a modificar: `src/components/inicio/QuickActions.tsx`
+## Melhoria Visual: Cards de Equipes na Tela Servidores
 
-Reescrever o componente para exibir um unico card com a logo da equipe do usuario, substituindo os 4 cards de atalho atuais.
+### Arquivo: `src/pages/Servidores.tsx`
 
-**Mudancas:**
-- Remover imports nao utilizados (`ClipboardList`, `Package`, `CalendarDays`, `Lock`, `ChevronRight`, `Badge`)
-- Adicionar estado `imgError` para fallback
-- Adicionar constante `LOGOS_EQUIPES` com o mapa de arquivos de logo
-- Adicionar constante `ASSET_BASE` com a URL base do bucket
-- Substituir o grid de 4 cards por um unico card contendo:
-  - `<img>` com a logo da equipe (h-16 w-16 object-contain)
-  - `onError` handler que ativa fallback para circulo com iniciais (usando `CORES_EQUIPES` e `getTextColor`)
-  - Nome da area
-  - Texto "Acessar minha area" com seta
-  - Hover com `hover:scale-[1.02] transition-all`
-  - Clique navega para `/areas/{area_servico}`
-- Se o usuario nao for servidor (sem area): retorna `null`
+### Mudancas
 
-**Constante LOGOS_EQUIPES:**
+**1. Novos imports:**
+- Adicionar `useState` para controle de erro de imagem (ja importado)
+- Importar `CORES_EQUIPES` e `getTextColor` de `@/lib/coresEquipes`
+
+**2. Constantes novas (no topo do arquivo):**
 ```text
 const LOGOS_EQUIPES: Record<string, string> = {
   "ADM": "adm.png",
@@ -35,13 +26,30 @@ const LOGOS_EQUIPES: Record<string, string> = {
   "Voz": "voz.png",
   "Coordenação Geral": "adm.png",
 };
+
+const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
 ```
 
-**URL da imagem:**
-```text
-https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/${LOGOS_EQUIPES[area]}
-```
+**3. Estado para controle de erro de imagem:**
+- Adicionar `const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})` para rastrear quais logos falharam individualmente
 
-**Fallback:** Se `onError` dispara, mostrar circulo com iniciais da area usando cores de `CORES_EQUIPES` e `getTextColor` (importados de `@/lib/coresEquipes`).
+**4. Substituir bloco de Area Cards (linhas 254-280):**
 
-**Nenhum outro arquivo alterado. Nenhuma dependencia nova.**
+O grid atual com cards simples de texto sera substituido por cards visuais quadrados:
+
+- **Grid**: `grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4`
+- **Cada card**:
+  - `aspect-square` para formato quadrado
+  - Borda sutil na cor da equipe via `style={{ borderColor: CORES_EQUIPES[area] }}`
+  - `hover:scale-[1.05]` + `shadow-lg` no hover + `transition-all duration-300`
+  - Logo centralizada (~h-20 w-20, object-contain) com fallback para letra inicial grande em circulo colorido
+  - Nome da area abaixo da logo (font-bold, text-sm)
+  - Badge com quantidade de aprovados no canto superior direito (position absolute)
+  - Badge de pendentes (laranja) caso existam
+  - Cursor pointer, clique navega para `/areas/{area}`
+- **Card "Sem Area"**: mantido com estilo vermelho, mesmo formato quadrado
+
+**5. Nenhuma outra alteracao:**
+- Toda logica de navegacao, filtros, tabela, dialogs permanece identica
+- Nenhuma dependencia nova
+
