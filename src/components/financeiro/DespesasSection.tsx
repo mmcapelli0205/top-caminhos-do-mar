@@ -1,4 +1,5 @@
 import { useState } from "react";
+import RelatorioConsolidado from "./RelatorioConsolidado";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableHeader, TableRow, TableHead, TableCell, TableBody } from "@/components/ui/table";
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
+import { Plus, Pencil, Trash2, FileDown, BarChart3 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 import type { CategoriaDespesa } from "@/types/pedidos";
@@ -24,6 +25,7 @@ const emptyForm = { item: "", categoria: "", quantidade: 1, valor_unitario: 0, f
 const DespesasSection = () => {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
+  const [showRelatorio, setShowRelatorio] = useState(false);
   const [filtroCategoria, setFiltroCategoria] = useState("todas");
   const [busca, setBusca] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -133,10 +135,14 @@ const DespesasSection = () => {
 
   const openNew = () => { setEditingId(null); setForm(emptyForm); setDialogOpen(true); };
 
+  if (showRelatorio) {
+    return <RelatorioConsolidado onBack={() => setShowRelatorio(false)} />;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Categoria" />
@@ -149,6 +155,9 @@ const DespesasSection = () => {
           <Input placeholder="Buscar item ou fornecedor..." value={busca} onChange={(e) => setBusca(e.target.value)} />
           <Button onClick={openNew} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-1" /> Nova Despesa
+          </Button>
+          <Button variant="outline" onClick={() => setShowRelatorio(true)} className="w-full sm:w-auto">
+            <BarChart3 className="h-4 w-4 mr-1" /> Relatório Consolidado
           </Button>
         </div>
       </div>

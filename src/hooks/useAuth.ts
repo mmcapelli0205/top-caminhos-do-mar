@@ -14,6 +14,7 @@ export interface UserProfile {
   motivo_recusa: string | null;
   created_at: string | null;
   pode_aprovar: boolean | null;
+  acesso_financeiro: boolean | null;
 }
 
 export interface UseAuthReturn {
