@@ -1,37 +1,69 @@
 
 
-## Importar da TicketAndGo para Servidores
+## Nova Funcionalidade: Aba Homologacao no Portal ADM
 
 ### Resumo
-Criar um novo componente `ImportServidoresCSVDialog` baseado no `ImportCSVDialog` existente, adaptado para inserir dados na tabela `servidores`. Adicionar botao na tela de Servidores para abrir o modal.
+Criar componente `HomologacaoTimeline` com visual de timeline vertical mostrando as 12 etapas de homologacao da pista, e adicionar aba "Homologacao" no AreaPortal quando a area for "ADM".
 
-### Mudancas
+### Arquivos
 
-**1. Novo arquivo: `src/components/ImportServidoresCSVDialog.tsx`**
+**1. Novo: `src/components/area/HomologacaoTimeline.tsx`**
 
-Copia adaptada do `ImportCSVDialog.tsx` com as seguintes diferencias:
+Componente principal com:
 
-- **DB_COLUMNS** mapeados para a tabela `servidores`:
-  - `nome` (obrigatorio), `cpf` (obrigatorio), `telefone` (obrigatorio), `email`, `data_nascimento`, `igreja`, `valor_pago`, `area_preferencia_1`, `area_preferencia_2`, `numero_legendario`, `sede`, `cidade`, `estado`, `endereco`, `cep`, `habilidades`, `experiencia`, `especialidade`, `tamanho_farda`, `contato_nome`, `contato_telefone`, `contato_email`, `forma_pagamento`, `cupom_desconto`
-- **Fuzzy patterns** adaptados (ex: `area_preferencia_1` -> ["area", "area 1", "1 opcao", "area servico"])
-- **Titulo do dialog**: "Importar Servidores da TicketAndGo"
-- **Tabela destino**: `supabase.from("servidores").insert(batch)`
-- **Campos do insert**: mapeados para colunas da tabela `servidores`
-- **Status padrao**: `"pendente"` em vez de `"inscrito"`
-- **QR Code**: `crypto.randomUUID()` (mesmo padrao)
-- **Sem logica de ergometrico** (nao se aplica a servidores)
-- **Query invalidation**: `queryKey: ["servidores"]`
+- **Query**: Busca as 12 etapas de `homologacao_etapas` ordenadas por `numero`
+- **Permissoes**: Usa `useAuth()` para verificar se usuario e diretoria ou servidor ADM. Se sim, `canEdit = true`, senao readonly
+- **Logica de "atrasada"**: No front-end, ao carregar dados, se `data_prevista < hoje` e `status != "concluida"` -> tratar como atrasada visualmente
+- **Barra de progresso no topo**:
+  - Card com titulo "Homologacao da Pista" (text-2xl font-bold)
+  - Subtexto "X de 12 etapas concluidas"
+  - Componente `Progress` do shadcn com cor laranja via className
+  - Percentual ao lado
+  - `transition-all duration-500` na barra
+- **Timeline vertical**:
+  - Cada etapa renderizada com circulo numerado a esquerda + linha vertical conectando
+  - Cores dos circulos: verde (concluida), laranja (em_andamento), cinza (pendente), vermelho (atrasada)
+  - Animacao `animate-pulse` nos circulos de "em_andamento" e "atrasada"
+  - Icones: Check (concluida), Clock (em_andamento), AlertTriangle (atrasada), numero (pendente)
+  - Linha vertical verde ate ultima concluida, cinza depois
+- **Card de cada etapa** (lado direito):
+  - Nome da etapa (font-bold text-lg)
+  - Badge de status colorido
+  - Se `canEdit`:
+    - Responsavel: input text (responsavel_nome)
+    - Data Prevista: input date
+    - Data Conclusao: input date
+    - Observacao: textarea compacto
+    - Checkbox "Marcar como concluida": ao clicar, atualiza `status = "concluida"`, `concluida = true`, `data_conclusao = hoje`
+  - Se readonly: exibe dados sem inputs
+- **Salvar**: Cada campo salva individualmente via `supabase.from("homologacao_etapas").update(...)` e invalida query
+- **Notificacao de atrasadas**: Ao detectar etapas atrasadas, verifica se ja existe aviso com mesmo titulo na `area_avisos` nos ultimos 7 dias. Se nao, insere aviso automatico com titulo "Etapa Atrasada: {nome}" e conteudo descritivo.
 
-**2. Alteracao: `src/pages/Servidores.tsx`**
+**2. Alteracao: `src/pages/AreaPortal.tsx`**
 
-- Importar `ImportServidoresCSVDialog` e icone `Upload`
-- Adicionar estado `const [importOpen, setImportOpen] = useState(false)`
-- Extrair lista de CPFs existentes: `const existingCpfs = servidores.map(s => s.cpf).filter(Boolean) as string[]`
-- Adicionar botao "Importar TicketAndGo" ao lado dos botoes CSV e Novo Servidor (com icone Upload)
-- Renderizar `<ImportServidoresCSVDialog>` no JSX
+- Importar `HomologacaoTimeline`
+- Adicionar tab condicional para area "ADM":
+```text
+{decodedNome === "ADM" && <TabsTrigger value="homologacao">Homologacao</TabsTrigger>}
+```
+- Adicionar TabsContent:
+```text
+{decodedNome === "ADM" && (
+  <TabsContent value="homologacao">
+    <HomologacaoTimeline areaId={area.id} />
+  </TabsContent>
+)}
+```
 
-### O que NAO muda
-- O componente `ImportCSVDialog` dos participantes permanece intacto
-- Toda logica existente da tela Servidores (cards, filtros, tabela, dialogs) permanece igual
+### Responsividade
+- Desktop: timeline com linha vertical, cards largos ao lado dos circulos
+- Mobile: cards full-width empilhados, circulos menores (h-8 w-8 vs h-10 w-10)
+
+### Detalhes Tecnicos
+
+- Nenhuma migration necessaria (tabela ja existe com 12 etapas)
 - Nenhuma dependencia nova
-
+- Query key: `["homologacao-etapas"]`
+- Cores: verde `#22c55e`, laranja `#f97316`, cinza `#6b7280`, vermelho `#ef4444`
+- Usa `useAuth()` para permissoes (role === "diretoria" ou profile.area_preferencia === "ADM")
+- Usa `getUser()` ja disponivel no AreaPortal para verificar `currentUser?.papel === "diretoria"`
