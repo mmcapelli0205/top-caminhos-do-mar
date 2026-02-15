@@ -10,6 +10,7 @@ import {
   Calendar,
   Settings,
   UserCheck,
+  Radio,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -54,6 +55,7 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 11, title: "TOPs", url: "/tops", icon: Calendar },
   { id: 10, title: "Configurações", url: "/configuracoes", icon: Settings },
   { id: 12, title: "Aprovações", url: "/aprovacoes", icon: UserCheck },
+  { id: 13, title: "TOP Real Time", url: "/top-real-time", icon: Radio },
 ];
 
 export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): MenuItem[] {
@@ -66,13 +68,14 @@ export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): 
       items = ALL_MENU_ITEMS.filter((item) => ![12].includes(item.id));
       break;
 
+
     // Radar visible to coordenacao+ roles
 
     case "coordenacao":
     case "coord02":
     case "coord03":
       items = ALL_MENU_ITEMS.filter((item) =>
-        [1, 2, 4, 6, 8].includes(item.id)
+        [1, 2, 4, 6, 8, 13].includes(item.id)
       );
       break;
 
