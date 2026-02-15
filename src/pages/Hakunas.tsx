@@ -7,8 +7,8 @@ import { useNavigate } from "react-router-dom";
 import EquipeTab from "@/components/hakunas/EquipeTab";
 import ErgometricosTab from "@/components/hakunas/ErgometricosTab";
 import AutorizacoesTab from "@/components/hakunas/AutorizacoesTab";
-import MedicamentosTab from "@/components/hakunas/MedicamentosTab";
-import EquipamentosTab from "@/components/hakunas/EquipamentosTab";
+import MedicamentosEstoqueTab from "@/components/hakunas/MedicamentosEstoqueTab";
+import EquipamentosEstoqueTab from "@/components/hakunas/EquipamentosEstoqueTab";
 
 export default function Hakunas() {
   const navigate = useNavigate();
@@ -49,8 +49,8 @@ export default function Hakunas() {
         <TabsContent value="equipe"><EquipeTab /></TabsContent>
         <TabsContent value="ergometricos"><ErgometricosTab /></TabsContent>
         <TabsContent value="autorizacoes"><AutorizacoesTab /></TabsContent>
-        <TabsContent value="medicamentos"><MedicamentosTab /></TabsContent>
-        <TabsContent value="equipamentos"><EquipamentosTab /></TabsContent>
+        <TabsContent value="medicamentos"><MedicamentosEstoqueTab /></TabsContent>
+        <TabsContent value="equipamentos"><EquipamentosEstoqueTab /></TabsContent>
       </Tabs>
     </div>
   );

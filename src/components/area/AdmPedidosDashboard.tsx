@@ -202,11 +202,51 @@ export default function AdmPedidosDashboard() {
         auto_calculado: false,
       });
       if (insertErr) throw insertErr;
+
+      // Integração com estoque de medicamentos
+      if (selectedPedido.categoria === "Medicamentos") {
+        const finalQtd = qtdComprada || selectedPedido.quantidade;
+        const { data: existing } = await supabase
+          .from("hakuna_estoque_medicamentos")
+          .select("id, quantidade")
+          .eq("nome", selectedPedido.nome_item)
+          .maybeSingle();
+
+        let medId: string | null = null;
+        if (existing) {
+          medId = existing.id;
+          await supabase.from("hakuna_estoque_medicamentos")
+            .update({ quantidade: existing.quantidade + finalQtd })
+            .eq("id", existing.id);
+        } else {
+          const { data: inserted } = await supabase.from("hakuna_estoque_medicamentos")
+            .insert({
+              nome: selectedPedido.nome_item,
+              quantidade: finalQtd,
+              origem: "compra",
+              unidade: "un",
+              estoque_minimo: 5,
+              pedido_id: selectedPedido.id,
+            })
+            .select("id")
+            .single();
+          medId = inserted?.id ?? null;
+        }
+
+        await supabase.from("hakuna_estoque_movimentacoes").insert({
+          medicamento_id: medId,
+          tipo: "entrada",
+          quantidade: finalQtd,
+          origem_entrada: "compra",
+        });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["adm-pedidos-todos"] });
       qc.invalidateQueries({ queryKey: ["fin-despesas-lista"] });
       qc.invalidateQueries({ queryKey: ["fin-despesas-resumo"] });
+      qc.invalidateQueries({ queryKey: ["hk-estoque-medicamentos"] });
+      qc.invalidateQueries({ queryKey: ["hk-estoque-movimentacoes"] });
       setDialogOpen(false);
       toast({ title: "Compra registrada e despesa criada automaticamente!" });
     },

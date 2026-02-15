@@ -1104,6 +1104,183 @@ export type Database = {
           },
         ]
       }
+      hakuna_estoque_equipamentos: {
+        Row: {
+          created_at: string | null
+          estado: string | null
+          id: string
+          nome: string
+          observacao: string | null
+          quantidade: number
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          estado?: string | null
+          id?: string
+          nome: string
+          observacao?: string | null
+          quantidade?: number
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          estado?: string | null
+          id?: string
+          nome?: string
+          observacao?: string | null
+          quantidade?: number
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hakuna_estoque_equipamentos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hakuna_estoque_medicamentos: {
+        Row: {
+          created_at: string | null
+          doador_nome: string | null
+          estoque_minimo: number | null
+          id: string
+          nome: string
+          origem: string
+          pedido_id: string | null
+          quantidade: number
+          top_id: string | null
+          unidade: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          doador_nome?: string | null
+          estoque_minimo?: number | null
+          id?: string
+          nome: string
+          origem: string
+          pedido_id?: string | null
+          quantidade?: number
+          top_id?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          doador_nome?: string | null
+          estoque_minimo?: number | null
+          id?: string
+          nome?: string
+          origem?: string
+          pedido_id?: string | null
+          quantidade?: number
+          top_id?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hakuna_estoque_medicamentos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hakuna_estoque_medicamentos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hakuna_estoque_movimentacoes: {
+        Row: {
+          created_at: string | null
+          data_movimentacao: string | null
+          doador_nome: string | null
+          hakuna_responsavel_id: string | null
+          hakuna_responsavel_nome: string | null
+          id: string
+          medicamento_id: string | null
+          observacao: string | null
+          origem_entrada: string | null
+          paciente_equipe: string | null
+          paciente_familia: string | null
+          paciente_nome: string | null
+          paciente_tipo: string | null
+          quantidade: number
+          tipo: string
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_movimentacao?: string | null
+          doador_nome?: string | null
+          hakuna_responsavel_id?: string | null
+          hakuna_responsavel_nome?: string | null
+          id?: string
+          medicamento_id?: string | null
+          observacao?: string | null
+          origem_entrada?: string | null
+          paciente_equipe?: string | null
+          paciente_familia?: string | null
+          paciente_nome?: string | null
+          paciente_tipo?: string | null
+          quantidade: number
+          tipo: string
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_movimentacao?: string | null
+          doador_nome?: string | null
+          hakuna_responsavel_id?: string | null
+          hakuna_responsavel_nome?: string | null
+          id?: string
+          medicamento_id?: string | null
+          observacao?: string | null
+          origem_entrada?: string | null
+          paciente_equipe?: string | null
+          paciente_familia?: string | null
+          paciente_nome?: string | null
+          paciente_tipo?: string | null
+          quantidade?: number
+          tipo?: string
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hakuna_estoque_movimentacoes_hakuna_responsavel_id_fkey"
+            columns: ["hakuna_responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "hakunas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hakuna_estoque_movimentacoes_medicamento_id_fkey"
+            columns: ["medicamento_id"]
+            isOneToOne: false
+            referencedRelation: "hakuna_estoque_medicamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hakuna_estoque_movimentacoes_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hakuna_medicamentos: {
         Row: {
           cedido_por: string | null
