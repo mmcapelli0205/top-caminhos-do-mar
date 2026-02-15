@@ -20,6 +20,7 @@ import AreaIACriativa from "@/components/area/AreaIACriativa";
 import AreaPedidos from "@/components/area/AreaPedidos";
 import AdmPedidosDashboard from "@/components/area/AdmPedidosDashboard";
 import AdmFinanceiroDashboard from "@/components/area/AdmFinanceiroDashboard";
+import HomologacaoTimeline from "@/components/area/HomologacaoTimeline";
 import Familias from "@/pages/Familias";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
@@ -165,6 +166,7 @@ export default function AreaPortal() {
           {(decodedNome === "Segurança" || decodedNome === "Eventos") && <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="radar">Radar</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
+          {decodedNome === "ADM" && <TabsTrigger value="homologacao">Homologação</TabsTrigger>}
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
         </TabsList>
 
@@ -323,6 +325,12 @@ export default function AreaPortal() {
         {decodedNome === "Mídia" && (
           <TabsContent value="ia-criativa">
             <AreaIACriativa />
+          </TabsContent>
+        )}
+
+        {decodedNome === "ADM" && (
+          <TabsContent value="homologacao">
+            <HomologacaoTimeline areaId={area.id} />
           </TabsContent>
         )}
 
