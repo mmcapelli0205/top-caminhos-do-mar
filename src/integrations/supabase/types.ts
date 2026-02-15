@@ -1446,6 +1446,72 @@ export type Database = {
           },
         ]
       }
+      homologacao_etapas: {
+        Row: {
+          concluida: boolean | null
+          created_at: string | null
+          data_conclusao: string | null
+          data_prevista: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          numero: number
+          observacao: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          status: string
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          concluida?: boolean | null
+          created_at?: string | null
+          data_conclusao?: string | null
+          data_prevista?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          numero: number
+          observacao?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          concluida?: boolean | null
+          created_at?: string | null
+          data_conclusao?: string | null
+          data_prevista?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          numero?: number
+          observacao?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homologacao_etapas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homologacao_etapas_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mensagens_log: {
         Row: {
           canal: string | null

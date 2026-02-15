@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Shield, Search, Download, Plus, Eye, Pencil, Check, X,
-  ArrowUp, ArrowDown, AlertTriangle, RefreshCw,
+  ArrowUp, ArrowDown, AlertTriangle, RefreshCw, Upload,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { CORES_EQUIPES, getTextColor } from "@/lib/coresEquipes";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ServidorSheet from "@/components/ServidorSheet";
+import ImportServidoresCSVDialog from "@/components/ImportServidoresCSVDialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Servidor = Tables<"servidores">;
@@ -109,6 +110,9 @@ export default function Servidores() {
   const [realocarTodosMap, setRealocarTodosMap] = useState<Record<string, string>>({});
   const [recusando, setRecusando] = useState(false);
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+  const [importOpen, setImportOpen] = useState(false);
+
+  const existingCpfs = useMemo(() => servidores.map(s => s.cpf).filter(Boolean) as string[], [servidores]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -235,6 +239,9 @@ export default function Servidores() {
         <div className="flex flex-col sm:flex-row gap-2">
           <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
             <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
           </Button>
           <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
             <Plus className="h-4 w-4 mr-1" /> Novo Servidor
@@ -568,6 +575,8 @@ export default function Servidores() {
       </Dialog>
 
       <ServidorSheet servidor={selectedServidor} open={!!selectedServidor} onOpenChange={open => { if (!open) setSelectedServidor(null); }} />
+
+      <ImportServidoresCSVDialog open={importOpen} onOpenChange={setImportOpen} existingCpfs={existingCpfs} />
     </div>
   );
 }
