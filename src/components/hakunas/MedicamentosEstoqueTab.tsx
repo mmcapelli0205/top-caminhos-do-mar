@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Minus, PackagePlus, ChevronDown, Package, AlertTriangle, History } from "lucide-react";
+import { Plus, Minus, PackagePlus, ChevronDown, Package, AlertTriangle, History, Trash2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
@@ -182,6 +182,20 @@ export default function MedicamentosEstoqueTab() {
     onError: (err: any) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 
+  const excluirItem = useMutation({
+    mutationFn: async (item: EstoqueMed) => {
+      // Delete related movements first, then the item
+      await supabase.from("hakuna_estoque_movimentacoes").delete().eq("medicamento_id", item.id);
+      const { error } = await supabase.from("hakuna_estoque_medicamentos").delete().eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      toast({ title: "Medicamento excluído do estoque" });
+    },
+    onError: (err: any) => toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" }),
+  });
+
   const openBaixa = (item: EstoqueMed) => { setSelectedItem(item); setBaixaQtd(1); setBaixaOpen(true); };
   const openAddEstoque = (item: EstoqueMed) => { setSelectedItem(item); setAddQtd(1); setAddEstoqueOpen(true); };
 
@@ -229,9 +243,10 @@ export default function MedicamentosEstoqueTab() {
                     <Badge variant={isLow ? "destructive" : "default"}>{item.quantidade} {item.unidade}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">Mín: {item.estoque_minimo}</p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="destructive" onClick={() => openBaixa(item)}><Minus className="h-3 w-3 mr-1" /> Baixa</Button>
                     <Button size="sm" variant="secondary" onClick={() => openAddEstoque(item)}><PackagePlus className="h-3 w-3 mr-1" /> Adicionar</Button>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm(`Excluir "${item.nome}" e todo o histórico?`)) excluirItem.mutate(item); }}><Trash2 className="h-3 w-3" /></Button>
                   </div>
                 </CardContent>
               </Card>
@@ -267,6 +282,7 @@ export default function MedicamentosEstoqueTab() {
                       <div className="flex gap-1">
                         <Button size="sm" variant="destructive" onClick={() => openBaixa(item)}><Minus className="h-3 w-3 mr-1" /> Baixa</Button>
                         <Button size="sm" variant="secondary" onClick={() => openAddEstoque(item)}><PackagePlus className="h-3 w-3 mr-1" /> Adicionar</Button>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm(`Excluir "${item.nome}" e todo o histórico?`)) excluirItem.mutate(item); }}><Trash2 className="h-3 w-3" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
