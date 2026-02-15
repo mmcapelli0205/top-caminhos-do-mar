@@ -54,7 +54,7 @@ export default function QuickActions({ userEmail }: Props) {
 
   return (
     <Card
-      className="cursor-pointer hover:scale-[1.02] transition-all max-w-sm border-border"
+      className="cursor-pointer hover:scale-[1.02] transition-all border-border h-full"
       onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
     >
       <CardContent className="flex items-center gap-4 p-6">

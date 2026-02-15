@@ -1,6 +1,6 @@
 import {
   Users, FileCheck, AlertTriangle, QrCode,
-  UsersRound, Home,
+  UsersRound,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,79 +52,40 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-center gap-5">
+      {/* Header centralizado */}
+      <div className="flex flex-col items-center text-center gap-3">
         <img
           src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
           alt="Caminhos do Mar"
-          className="h-32 w-32 md:h-40 md:w-40 object-contain shrink-0"
+          className="h-32 w-32 object-contain"
         />
-        <div className="text-center md:text-left space-y-3">
-          <div className="flex items-center gap-2 justify-center md:justify-start">
-            <Home className="h-7 w-7 text-primary" />
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground">TOP Manager</h1>
-          </div>
-          <p className="text-xl md:text-2xl text-orange-500 font-semibold">TOP 1575 — Caminhos do Mar</p>
-          <p className="text-base md:text-lg text-muted-foreground max-w-lg">
-            Centro de comando do TOP 1575. Gerencie participantes, famílias, equipes, pedidos, estoque e cronograma em um único lugar. Tudo que sua equipe precisa para entregar uma experiência legendária.
-          </p>
-        </div>
+        <h1 className="text-4xl font-bold text-foreground">TOP Manager</h1>
+        <p className="text-xl font-semibold text-orange-500">TOP 1575 — Caminhos do Mar</p>
       </div>
 
-      {/* Countdown */}
-      <CountdownSection />
-
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <KpiCard
-          title="Total Inscritos"
-          value={d.totalInscritos}
-          icon={Users}
-          borderColor="hsl(27 82% 50%)"
-          isLoading={d.isLoading}
-        />
-        <KpiCard
-          title="Contratos Assinados"
-          value={`${d.contratosAssinados}/${d.totalInscritos} (${pct(d.contratosAssinados, d.totalInscritos)})`}
-          icon={FileCheck}
-          borderColor="hsl(142 70% 45%)"
-          isLoading={d.isLoading}
-        />
-        <KpiCard
-          title="Ergométricos Pendentes"
-          value={d.ergometricosPendentes}
-          icon={AlertTriangle}
-          borderColor={d.ergometricosPendentes > 0 ? "hsl(0 70% 50%)" : "hsl(220 10% 55%)"}
-          isLoading={d.isLoading}
-        />
-        <KpiCard
-          title="Check-ins Realizados"
-          value={`${d.checkinsRealizados}/${d.totalInscritos} (${pct(d.checkinsRealizados, d.totalInscritos)})`}
-          icon={QrCode}
-          borderColor="hsl(210 80% 55%)"
-          isLoading={d.isLoading}
-        />
-        <KpiCard
-          title="Famílias Formadas"
-          value={`${d.familiasFormadas} famílias`}
-          icon={UsersRound}
-          borderColor="hsl(270 60% 55%)"
-          isLoading={d.isLoading}
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <QuickActions userEmail={profile?.email ?? null} />
-
-      {/* Mural */}
-      <MuralAvisos />
-
-      {/* Calendário */}
-      <CalendarioMensal />
-
-      {/* Charts Row */}
+      {/* Countdown + Card Equipe lado a lado */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Age Bar Chart */}
+        <CountdownSection />
+        <QuickActions userEmail={profile?.email ?? null} />
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <KpiCard title="Total Inscritos" value={d.totalInscritos} icon={Users} borderColor="hsl(27 82% 50%)" isLoading={d.isLoading} />
+        <KpiCard title="Contratos Assinados" value={`${d.contratosAssinados}/${d.totalInscritos} (${pct(d.contratosAssinados, d.totalInscritos)})`} icon={FileCheck} borderColor="hsl(142 70% 45%)" isLoading={d.isLoading} />
+        <KpiCard title="Ergométricos Pendentes" value={d.ergometricosPendentes} icon={AlertTriangle} borderColor={d.ergometricosPendentes > 0 ? "hsl(0 70% 50%)" : "hsl(220 10% 55%)"} isLoading={d.isLoading} />
+        <KpiCard title="Check-ins Realizados" value={`${d.checkinsRealizados}/${d.totalInscritos} (${pct(d.checkinsRealizados, d.totalInscritos)})`} icon={QrCode} borderColor="hsl(210 80% 55%)" isLoading={d.isLoading} />
+        <KpiCard title="Famílias Formadas" value={`${d.familiasFormadas} famílias`} icon={UsersRound} borderColor="hsl(270 60% 55%)" isLoading={d.isLoading} />
+      </div>
+
+      {/* Avisos + Calendário lado a lado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <MuralAvisos />
+        <CalendarioMensal />
+      </div>
+
+      {/* Gráficos lado a lado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">Participantes por Faixa Etária</CardTitle>
@@ -144,8 +105,6 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Status Donut Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">Status dos Participantes</CardTitle>
@@ -156,17 +115,7 @@ const Dashboard = () => {
             ) : (
               <ChartContainer config={Object.fromEntries(d.statusData.map(s => [s.name, { label: s.name, color: STATUS_COLORS[s.name] ?? "hsl(220 10% 55%)" }]))} className="h-[220px] w-full">
                 <PieChart>
-                  <Pie
-                    data={d.statusData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
+                  <Pie data={d.statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} label={({ name, value }) => `${name}: ${value}`}>
                     {d.statusData.map((entry) => (
                       <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "hsl(220 10% 55%)"} />
                     ))}
