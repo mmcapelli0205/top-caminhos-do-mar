@@ -1,55 +1,37 @@
 
 
-## Melhoria Visual: Cards de Equipes na Tela Servidores
+## Importar da TicketAndGo para Servidores
 
-### Arquivo: `src/pages/Servidores.tsx`
+### Resumo
+Criar um novo componente `ImportServidoresCSVDialog` baseado no `ImportCSVDialog` existente, adaptado para inserir dados na tabela `servidores`. Adicionar botao na tela de Servidores para abrir o modal.
 
 ### Mudancas
 
-**1. Novos imports:**
-- Adicionar `useState` para controle de erro de imagem (ja importado)
-- Importar `CORES_EQUIPES` e `getTextColor` de `@/lib/coresEquipes`
+**1. Novo arquivo: `src/components/ImportServidoresCSVDialog.tsx`**
 
-**2. Constantes novas (no topo do arquivo):**
-```text
-const LOGOS_EQUIPES: Record<string, string> = {
-  "ADM": "adm.png",
-  "Eventos": "eventos.png",
-  "Hakuna": "hakunas.png",
-  "Intercessão": "intercessao.png",
-  "DOC": "intercessao.png",
-  "Louvor": "intercessao.png",
-  "Logística": "logistica.png",
-  "Mídia": "midia.png",
-  "Comunicação": "midia.png",
-  "Segurança": "seguranca.png",
-  "Voz": "voz.png",
-  "Coordenação Geral": "adm.png",
-};
+Copia adaptada do `ImportCSVDialog.tsx` com as seguintes diferencias:
 
-const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
-```
+- **DB_COLUMNS** mapeados para a tabela `servidores`:
+  - `nome` (obrigatorio), `cpf` (obrigatorio), `telefone` (obrigatorio), `email`, `data_nascimento`, `igreja`, `valor_pago`, `area_preferencia_1`, `area_preferencia_2`, `numero_legendario`, `sede`, `cidade`, `estado`, `endereco`, `cep`, `habilidades`, `experiencia`, `especialidade`, `tamanho_farda`, `contato_nome`, `contato_telefone`, `contato_email`, `forma_pagamento`, `cupom_desconto`
+- **Fuzzy patterns** adaptados (ex: `area_preferencia_1` -> ["area", "area 1", "1 opcao", "area servico"])
+- **Titulo do dialog**: "Importar Servidores da TicketAndGo"
+- **Tabela destino**: `supabase.from("servidores").insert(batch)`
+- **Campos do insert**: mapeados para colunas da tabela `servidores`
+- **Status padrao**: `"pendente"` em vez de `"inscrito"`
+- **QR Code**: `crypto.randomUUID()` (mesmo padrao)
+- **Sem logica de ergometrico** (nao se aplica a servidores)
+- **Query invalidation**: `queryKey: ["servidores"]`
 
-**3. Estado para controle de erro de imagem:**
-- Adicionar `const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})` para rastrear quais logos falharam individualmente
+**2. Alteracao: `src/pages/Servidores.tsx`**
 
-**4. Substituir bloco de Area Cards (linhas 254-280):**
+- Importar `ImportServidoresCSVDialog` e icone `Upload`
+- Adicionar estado `const [importOpen, setImportOpen] = useState(false)`
+- Extrair lista de CPFs existentes: `const existingCpfs = servidores.map(s => s.cpf).filter(Boolean) as string[]`
+- Adicionar botao "Importar TicketAndGo" ao lado dos botoes CSV e Novo Servidor (com icone Upload)
+- Renderizar `<ImportServidoresCSVDialog>` no JSX
 
-O grid atual com cards simples de texto sera substituido por cards visuais quadrados:
-
-- **Grid**: `grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4`
-- **Cada card**:
-  - `aspect-square` para formato quadrado
-  - Borda sutil na cor da equipe via `style={{ borderColor: CORES_EQUIPES[area] }}`
-  - `hover:scale-[1.05]` + `shadow-lg` no hover + `transition-all duration-300`
-  - Logo centralizada (~h-20 w-20, object-contain) com fallback para letra inicial grande em circulo colorido
-  - Nome da area abaixo da logo (font-bold, text-sm)
-  - Badge com quantidade de aprovados no canto superior direito (position absolute)
-  - Badge de pendentes (laranja) caso existam
-  - Cursor pointer, clique navega para `/areas/{area}`
-- **Card "Sem Area"**: mantido com estilo vermelho, mesmo formato quadrado
-
-**5. Nenhuma outra alteracao:**
-- Toda logica de navegacao, filtros, tabela, dialogs permanece identica
+### O que NAO muda
+- O componente `ImportCSVDialog` dos participantes permanece intacto
+- Toda logica existente da tela Servidores (cards, filtros, tabela, dialogs) permanece igual
 - Nenhuma dependencia nova
 
