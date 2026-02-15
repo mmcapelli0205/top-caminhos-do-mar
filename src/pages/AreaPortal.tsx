@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { getUser } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import AreaHeader from "@/components/area/AreaHeader";
@@ -119,7 +120,9 @@ export default function AreaPortal() {
   const isCoord = area
     ? [area.coordenador_id, area.coordenador_02_id, area.coordenador_03_id].includes(currentUser?.id ?? null)
     : false;
-  const isDiretoria = currentUser?.papel === "diretoria";
+  const { profile, role } = useAuth();
+  const isDiretoria = role === "diretoria";
+  const podeAprovar = profile?.pode_aprovar === true;
   const isSombra = area?.sombra_id === currentUser?.id;
   const canEdit = isCoord || isDiretoria;
   const isServidorDaArea = currentUser?.area_servico === decodedNome;
@@ -168,7 +171,7 @@ export default function AreaPortal() {
           {decodedNome === "Mídia" && <TabsTrigger value="radar">Radar</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
           {decodedNome === "ADM" && <TabsTrigger value="homologacao">Homologação</TabsTrigger>}
-          {(canEdit || isCoord || isDiretoria) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
+          {(isDiretoria || isCoord || podeAprovar) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
         </TabsList>
 
@@ -336,7 +339,7 @@ export default function AreaPortal() {
           </TabsContent>
         )}
 
-        {(canEdit || isCoord || isDiretoria) && (
+        {(isDiretoria || isCoord || podeAprovar) && (
           <TabsContent value="cronograma">
             {decodedNome === "Logística" ? (
               <Tabs defaultValue="oficial" className="w-full">
