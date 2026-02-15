@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Users, Phone } from "lucide-react";
+import CronogramaTop from "@/components/cronograma/CronogramaTop";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,6 +168,7 @@ export default function AreaPortal() {
           {decodedNome === "Mídia" && <TabsTrigger value="radar">Radar</TabsTrigger>}
           {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
           {decodedNome === "ADM" && <TabsTrigger value="homologacao">Homologação</TabsTrigger>}
+          {(canEdit || isCoord || isDiretoria) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
         </TabsList>
 
@@ -331,6 +333,30 @@ export default function AreaPortal() {
         {decodedNome === "ADM" && (
           <TabsContent value="homologacao">
             <HomologacaoTimeline areaId={area.id} />
+          </TabsContent>
+        )}
+
+        {(canEdit || isCoord || isDiretoria) && (
+          <TabsContent value="cronograma">
+            {decodedNome === "Logística" ? (
+              <Tabs defaultValue="oficial" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="oficial">Cronograma Oficial</TabsTrigger>
+                  <TabsTrigger value="logistica">Cronograma Logística</TabsTrigger>
+                </TabsList>
+                <TabsContent value="oficial">
+                  <CronogramaTop canEdit={false} cronogramaTipo="adm" />
+                </TabsContent>
+                <TabsContent value="logistica">
+                  <CronogramaTop canEdit={isCoord || isDiretoria} cronogramaTipo="logistica" />
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <CronogramaTop
+                canEdit={decodedNome === "ADM" && (isCoord || isDiretoria)}
+                cronogramaTipo="adm"
+              />
+            )}
           </TabsContent>
         )}
 

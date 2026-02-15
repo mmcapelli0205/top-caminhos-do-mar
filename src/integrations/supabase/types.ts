@@ -698,6 +698,124 @@ export type Database = {
           },
         ]
       }
+      cronograma_atividades: {
+        Row: {
+          cenario_recursos: string | null
+          created_at: string | null
+          cronograma_tipo: string | null
+          descricao: string | null
+          dia: string
+          equipe_responsavel: string | null
+          horario_fim: string | null
+          horario_fim_real: string | null
+          horario_inicio: string | null
+          horario_inicio_real: string | null
+          id: string
+          local: string | null
+          observacao_execucao: string | null
+          ordem: number
+          reposicao_agua: string | null
+          responsavel_nome: string | null
+          status_execucao: string | null
+          tempo_previsto_min: number | null
+          tempo_real_min: number | null
+          tipo: string
+          titulo: string
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cenario_recursos?: string | null
+          created_at?: string | null
+          cronograma_tipo?: string | null
+          descricao?: string | null
+          dia: string
+          equipe_responsavel?: string | null
+          horario_fim?: string | null
+          horario_fim_real?: string | null
+          horario_inicio?: string | null
+          horario_inicio_real?: string | null
+          id?: string
+          local?: string | null
+          observacao_execucao?: string | null
+          ordem: number
+          reposicao_agua?: string | null
+          responsavel_nome?: string | null
+          status_execucao?: string | null
+          tempo_previsto_min?: number | null
+          tempo_real_min?: number | null
+          tipo: string
+          titulo: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cenario_recursos?: string | null
+          created_at?: string | null
+          cronograma_tipo?: string | null
+          descricao?: string | null
+          dia?: string
+          equipe_responsavel?: string | null
+          horario_fim?: string | null
+          horario_fim_real?: string | null
+          horario_inicio?: string | null
+          horario_inicio_real?: string | null
+          id?: string
+          local?: string | null
+          observacao_execucao?: string | null
+          ordem?: number
+          reposicao_agua?: string | null
+          responsavel_nome?: string | null
+          status_execucao?: string | null
+          tempo_previsto_min?: number | null
+          tempo_real_min?: number | null
+          tipo?: string
+          titulo?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cronograma_atividades_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cronograma_locais: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cronograma_locais_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       despesas: {
         Row: {
           auto_calculado: boolean | null
