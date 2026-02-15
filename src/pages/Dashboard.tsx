@@ -1,7 +1,8 @@
 import {
   Users, FileCheck, AlertTriangle, QrCode,
-  UsersRound,
+  UsersRound, Radio,
 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -43,6 +44,37 @@ function KpiCard({
   );
 }
 
+function TopRealTimeCard() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isLive = new Date() >= new Date("2026-04-02") || searchParams.get("debug") === "true";
+
+  return (
+    <Card
+      className={`cursor-pointer transition-all hover:shadow-md ${!isLive ? "opacity-50 pointer-events-none" : ""}`}
+      onClick={() => isLive && navigate("/top-real-time")}
+    >
+      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+        <CardTitle className="text-sm font-medium text-muted-foreground">TOP Real Time</CardTitle>
+        <div className="relative">
+          <Radio className="h-5 w-5 text-red-500" />
+          {isLive && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-lg font-bold text-foreground">Acompanhamento ao vivo</p>
+        {isLive ? (
+          <span className="inline-flex items-center gap-1 mt-1 text-xs font-semibold text-red-500">
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> AO VIVO
+          </span>
+        ) : (
+          <span className="inline-flex items-center mt-1 text-xs text-muted-foreground">Em breve</span>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 const Dashboard = () => {
   const d = useDashboardData();
   const { profile } = useAuth();
@@ -64,9 +96,10 @@ const Dashboard = () => {
       </div>
 
       {/* Countdown + Card Equipe lado a lado */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <CountdownSection />
         <QuickActions userEmail={profile?.email ?? null} />
+        <TopRealTimeCard />
       </div>
 
       {/* KPIs */}
