@@ -19,6 +19,7 @@ import AreaRadar from "@/components/area/AreaRadar";
 import AreaIACriativa from "@/components/area/AreaIACriativa";
 import AreaPedidos from "@/components/area/AreaPedidos";
 import AdmPedidosDashboard from "@/components/area/AdmPedidosDashboard";
+import AdmFinanceiroDashboard from "@/components/area/AdmFinanceiroDashboard";
 import Familias from "@/pages/Familias";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
@@ -170,8 +171,9 @@ export default function AreaPortal() {
         {/* Tab Painel */}
         <TabsContent value="painel">
           {decodedNome === "ADM" && (
-            <div className="mb-6">
+            <div className="mb-6 space-y-6">
               <AdmPedidosDashboard />
+              <AdmFinanceiroDashboard />
             </div>
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

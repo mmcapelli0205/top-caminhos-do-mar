@@ -191,6 +191,15 @@ const Aprovacoes = () => {
     } catch { toast({ title: "Erro ao alterar permissão", variant: "destructive" }); }
   };
 
+  const handleToggleAcessoFinanceiro = async (userId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase.from("user_profiles").update({ acesso_financeiro: !currentValue }).eq("id", userId);
+      if (error) throw error;
+      toast({ title: `Acesso financeiro ${!currentValue ? "concedido" : "removido"}!` });
+      queryClient.invalidateQueries({ queryKey: ["user-profiles"] });
+    } catch { toast({ title: "Erro ao alterar acesso financeiro", variant: "destructive" }); }
+  };
+
   const handleSaveKeyword = async () => {
     if (!keyword.trim()) return;
     setKeywordLoading(true);
@@ -299,6 +308,10 @@ const Aprovacoes = () => {
                         <span className="text-xs text-muted-foreground">Pode aprovar:</span>
                         <Switch checked={!!p.pode_aprovar} onCheckedChange={() => handleTogglePodeAprovar(p.id, !!p.pode_aprovar)} />
                       </div>
+                      <div className="flex items-center gap-2 w-full mt-1">
+                        <span className="text-xs text-muted-foreground">Financeiro:</span>
+                        <Switch checked={!!p.acesso_financeiro} onCheckedChange={() => handleToggleAcessoFinanceiro(p.id, !!p.acesso_financeiro)} />
+                      </div>
                     </>
                   )}
                 </div>
@@ -320,7 +333,8 @@ const Aprovacoes = () => {
                     <TableHead className="hidden lg:table-cell">Área</TableHead>
                     <TableHead className="hidden md:table-cell">Data</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Aprovador</TableHead>
+                     <TableHead className="hidden md:table-cell">Aprovador</TableHead>
+                    <TableHead className="hidden md:table-cell">Financeiro</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -340,6 +354,9 @@ const Aprovacoes = () => {
                       <TableCell><Badge className={STATUS_COLORS[p.status || "pendente"] || ""}>{p.status || "pendente"}</Badge></TableCell>
                       <TableCell className="hidden md:table-cell">
                         {p.status === "aprovado" && <Switch checked={!!p.pode_aprovar} onCheckedChange={() => handleTogglePodeAprovar(p.id, !!p.pode_aprovar)} />}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {p.status === "aprovado" && <Switch checked={!!p.acesso_financeiro} onCheckedChange={() => handleToggleAcessoFinanceiro(p.id, !!p.acesso_financeiro)} />}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">

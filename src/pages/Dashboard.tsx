@@ -1,6 +1,6 @@
 import {
   Users, FileCheck, AlertTriangle, QrCode,
-  UsersRound, DollarSign, LayoutDashboard,
+  UsersRound, LayoutDashboard,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -88,7 +88,7 @@ const Dashboard = () => {
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-muted-foreground">Famílias Formadas</CardTitle>
@@ -101,27 +101,6 @@ const Dashboard = () => {
               <>
                 <p className="text-2xl font-bold text-foreground">{d.familiasFormadas} famílias</p>
                 <p className="text-sm text-muted-foreground">{d.participantesAlocados} participantes alocados</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Balanço Financeiro</CardTitle>
-            <DollarSign className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {d.isLoading ? (
-              <Skeleton className="h-8 w-48" />
-            ) : (
-              <>
-                <p className={`text-2xl font-bold ${d.balanco >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {fmt(d.balanco)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Receita: {fmt(d.receita)} · Despesas: {fmt(d.totalDespesas)}
-                </p>
               </>
             )}
           </CardContent>

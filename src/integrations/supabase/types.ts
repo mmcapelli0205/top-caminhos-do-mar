@@ -2171,6 +2171,7 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          acesso_financeiro: boolean | null
           aprovado_por: string | null
           area_preferencia: string | null
           cargo: string | null
@@ -2187,6 +2188,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          acesso_financeiro?: boolean | null
           aprovado_por?: string | null
           area_preferencia?: string | null
           cargo?: string | null
@@ -2203,6 +2205,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          acesso_financeiro?: boolean | null
           aprovado_por?: string | null
           area_preferencia?: string | null
           cargo?: string | null
@@ -2222,16 +2225,19 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          acesso_financeiro: boolean | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          acesso_financeiro?: boolean | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          acesso_financeiro?: boolean | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
