@@ -11,7 +11,6 @@ import AppLayout from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Participantes from "./pages/Participantes";
 import Servidores from "./pages/Servidores";
-import Hakunas from "./pages/Hakunas";
 import ServidorForm from "./pages/ServidorForm";
 import Financeiro from "./pages/Financeiro";
 import Equipamentos from "./pages/Equipamentos";
@@ -65,7 +64,6 @@ const App = () => {
               <Route path="/servidores" element={<Servidores />} />
               <Route path="/servidores/novo" element={<ServidorForm />} />
               <Route path="/servidores/:id/editar" element={<ServidorForm />} />
-              <Route path="/hakunas" element={<Hakunas />} />
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/equipamentos" element={<Equipamentos />} />
               <Route path="/artes-docs" element={<ArtesEDocs />} />

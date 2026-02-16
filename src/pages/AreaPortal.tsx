@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Users, Phone } from "lucide-react";
+import { ArrowLeft, Users, Phone, Plus } from "lucide-react";
 import CronogramaTop from "@/components/cronograma/CronogramaTop";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +32,11 @@ import AdmPedidosDashboard from "@/components/area/AdmPedidosDashboard";
 import AdmFinanceiroDashboard from "@/components/area/AdmFinanceiroDashboard";
 import HomologacaoTimeline from "@/components/area/HomologacaoTimeline";
 import PredicasTab from "@/components/predicas/PredicasTab";
+import EquipeTab from "@/components/hakunas/EquipeTab";
+import ErgometricosTab from "@/components/hakunas/ErgometricosTab";
+import AutorizacoesTab from "@/components/hakunas/AutorizacoesTab";
+import MedicamentosEstoqueTab from "@/components/hakunas/MedicamentosEstoqueTab";
+import EquipamentosEstoqueTab from "@/components/hakunas/EquipamentosEstoqueTab";
 import Familias from "@/pages/Familias";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
@@ -192,6 +197,11 @@ export default function AreaPortal() {
           {isAbaVisivel(getPermissao("cronograma")) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
           {isAbaVisivel(getPermissao("predicas")) && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
           {isAbaVisivel(getPermissao("pedidos")) && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
+          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("equipe")) && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
+          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("ergometricos")) && <TabsTrigger value="ergometricos">Ergométricos</TabsTrigger>}
+          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("autorizacoes")) && <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>}
+          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("medicamentos")) && <TabsTrigger value="medicamentos">Medicamentos</TabsTrigger>}
+          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("equipamentos")) && <TabsTrigger value="equipamentos_hakuna">Equipamentos</TabsTrigger>}
         </TabsList>
 
         {/* Tab Painel */}
@@ -393,6 +403,43 @@ export default function AreaPortal() {
             canDelete={canDeletePerm(getPermissao("pedidos"))}
           />
         </TabsContent>
+
+        {decodedNome === "Hakuna" && (
+          <TabsContent value="equipe">
+            {canEditPerm(getPermissao("equipe")) && (
+              <div className="flex gap-2 mb-4">
+                <Button size="sm" onClick={() => navigate("/servidores/novo?area=Hakuna")}>
+                  <Plus className="h-4 w-4 mr-1" /> Novo Hakuna
+                </Button>
+              </div>
+            )}
+            <EquipeTab />
+          </TabsContent>
+        )}
+
+        {decodedNome === "Hakuna" && (
+          <TabsContent value="ergometricos">
+            <ErgometricosTab />
+          </TabsContent>
+        )}
+
+        {decodedNome === "Hakuna" && (
+          <TabsContent value="autorizacoes">
+            <AutorizacoesTab />
+          </TabsContent>
+        )}
+
+        {decodedNome === "Hakuna" && (
+          <TabsContent value="medicamentos">
+            <MedicamentosEstoqueTab />
+          </TabsContent>
+        )}
+
+        {decodedNome === "Hakuna" && (
+          <TabsContent value="equipamentos_hakuna">
+            <EquipamentosEstoqueTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
