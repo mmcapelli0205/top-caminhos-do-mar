@@ -39,7 +39,7 @@ const AREA_ICONS: Record<string, LucideIcon> = {
   "Alimentação": Briefcase,
   "Tempo e Execução": Clock,
   "DOC": FileText,
-  "Outra área": Puzzle,
+  "Diretoria": Crown,
 };
 
 const COLOR_PALETTE = [
@@ -102,7 +102,7 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
     setEditOpen(false);
   }
 
-  async function handleSetLeader(field: "coordenador_id" | "coordenador_02_id" | "coordenador_03_id" | "sombra_id", value: string) {
+  async function handleSetLeader(field: "coordenador_id" | "coordenador_02_id" | "coordenador_03_id" | "sombra_id" | "sombra_02_id" | "sombra_03_id", value: string) {
     const update: Record<string, string | null> = {};
     update[field] = value === "none" ? null : value;
     await supabase.from("areas").update(update).eq("id", area.id);
@@ -159,16 +159,23 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
       </div>
 
       {/* Leadership cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {(["coordenador_id", "coordenador_02_id", "coordenador_03_id", "sombra_id"] as const).map((field, idx) => {
-          const labels = ["Coordenador", "Coord. 02", "Coord. 03", "Sombra"];
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {([
+          { field: "coordenador_id" as const, label: "Coordenador" },
+          { field: "coordenador_02_id" as const, label: "Coord. 02" },
+          { field: "coordenador_03_id" as const, label: "Coord. 03" },
+          { field: "sombra_id" as const, label: "Sombra 01" },
+          { field: "sombra_02_id" as const, label: "Sombra 02" },
+          { field: "sombra_03_id" as const, label: "Sombra 03" },
+        ]).map(({ field, label }) => {
+          const isSombra = field.startsWith("sombra");
           const value = area[field];
           return (
             <Card key={field}>
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground mb-1">
-                  {labels[idx]}
-                  {field === "sombra_id" && <Badge variant="outline" className="ml-1 text-[10px]">Em treinamento</Badge>}
+                  {label}
+                  {isSombra && <Badge variant="outline" className="ml-1 text-[10px]">Em treinamento</Badge>}
                 </p>
                 {canEdit ? (
                   <Select value={value ?? "none"} onValueChange={v => handleSetLeader(field, v)}>
