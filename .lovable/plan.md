@@ -1,107 +1,84 @@
 
-
-## Relatorio Pos-Evento do TOP
+## Lista de Predicas
 
 ### Resumo
-Criar componente de relatorio analitico comparando cronograma planejado vs execucao real, acessivel via botao no header do CronogramaTop (apenas para ADM/Diretoria). Inclui resumo executivo, tabela detalhada agrupada por dia, insights automaticos e exportacao PDF/CSV.
+Criar dois componentes (listagem + formulario) para gerenciar as 28 predicas do TOP, e integrar como nova aba "Predicas" em todas as areas do AreaPortal. Intercessao e DOC editam; demais areas visualizam readonly.
 
 ### Arquivos
 
-**1. Novo: `src/components/cronograma/RelatorioTop.tsx`**
+**1. Novo: `src/components/predicas/PredicasTab.tsx`**
 
-Componente completo do relatorio com:
+Componente principal da aba. Props: `{ canEdit: boolean }`.
 
-- **Props**: `{ onVoltar: () => void }`
-- **Query**: `cronograma_atividades` com `cronograma_tipo = 'adm'`, ordenado por `dia` e `ordem`
-- **Estado**: filtros (dia, tipo, status), todos iniciam vazios (mostra tudo)
+- **Query**: `predicas` ordenado por `codigo`, com React Query key `["predicas"]`
+- **Estado**: `diaSelecionado` (string, "" = todos), `busca` (string), `statusFiltro` (string, "" = todos), `predicaSelecionada` (para modal detalhes), `editando` (para modal form)
+- **Header**: Titulo "Lista de Predicas", subtitulo com contagem, botao "+ Nova Predica" se canEdit
+- **Seletor de dia**: 5 botoes (Todos, D1, D2, D3, D4) com cores D1=#F97316, D2=#3B82F6, D3=#22C55E, D4=#EAB308 e badge de contagem
+- **Filtros**: Input busca (titulo/pregador), Select status (Pendente, Confirmada, Ajustada, Cancelada)
+- **Desktop (md+)**: Tabela com colunas: Codigo, Dia, Titulo, Local, Horario, Duracao, Pregador, Publico, Status, Acoes
+  - Linha clicavel (abre detalhes readonly)
+  - Borda lateral colorida por dia (border-l-4)
+  - Status badges coloridos (pendente=cinza, confirmada=verde, ajustada=amarelo, cancelada=vermelho)
+  - Acoes (se canEdit): botao editar (lapiz), botao excluir (lixeira com AlertDialog)
+  - Linha com opacity-50 e line-through se cancelada
+- **Mobile (< md)**: Cards empilhados com codigo+titulo, pregador, local, horario, status badge, borda lateral colorida
+  - Card clicavel para detalhes
+- **Modal de detalhes** (Dialog readonly): Exibe todos os campos da predica (codigo, titulo, dia, horario, duracao, pregador, local, passagens biblicas com icone Book, publico, recursos, status, observacoes). Acessivel por todos.
 
-**Header**:
-- Titulo: "Relatorio Pos-Evento -- TOP 1575 Caminhos do Mar"
-- Data de geracao (formatada)
-- Botao "Voltar ao Cronograma" (chama `onVoltar`)
-- Botao "Exportar PDF" (jsPDF, orientacao paisagem)
-- Botao "Exportar CSV" (papaparse unparse)
+**2. Novo: `src/components/predicas/PredicaFormDialog.tsx`**
 
-**Resumo Executivo** (grid de cards, 2 colunas mobile, 4 desktop):
-- Total de Atividades
-- Concluidas (verde) / Puladas (cinza) / Pendentes (amarelo)
-- Tempo Total Previsto (Xh Xmin)
-- Tempo Total Real (Xh Xmin)
-- Diferenca Geral (+/- Xmin, verde/vermelho)
-- % Pontualidade (concluidas dentro do tempo / total concluidas)
+Dialog de criacao/edicao. Props: `{ open, onOpenChange, predica?: Predica | null }`.
 
-**Filtros**:
-- Por Dia: select (D1, D2, D3, D4, Todos)
-- Por Tipo: select (lista de tipos)
-- Por Status: select (concluida, pulada, pendente)
-- Botao Limpar
+- **Queries auxiliares**:
+  - `cronograma_locais` ordenado por nome (para combobox de local)
+  - `servidores` filtrado por `area_servico IN ('Intercessao', 'DOC', 'Voz')` ordenado por nome (para combobox de pregador)
+- **Campos**:
+  - Codigo: Input text (readonly na edicao)
+  - Dia: Select (D1, D2, D3, D4)
+  - Titulo: Input text (required)
+  - Local: Combobox (Command/Popover) com lista de `cronograma_locais` + opcao "Adicionar novo" que insere em `cronograma_locais`
+  - Horario Previsto: Input time (HH:MM)
+  - Duracao Estimada: Input number (minutos)
+  - Pregador: Combobox com servidores filtrados + opcao texto livre
+  - Passagens Biblicas: Textarea
+  - Publico: Select ("Todas", "1 Familia" ate "10 Familias")
+  - Recursos Necessarios: Textarea
+  - Status: Select (Pendente, Confirmada, Ajustada, Cancelada)
+  - Observacoes: Textarea
+- **Salvar**: Insert ou update em `predicas`, invalida query `["predicas"]`, toast de sucesso
+- Reutiliza o mesmo pattern de Combobox do CronogramaFormDialog
 
-**Tabela** (desktop) / **Cards** (mobile):
-- Colunas: Dia | Ordem | Atividade | Tipo | Local | H. Previsto | H. Real Inicio | H. Real Fim | Tempo Previsto | Tempo Real | Diferenca | Status
-- Regras visuais:
-  - Diferenca positiva (atrasou): vermelho, "Xmin"
-  - Diferenca negativa (adiantou): verde, "-Xmin"
-  - Diferenca < 3min: branco, "No tempo"
-  - Status pulada: opacity-50, line-through
-  - Status pendente: texto cinza, diferenca "--"
-- Agrupamento por dia com header colorido (mesmas cores D1-D4)
-- Subtotal por dia (tempo previsto total, tempo real total, diferenca)
+**3. Alteracao: `src/pages/AreaPortal.tsx`**
 
-**Rodape - Resumo por Tipo**:
-- Tabela: Tipo | Qtd | Tempo Previsto Total | Tempo Real Total | Diferenca Media
-
-**Insights Automaticos** (calculados a partir dos dados):
-- Atividade com maior atraso
-- Dia com melhor pontualidade
-- Media de diferenca por tipo relevante (ex: Predicas)
-
-**Exportacao PDF (jsPDF)**:
-- Orientacao paisagem
-- Cabecalho com titulo e data
-- Tabela formatada (cores nas diferencas)
-- Resumo por dia e insights no rodape
-- Usa `autoTable` pattern manual (linhas desenhadas) ou texto simples formatado
-
-**Exportacao CSV (papaparse)**:
-- `unparse()` com todas as colunas + campos calculados (diferenca, status)
-- Download automatico como arquivo .csv
-
-**2. Alteracao: `src/components/cronograma/CronogramaTop.tsx`**
-
-- Adicionar estado: `const [showRelatorio, setShowRelatorio] = useState(false)`
-- No header, quando `canEdit`, adicionar botao "Relatorio do TOP" ao lado de "Nova Atividade"
-- Renderizacao condicional: se `showRelatorio`, renderizar `<RelatorioTop onVoltar={() => setShowRelatorio(false)} />` em vez do conteudo atual (seletor de dia, filtros, timeline)
-- Import do `RelatorioTop`
-
-### Calculo da Diferenca
-
+- Import `PredicasTab` de `@/components/predicas/PredicasTab`
+- Calcular permissao:
 ```text
-Para cada atividade concluida:
-  diferenca = tempo_real_min - tempo_previsto_min
-  Se diferenca > 0: atrasou (vermelho)
-  Se diferenca < 0: adiantou (verde)
-  Se abs(diferenca) < 3: "No tempo" (branco)
-  Se tempo_real_min == null: "--"
+const canEditPredicas = decodedNome === "Intercessao" || decodedNome === "DOC";
 ```
-
-### Calculo de Pontualidade
-
+- Adicionar na TabsList (antes de pedidos, visivel para TODAS as areas):
 ```text
-pontualidade = (atividades onde abs(diferenca) <= 3) / total concluidas * 100
+<TabsTrigger value="predicas">Predicas</TabsTrigger>
 ```
+- Adicionar TabsContent:
+```text
+<TabsContent value="predicas">
+  <PredicasTab canEdit={canEditPredicas && canEdit} />
+</TabsContent>
+```
+- `canEdit` garante que apenas coordenadores/diretoria da area editam; `canEditPredicas` restringe a Intercessao e DOC
 
 ### Detalhes Tecnicos
 
-- Nenhuma migration necessaria (todos os campos ja existem)
-- Nenhuma dependencia nova (jsPDF e papaparse ja instalados)
-- Query key: `["relatorio-top-atividades"]`
-- Formatacao de horarios: `horario_inicio` e `horario_fim` sao `time` (ex: "06:30:00"), mostrar substring(0,5)
-- `horario_inicio_real` e `horario_fim_real` sao `timestamp with time zone`, formatar com `toLocaleTimeString`
-- Mobile: tabela substituida por cards empilhados com dados essenciais
+- Nenhuma migration (tabela `predicas` ja existe com todos os campos)
+- Nenhuma dependencia nova
+- Query keys: `["predicas"]`, `["cronograma-locais"]`, `["pregadores-predicas"]`
+- Horario previsto e `time without time zone` — mostrar substring(0,5) para HH:MM
+- Campo `pregador_id` aceita uuid ou null (texto livre salva apenas `pregador_nome`)
+- Delete com confirmacao via AlertDialog
 
 ### Responsividade
 
-- Cards de resumo: grid-cols-2 mobile, grid-cols-4 desktop
-- Tabela: visivel apenas em md+; mobile usa cards compactos
-- Filtros e botoes de exportacao: flex-wrap
-
+- Desktop: tabela completa com todas as colunas
+- Mobile: cards empilhados com dados essenciais
+- Modal form: max-w-2xl desktop, full-width mobile
+- Modal detalhes: max-w-lg
