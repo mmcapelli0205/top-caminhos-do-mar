@@ -1976,6 +1976,81 @@ export type Database = {
           },
         ]
       }
+      predicas: {
+        Row: {
+          codigo: string
+          created_at: string | null
+          dia: string
+          duracao_estimada_min: number | null
+          horario_previsto: string | null
+          id: string
+          local: string | null
+          observacoes: string | null
+          passagens_biblicas: string | null
+          pregador_id: string | null
+          pregador_nome: string | null
+          publico: string | null
+          recursos_necessarios: string | null
+          status: string | null
+          titulo: string
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          codigo: string
+          created_at?: string | null
+          dia: string
+          duracao_estimada_min?: number | null
+          horario_previsto?: string | null
+          id?: string
+          local?: string | null
+          observacoes?: string | null
+          passagens_biblicas?: string | null
+          pregador_id?: string | null
+          pregador_nome?: string | null
+          publico?: string | null
+          recursos_necessarios?: string | null
+          status?: string | null
+          titulo: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          codigo?: string
+          created_at?: string | null
+          dia?: string
+          duracao_estimada_min?: number | null
+          horario_previsto?: string | null
+          id?: string
+          local?: string | null
+          observacoes?: string | null
+          passagens_biblicas?: string | null
+          pregador_id?: string | null
+          pregador_nome?: string | null
+          publico?: string | null
+          recursos_necessarios?: string | null
+          status?: string | null
+          titulo?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "predicas_pregador_id_fkey"
+            columns: ["pregador_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predicas_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       radar_noticias: {
         Row: {
           created_at: string | null

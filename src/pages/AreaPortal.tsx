@@ -23,6 +23,7 @@ import AreaPedidos from "@/components/area/AreaPedidos";
 import AdmPedidosDashboard from "@/components/area/AdmPedidosDashboard";
 import AdmFinanceiroDashboard from "@/components/area/AdmFinanceiroDashboard";
 import HomologacaoTimeline from "@/components/area/HomologacaoTimeline";
+import PredicasTab from "@/components/predicas/PredicasTab";
 import Familias from "@/pages/Familias";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
@@ -125,6 +126,7 @@ export default function AreaPortal() {
   const podeAprovar = profile?.pode_aprovar === true;
   const isSombra = area?.sombra_id === currentUser?.id;
   const canEdit = isCoord || isDiretoria;
+  const canEditPredicas = decodedNome === "Intercessão" || decodedNome === "DOC";
   const isServidorDaArea = currentUser?.area_servico === decodedNome;
   const canComment = canEdit || isSombra || isServidorDaArea;
 
@@ -172,6 +174,7 @@ export default function AreaPortal() {
           {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
           {decodedNome === "ADM" && <TabsTrigger value="homologacao">Homologação</TabsTrigger>}
           {(isDiretoria || isCoord || podeAprovar) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
+          <TabsTrigger value="predicas">Prédicas</TabsTrigger>
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
         </TabsList>
 
@@ -362,6 +365,10 @@ export default function AreaPortal() {
             )}
           </TabsContent>
         )}
+
+        <TabsContent value="predicas">
+          <PredicasTab canEdit={canEditPredicas && canEdit} />
+        </TabsContent>
 
         <TabsContent value="pedidos">
           <AreaPedidos areaNome={decodedNome} />
