@@ -1,126 +1,107 @@
 
 
-## TOP Real Time - Acompanhamento ao Vivo
+## Relatorio Pos-Evento do TOP
 
 ### Resumo
-Criar pagina dedicada `/top-real-time` com dois timers paralelos (teorico e real), controles de execucao para ADM/Diretoria, e visualizacao readonly para coordenadores 01. Adicionar card no Dashboard e item no menu lateral.
+Criar componente de relatorio analitico comparando cronograma planejado vs execucao real, acessivel via botao no header do CronogramaTop (apenas para ADM/Diretoria). Inclui resumo executivo, tabela detalhada agrupada por dia, insights automaticos e exportacao PDF/CSV.
 
 ### Arquivos
 
-**1. Novo: `src/pages/TopRealTime.tsx`**
+**1. Novo: `src/components/cronograma/RelatorioTop.tsx`**
 
-Pagina principal com:
+Componente completo do relatorio com:
 
-- **Verificacao de acesso**: Usa `useAuth()` para role + query em `servidores` pelo email do profile para verificar se e coord_01 (campo `cargo_area` contendo "coordenador" ou similar, e posicao na tabela `areas.coordenador_id`). Se nao autorizado, redireciona para `/dashboard`.
-- **Permissoes**:
-  - `canControl = isDiretoria || isAdmCoord` (coordenadores da area ADM)
-  - Coord 01 de outras areas: apenas visualiza
-- **Estado**: `diaSelecionado` (D1-D4), atividades do dia via React Query com `refetchInterval: 5000`
-- **Query**: `cronograma_atividades` filtrado por dia + cronograma_tipo "adm", ordenado por `ordem`
+- **Props**: `{ onVoltar: () => void }`
+- **Query**: `cronograma_atividades` com `cronograma_tipo = 'adm'`, ordenado por `dia` e `ordem`
+- **Estado**: filtros (dia, tipo, status), todos iniciam vazios (mostra tudo)
 
 **Header**:
-- Titulo "TOP Real Time" com bolinha vermelha `animate-pulse`
-- Seletor de dia (4 botoes coloridos, mesmas cores do cronograma: D1=laranja, D2=azul, D3=verde, D4=amarelo)
-- Badge "Atividade X de Y"
-- Botao "Voltar ao Inicio" no canto direito
+- Titulo: "Relatorio Pos-Evento -- TOP 1575 Caminhos do Mar"
+- Data de geracao (formatada)
+- Botao "Voltar ao Cronograma" (chama `onVoltar`)
+- Botao "Exportar PDF" (jsPDF, orientacao paisagem)
+- Botao "Exportar CSV" (papaparse unparse)
 
-**Painel Teorico (esquerda)**:
-- Card com borda azul, titulo "Cronograma Planejado"
-- Calcula qual atividade deveria estar acontecendo baseado em `new Date()` vs `horario_inicio/horario_fim` de cada atividade
-- Timer `setInterval(1000)` mostrando tempo restante ou tempo excedido (vermelho se negativo)
-- Mostra: nome, tipo (badge), local, horario previsto
+**Resumo Executivo** (grid de cards, 2 colunas mobile, 4 desktop):
+- Total de Atividades
+- Concluidas (verde) / Puladas (cinza) / Pendentes (amarelo)
+- Tempo Total Previsto (Xh Xmin)
+- Tempo Total Real (Xh Xmin)
+- Diferenca Geral (+/- Xmin, verde/vermelho)
+- % Pontualidade (concluidas dentro do tempo / total concluidas)
 
-**Painel Real (direita)**:
-- Card com borda laranja, titulo "Execucao Real"
-- Mostra atividade com `status_execucao === 'em_andamento'`
-- Timer contando desde `horario_inicio_real`
-- Barra de progresso baseada em `tempo_previsto_min`:
-  - Verde: < 80%
-  - Amarelo: 80-100%
-  - Vermelho: > 100%
-- Mostra: nome, tipo, local, horario real de inicio
+**Filtros**:
+- Por Dia: select (D1, D2, D3, D4, Todos)
+- Por Tipo: select (lista de tipos)
+- Por Status: select (concluida, pulada, pendente)
+- Botao Limpar
 
-**Comparacao Central**:
-- Badge grande entre os paineis mostrando diferenca entre posicao teorica e real
-- Verde "No horario" se < 5min, verde "Adiantado Xmin", vermelho pulsante "Atrasado Xmin"
+**Tabela** (desktop) / **Cards** (mobile):
+- Colunas: Dia | Ordem | Atividade | Tipo | Local | H. Previsto | H. Real Inicio | H. Real Fim | Tempo Previsto | Tempo Real | Diferenca | Status
+- Regras visuais:
+  - Diferenca positiva (atrasou): vermelho, "Xmin"
+  - Diferenca negativa (adiantou): verde, "-Xmin"
+  - Diferenca < 3min: branco, "No tempo"
+  - Status pulada: opacity-50, line-through
+  - Status pendente: texto cinza, diferenca "--"
+- Agrupamento por dia com header colorido (mesmas cores D1-D4)
+- Subtotal por dia (tempo previsto total, tempo real total, diferenca)
 
-**Controles (se canControl)**:
-- Card atividade atual com botao "CONCLUIR" (vermelho, h-12)
-  - Ao clicar: update `horario_fim_real = NOW()`, calcula `tempo_real_min`, `status_execucao = 'concluida'`
-  - Invalida query, avanca para proxima
-- Card proxima atividade com botao "INICIAR" (verde, h-12)
-  - Ao clicar: update `horario_inicio_real = NOW()`, `status_execucao = 'em_andamento'`
-- Botao "PULAR" (cinza, menor) com dialog para observacao obrigatoria
-  - `status_execucao = 'pulada'`, `observacao_execucao = texto`
+**Rodape - Resumo por Tipo**:
+- Tabela: Tipo | Qtd | Tempo Previsto Total | Tempo Real Total | Diferenca Media
 
-**Lista do Dia (abaixo)**:
-- Lista compacta de todas as atividades do dia
-- Icones de status: check verde (concluida), circulo laranja pulsante (em andamento), seta cinza (pulada, texto riscado), relogio cinza (pendente)
-- Atividades concluidas mostram: tempo previsto vs real + diferenca
+**Insights Automaticos** (calculados a partir dos dados):
+- Atividade com maior atraso
+- Dia com melhor pontualidade
+- Media de diferenca por tipo relevante (ex: Predicas)
 
-**2. Alteracao: `src/App.tsx`**
+**Exportacao PDF (jsPDF)**:
+- Orientacao paisagem
+- Cabecalho com titulo e data
+- Tabela formatada (cores nas diferencas)
+- Resumo por dia e insights no rodape
+- Usa `autoTable` pattern manual (linhas desenhadas) ou texto simples formatado
 
-- Importar TopRealTime
-- Adicionar rota: `<Route path="/top-real-time" element={<TopRealTime />} />` dentro do AppLayout
+**Exportacao CSV (papaparse)**:
+- `unparse()` com todas as colunas + campos calculados (diferenca, status)
+- Download automatico como arquivo .csv
 
-**3. Alteracao: `src/lib/auth.ts`**
+**2. Alteracao: `src/components/cronograma/CronogramaTop.tsx`**
 
-- Adicionar item no `ALL_MENU_ITEMS`:
-```text
-{ id: 13, title: "TOP Real Time", url: "/top-real-time", icon: Radio }
-```
-- Import `Radio` do lucide
-- No `getVisibleMenuItems`:
-  - Diretoria: incluir id 13
-  - Coordenacao: incluir id 13
-  - Outros: nao incluir
+- Adicionar estado: `const [showRelatorio, setShowRelatorio] = useState(false)`
+- No header, quando `canEdit`, adicionar botao "Relatorio do TOP" ao lado de "Nova Atividade"
+- Renderizacao condicional: se `showRelatorio`, renderizar `<RelatorioTop onVoltar={() => setShowRelatorio(false)} />` em vez do conteudo atual (seletor de dia, filtros, timeline)
+- Import do `RelatorioTop`
 
-**4. Alteracao: `src/pages/Dashboard.tsx`**
-
-- Na secao "Countdown + Card Equipe", mudar grid para 3 colunas no desktop:
-```text
-<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-  <CountdownSection />
-  <QuickActions userEmail={profile?.email ?? null} />
-  <TopRealTimeCard />
-</div>
-```
-- Novo componente inline `TopRealTimeCard`:
-  - Icone Radio com `animate-pulse`
-  - Titulo "TOP Real Time"
-  - Subtexto "Acompanhamento ao vivo"
-  - Logica de data: `const isLive = new Date() >= new Date("2026-04-02") || searchParams.get("debug") === "true"`
-  - Se nao live: badge "Em breve", opacity-50, nao clicavel
-  - Se live: badge "AO VIVO" vermelho pulsante, onClick navega para `/top-real-time`
-  - Usar `useSearchParams` do react-router-dom para debug
-
-### Logica de Permissoes Detalhada
+### Calculo da Diferenca
 
 ```text
-isDiretoria (role === "diretoria") -> canControl = true, ve tudo
-Coord ADM (area_servico === "ADM" e cargo_area coord) -> canControl = true
-Coord 01 de qualquer area (coordenador_id na tabela areas) -> canControl = false, apenas visualiza
-Logistica coords -> visualiza (ve cronograma adm)
-Demais -> redireciona para /dashboard
+Para cada atividade concluida:
+  diferenca = tempo_real_min - tempo_previsto_min
+  Se diferenca > 0: atrasou (vermelho)
+  Se diferenca < 0: adiantou (verde)
+  Se abs(diferenca) < 3: "No tempo" (branco)
+  Se tempo_real_min == null: "--"
 ```
 
-Para determinar se usuario e coord_01: query em `areas` verificando se `coordenador_id` corresponde ao servidor do usuario logado. Alternativa mais simples: verificar cargo do profile (`cargo === "coordenacao"` ou `role === "diretoria"`).
+### Calculo de Pontualidade
+
+```text
+pontualidade = (atividades onde abs(diferenca) <= 3) / total concluidas * 100
+```
 
 ### Detalhes Tecnicos
 
-- Nenhuma migration (campos `horario_inicio_real`, `horario_fim_real`, `tempo_real_min`, `status_execucao`, `observacao_execucao` ja existem em `cronograma_atividades`)
-- Nenhuma dependencia nova
-- Query key: `["top-realtime", diaSelecionado]` com refetchInterval 5s
-- Timers: dois `useEffect` com `setInterval(1000)` para teorico e real
-- Cleanup dos intervals no return do useEffect
-- Cores do seletor de dia: D1=#F97316, D2=#3B82F6, D3=#22C55E, D4=#EAB308
-- Horarios do cronograma sao `time without time zone` (ex: "06:30:00") - construir Date combinando data de hoje com o horario para comparacao
-- `horario_inicio_real` e `horario_fim_real` sao `timestamp with time zone` - usar diretamente
+- Nenhuma migration necessaria (todos os campos ja existem)
+- Nenhuma dependencia nova (jsPDF e papaparse ja instalados)
+- Query key: `["relatorio-top-atividades"]`
+- Formatacao de horarios: `horario_inicio` e `horario_fim` sao `time` (ex: "06:30:00"), mostrar substring(0,5)
+- `horario_inicio_real` e `horario_fim_real` sao `timestamp with time zone`, formatar com `toLocaleTimeString`
+- Mobile: tabela substituida por cards empilhados com dados essenciais
 
 ### Responsividade
 
-- Desktop: 2 paineis lado a lado (grid-cols-2), controles abaixo
-- Tablet: 2 paineis lado a lado
-- Mobile: paineis empilhados (grid-cols-1), botoes h-12 touch-friendly
-- Lista do dia: cards compactos empilhados
+- Cards de resumo: grid-cols-2 mobile, grid-cols-4 desktop
+- Tabela: visivel apenas em md+; mobile usa cards compactos
+- Filtros e botoes de exportacao: flex-wrap
 
