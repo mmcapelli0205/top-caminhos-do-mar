@@ -19,6 +19,8 @@ import { STATUS_CONFIG, fmt } from "@/types/pedidos";
 
 interface AreaPedidosProps {
   areaNome: string;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 const emptyForm = {
@@ -31,7 +33,7 @@ const emptyForm = {
   finalidade: "",
 };
 
-export default function AreaPedidos({ areaNome }: AreaPedidosProps) {
+export default function AreaPedidos({ areaNome, canEdit: canEditProp = true, canDelete: canDeleteProp = true }: AreaPedidosProps) {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
   const [filtroStatus, setFiltroStatus] = useState("todos");
@@ -151,9 +153,11 @@ export default function AreaPedidos({ areaNome }: AreaPedidosProps) {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-1" /> Novo Pedido
-        </Button>
+        {canEditProp && (
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-1" /> Novo Pedido
+          </Button>
+        )}
       </div>
 
       {isMobile ? (
@@ -173,7 +177,7 @@ export default function AreaPedidos({ areaNome }: AreaPedidosProps) {
                   <span>Estimado: {fmt(p.valor_total_estimado || 0)}</span>
                   <span>{p.data_solicitacao ? format(new Date(p.data_solicitacao), "dd/MM/yy") : "-"}</span>
                 </div>
-                {p.status !== "comprado" && (
+                {p.status !== "comprado" && canEditProp && (
                   <div className="flex justify-end">
                     <Button size="sm" variant="ghost"><Pencil className="h-3 w-3 mr-1" /> Editar</Button>
                   </div>
@@ -206,7 +210,7 @@ export default function AreaPedidos({ areaNome }: AreaPedidosProps) {
                   <TableCell>{statusBadge(p.status)}</TableCell>
                   <TableCell>{p.data_solicitacao ? format(new Date(p.data_solicitacao), "dd/MM/yy") : "-"}</TableCell>
                   <TableCell>
-                    {p.status !== "comprado" && (
+                    {p.status !== "comprado" && canEditProp && (
                       <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
