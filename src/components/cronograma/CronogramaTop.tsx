@@ -38,7 +38,7 @@ const DIAS_CONFIG = [
 ];
 
 const TIPOS_FILTER = ["Trilha", "Prédica", "Instrução", "Atividade", "Dinâmica", "Trajeto", "Translado", "Refeição", "Montagem", "Desmontagem"];
-const EQUIPES_FILTER = ["ADM", "Logística", "Eventos", "Segurança", "Mídia", "Voz", "Comunicação", "Hakuna", "Intercessão", "Coordenação Geral", "Coletiva", "Legendários", "Participantes"];
+const EQUIPES_FILTER = ["ADM", "Logística", "Eventos", "Segurança", "Mídia", "Voz", "Comunicação", "Hakuna", "Intercessão", "Coletiva", "Legendários", "Participantes"];
 
 interface Props {
   canEdit: boolean;

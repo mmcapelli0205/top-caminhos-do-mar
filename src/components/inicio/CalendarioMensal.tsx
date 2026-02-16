@@ -24,7 +24,7 @@ interface CalEvent {
 
 const EVENTOS_FIXOS: CalEvent[] = [
   { data_inicio: "2026-02-15T00:00:00", titulo: "Abertura das Inscrições", area: "ADM", cor: CORES_EQUIPES["ADM"] },
-  { data_inicio: "2026-04-02T12:00:00", titulo: "🏔️ Início do TOP 1575", area: "Coordenação Geral", cor: CORES_EQUIPES["Coordenação Geral"] },
+  { data_inicio: "2026-04-02T12:00:00", titulo: "🏔️ Início do TOP 1575", area: "Diretoria", cor: CORES_EQUIPES["Diretoria"] },
 ];
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];

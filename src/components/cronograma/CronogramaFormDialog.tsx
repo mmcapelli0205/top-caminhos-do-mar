@@ -24,7 +24,7 @@ const TIPOS = [
 
 const EQUIPES = [
   "ADM", "Logística", "Eventos", "Segurança", "Mídia", "Voz",
-  "Comunicação", "Hakuna", "Intercessão", "Coordenação Geral",
+  "Comunicação", "Hakuna", "Intercessão",
   "Coletiva", "Legendários", "Participantes",
 ];
 
