@@ -118,13 +118,36 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
     <div className="space-y-4">
       {/* Title row */}
       <div className="flex items-center gap-4 flex-wrap">
-        {area.logo_url ? (
-          <img src={area.logo_url} alt={area.nome} className="h-12 w-12 rounded-lg object-cover" />
-        ) : (
-          <div className="h-12 w-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: area.cor ?? "#6366f1" }}>
-            <Icon className="h-6 w-6 text-white" />
-          </div>
-        )}
+        {(() => {
+          const LOGOS_EQUIPES: Record<string, string> = {
+            "ADM": "adm.png",
+            "Eventos": "eventos.png",
+            "Hakuna": "hakunas.png",
+            "Intercessão": "intercessao.png",
+            "DOC": "intercessao.png",
+            "Louvor": "intercessao.png",
+            "Logística": "logistica.png",
+            "Mídia": "midia.png",
+            "Comunicação": "midia.png",
+            "Segurança": "seguranca.png",
+            "Voz": "voz.png",
+            "Coordenação Geral": "adm.png",
+            "Diretoria": "Logo%20Legendarios.png",
+          };
+          const logoFile = LOGOS_EQUIPES[area.nome];
+          const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
+          if (area.logo_url) {
+            return <img src={area.logo_url} alt={area.nome} className="h-12 w-12 rounded-lg object-cover" />;
+          }
+          if (logoFile) {
+            return <img src={`${ASSET_BASE}${logoFile}`} alt={area.nome} className="h-12 w-12 object-contain rounded-lg" />;
+          }
+          return (
+            <div className="h-12 w-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: area.cor ?? "#6366f1" }}>
+              <Icon className="h-6 w-6 text-white" />
+            </div>
+          );
+        })()}
         <div>
           <h1 className="text-2xl font-bold" style={{ color: area.cor ?? undefined }}>{area.nome}</h1>
           {area.descricao && <p className="text-sm text-muted-foreground">{area.descricao}</p>}
