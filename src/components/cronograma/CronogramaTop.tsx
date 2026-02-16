@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Pencil, Trash2, Filter, X, MapPin, Clock, Droplets, Clapperboard } from "lucide-react";
+import { Plus, Pencil, Trash2, Filter, X, MapPin, Clock, Droplets, Clapperboard, BarChart3 } from "lucide-react";
 import { CORES_EQUIPES, getTextColor } from "@/lib/coresEquipes";
 import { toast } from "sonner";
 import CronogramaFormDialog from "./CronogramaFormDialog";
+import RelatorioTop from "./RelatorioTop";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Atividade = Tables<"cronograma_atividades">;
@@ -53,6 +54,7 @@ export default function CronogramaTop({ canEdit, cronogramaTipo }: Props) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editAtividade, setEditAtividade] = useState<Atividade | null>(null);
+  const [showRelatorio, setShowRelatorio] = useState(false);
 
   // Fetch all activities for counts
   const { data: allAtividades = [] } = useQuery({
@@ -126,17 +128,28 @@ export default function CronogramaTop({ canEdit, cronogramaTipo }: Props) {
 
   return (
     <div className="space-y-4">
+      {showRelatorio ? (
+        <RelatorioTop onVoltar={() => setShowRelatorio(false)} />
+      ) : (
+      <>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-2xl font-bold">📋 Cronograma do TOP</h2>
           <p className="text-sm text-muted-foreground">{allAtividades.length} atividades em 4 dias</p>
         </div>
-        {canEdit && (
-          <Button onClick={handleNew} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> Nova Atividade
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={() => setShowRelatorio(true)}>
+              <BarChart3 className="h-4 w-4 mr-1" /> Relatório do TOP
+            </Button>
+          )}
+          {canEdit && (
+            <Button onClick={handleNew} size="sm">
+              <Plus className="h-4 w-4 mr-1" /> Nova Atividade
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Day selector */}
@@ -344,6 +357,8 @@ export default function CronogramaTop({ canEdit, cronogramaTipo }: Props) {
         cronogramaTipo={cronogramaTipo}
         defaultDia={diaSelecionado}
       />
+      </>
+      )}
     </div>
   );
 }
