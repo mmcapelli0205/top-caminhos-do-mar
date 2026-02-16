@@ -12,6 +12,17 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+function gerarEmailTemp(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ".")
+    .replace(/[^a-z0-9.]/g, "")
+    + "@top1575.temp";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,7 +33,38 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Extract JWT from Authorization header
+  const body = await req.json();
+  const action = body.action as string;
+
+  // update_credentials does NOT require diretoria role — the user updates their own credentials
+  if (action === "update_credentials") {
+    const { user_id, new_email, new_password } = body;
+    if (!user_id || !new_email || !new_password) {
+      return json({ error: "user_id, new_email e new_password obrigatórios" }, 400);
+    }
+
+    try {
+      const { error: authError } = await supabase.auth.admin.updateUserById(user_id, {
+        email: new_email.trim(),
+        password: new_password,
+        email_confirm: true,
+      });
+      if (authError) return json({ error: authError.message }, 500);
+
+      const { error: profileError } = await supabase
+        .from("user_profiles")
+        .update({ email: new_email.trim(), login_temporario: false })
+        .eq("id", user_id);
+      if (profileError) return json({ error: profileError.message }, 500);
+
+      return json({ success: true });
+    } catch (err) {
+      console.error("update_credentials error:", err);
+      return json({ error: "Erro interno" }, 500);
+    }
+  }
+
+  // All other actions require authorization
   const authHeader = req.headers.get("authorization");
   if (!authHeader) return json({ error: "Não autorizado" }, 401);
 
@@ -52,10 +94,98 @@ Deno.serve(async (req) => {
     }
   }
 
-  const body = await req.json();
-  const action = body.action as string;
-
   try {
+    // CREATE_TEMP_USER - quick leadership registration
+    if (action === "create_temp_user") {
+      const { nome, equipe, cargo_area } = body;
+      if (!nome || !equipe || !cargo_area) {
+        return json({ error: "nome, equipe e cargo_area obrigatórios" }, 400);
+      }
+
+      // Generate temp email
+      let baseEmail = gerarEmailTemp(nome);
+      let emailToUse = baseEmail;
+      let suffix = 1;
+
+      // Check for duplicates
+      while (true) {
+        const { data: existing } = await supabase.auth.admin.listUsers({ perPage: 1 });
+        // Use getUserByEmail approach
+        const { data: existingUser } = await supabase.auth.admin.getUserById("00000000-0000-0000-0000-000000000000").catch(() => ({ data: null }));
+        
+        // Simpler: try to list users filtered by email
+        const { data: listData } = await supabase.auth.admin.listUsers();
+        const emailExists = (listData?.users || []).some((u: { email?: string }) => u.email === emailToUse);
+        
+        if (!emailExists) break;
+        suffix++;
+        const [localPart] = baseEmail.split("@");
+        emailToUse = `${localPart}${suffix}@top1575.temp`;
+        if (suffix > 20) return json({ error: "Muitos usuários com nome similar" }, 400);
+      }
+
+      const senha = "TOP2026!";
+      const diretoriaCargos = ["Diretor", "Sub-Diretor", "Diretor Espiritual"];
+      const role = diretoriaCargos.includes(cargo_area) ? "diretoria" : "coordenacao";
+
+      // Create auth user
+      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+        email: emailToUse,
+        password: senha,
+        email_confirm: true,
+      });
+
+      if (createError) return json({ error: createError.message }, 500);
+      const userId = newUser.user.id;
+
+      // The trigger handle_new_user will create a basic profile, so we use upsert
+      const { error: profileError } = await supabase
+        .from("user_profiles")
+        .upsert({
+          id: userId,
+          nome: nome.trim(),
+          email: emailToUse,
+          status: "aprovado",
+          cargo: role,
+          area_preferencia: equipe,
+          login_temporario: true,
+          primeiro_acesso: true,
+        }, { onConflict: "id" });
+
+      if (profileError) {
+        console.error("Profile upsert error:", profileError);
+        await supabase.auth.admin.deleteUser(userId);
+        return json({ error: profileError.message }, 500);
+      }
+
+      // Insert role
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
+
+      if (roleError) {
+        console.error("Role insert error:", roleError);
+      }
+
+      // Insert servidor
+      const { error: servidorError } = await supabase
+        .from("servidores")
+        .insert({
+          nome: nome.trim(),
+          area_servico: equipe,
+          cargo_area,
+          status: "ativo",
+          origem: "convite",
+          dados_completos: false,
+        });
+
+      if (servidorError) {
+        console.error("Servidor insert error:", servidorError);
+      }
+
+      return json({ user_id: userId, email: emailToUse, senha });
+    }
+
     // LIST - fetch from user_profiles + user_roles
     if (action === "list") {
       const { data: profiles, error } = await supabase
@@ -65,7 +195,6 @@ Deno.serve(async (req) => {
 
       if (error) return json({ error: error.message }, 500);
 
-      // Fetch roles for all users
       const userIds = (profiles || []).map((p: { id: string }) => p.id);
       const { data: roles } = await supabase
         .from("user_roles")
@@ -85,14 +214,13 @@ Deno.serve(async (req) => {
       return json({ users });
     }
 
-    // CREATE - use Supabase Auth Admin API + insert into user_profiles + user_roles
+    // CREATE
     if (action === "create") {
       const { email, nome, senha, role, telefone, cargo, area_preferencia } = body;
       if (!email || !nome || !senha || !role) {
         return json({ error: "Campos obrigatórios: email, nome, senha, role" }, 400);
       }
 
-      // Create auth user
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: email.trim(),
         password: senha,
@@ -103,7 +231,6 @@ Deno.serve(async (req) => {
 
       const userId = newUser.user.id;
 
-      // Insert into user_profiles
       const { error: profileError } = await supabase
         .from("user_profiles")
         .insert({
@@ -117,12 +244,10 @@ Deno.serve(async (req) => {
         });
 
       if (profileError) {
-        // Cleanup: delete auth user if profile insert fails
         await supabase.auth.admin.deleteUser(userId);
         return json({ error: profileError.message }, 500);
       }
 
-      // Insert into user_roles
       const { error: roleError } = await supabase
         .from("user_roles")
         .insert({ user_id: userId, role });
@@ -136,12 +261,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // UPDATE - update user_profiles + user_roles + optionally auth
+    // UPDATE
     if (action === "update") {
       const { user_id, email, nome, senha, role, telefone, cargo, area_preferencia, status } = body;
       if (!user_id) return json({ error: "user_id obrigatório" }, 400);
 
-      // Update user_profiles
       const profileUpdates: Record<string, unknown> = {};
       if (nome !== undefined) profileUpdates.nome = nome.trim();
       if (email !== undefined) profileUpdates.email = email.trim();
@@ -158,9 +282,7 @@ Deno.serve(async (req) => {
         if (error) return json({ error: error.message }, 500);
       }
 
-      // Update role if provided
       if (role !== undefined) {
-        // Delete existing roles and insert new one
         await supabase.from("user_roles").delete().eq("user_id", user_id);
         const { error } = await supabase
           .from("user_roles")
@@ -168,7 +290,6 @@ Deno.serve(async (req) => {
         if (error) return json({ error: error.message }, 500);
       }
 
-      // Update auth email/password if provided
       const authUpdates: Record<string, unknown> = {};
       if (email !== undefined) authUpdates.email = email.trim();
       if (senha !== undefined && senha !== "") authUpdates.password = senha;
@@ -181,7 +302,7 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
-    // CONFIRM EMAIL - confirm user email via Admin API
+    // CONFIRM EMAIL
     if (action === "confirm_email") {
       const { user_id } = body;
       if (!user_id) return json({ error: "user_id obrigatório" }, 400);
@@ -194,12 +315,11 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
-    // APPROVE - atomic: update profile + manage roles + confirm email
+    // APPROVE
     if (action === "approve") {
       const { user_id, cargo, aprovado_por } = body;
       if (!user_id || !cargo) return json({ error: "user_id e cargo obrigatórios" }, 400);
 
-      // 1. Update user_profiles
       const { error: profileError } = await supabase
         .from("user_profiles")
         .update({
@@ -211,14 +331,12 @@ Deno.serve(async (req) => {
         .eq("id", user_id);
       if (profileError) return json({ error: profileError.message }, 500);
 
-      // 2. Delete old roles + insert new
       await supabase.from("user_roles").delete().eq("user_id", user_id);
       const { error: roleError } = await supabase
         .from("user_roles")
         .insert({ user_id, role: cargo });
       if (roleError) return json({ error: roleError.message }, 500);
 
-      // 3. Confirm email
       const { error: confirmError } = await supabase.auth.admin.updateUserById(user_id, {
         email_confirm: true,
       });

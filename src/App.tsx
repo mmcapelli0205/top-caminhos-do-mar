@@ -23,6 +23,7 @@ import TopRealTime from "./pages/TopRealTime";
 import ParticipanteForm from "./pages/ParticipanteForm";
 import AreaPortal from "./pages/AreaPortal";
 import Aprovacoes from "./pages/Aprovacoes";
+import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -55,6 +56,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
+            <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/participantes" element={<Participantes />} />
