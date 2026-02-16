@@ -28,14 +28,37 @@ const Login = () => {
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
-        navigate("/dashboard", { replace: true });
+        // Check if user needs first access flow
+        const { data: profileData } = await supabase
+          .from("user_profiles")
+          .select("primeiro_acesso")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profileData?.primeiro_acesso) {
+          navigate("/primeiro-acesso", { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
       }
     });
     // Check existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/dashboard", { replace: true });
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: profileData } = await supabase
+          .from("user_profiles")
+          .select("primeiro_acesso")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profileData?.primeiro_acesso) {
+          navigate("/primeiro-acesso", { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
+      }
     });
     return () => subscription.unsubscribe();
   }, [navigate]);

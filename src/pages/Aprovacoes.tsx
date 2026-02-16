@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserCheck, Check, X, Search, Pencil, Loader2, Save, Key, Eye, EyeOff } from "lucide-react";
+import { UserCheck, Check, X, Search, Pencil, Loader2, Save, Key, Eye, EyeOff, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import CadastroRapidoDialog from "@/components/CadastroRapidoDialog";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const Aprovacoes = () => {
-  const { session, profile } = useAuth();
+  const { session, profile, role } = useAuth();
+  const [showCadastroRapido, setShowCadastroRapido] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -237,11 +239,20 @@ const Aprovacoes = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex items-center gap-3">
-        <UserCheck className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">Aprovações de Acesso</h1>
-        {counts.pendentes > 0 && <Badge className="bg-amber-500 text-white">{counts.pendentes} pendente{counts.pendentes > 1 ? "s" : ""}</Badge>}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <UserCheck className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">Aprovações de Acesso</h1>
+          {counts.pendentes > 0 && <Badge className="bg-amber-500 text-white">{counts.pendentes} pendente{counts.pendentes > 1 ? "s" : ""}</Badge>}
+        </div>
+        {role === "diretoria" && (
+          <Button onClick={() => setShowCadastroRapido(true)} className="gap-2 bg-orange-600 hover:bg-orange-700 text-white">
+            <Star className="h-4 w-4" /> Cadastro Rápido Liderança
+          </Button>
+        )}
       </div>
+
+      <CadastroRapidoDialog open={showCadastroRapido} onOpenChange={setShowCadastroRapido} />
 
       <div className="grid gap-4 grid-cols-3">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Pendentes</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-amber-500">{counts.pendentes}</p></CardContent></Card>

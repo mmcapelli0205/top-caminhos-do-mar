@@ -100,6 +100,12 @@ export default function AppLayout() {
     return <AguardandoAprovacao status="pendente" onLogout={handleLogout} />;
   }
 
+  // Redirect primeiro_acesso users
+  if ((profile as any).primeiro_acesso === true) {
+    navigate("/primeiro-acesso", { replace: true });
+    return null;
+  }
+
   if (profile.status === "recusado") {
     return (
       <AguardandoAprovacao
