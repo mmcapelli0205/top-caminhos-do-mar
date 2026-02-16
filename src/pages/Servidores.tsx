@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Shield, Search, Download, Plus, Eye, Pencil, Check, X,
-  ArrowUp, ArrowDown, AlertTriangle, RefreshCw, Upload,
+  ArrowUp, ArrowDown, AlertTriangle, RefreshCw, Upload, Trash2, Star,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,16 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CORES_EQUIPES, getTextColor } from "@/lib/coresEquipes";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 import ServidorSheet from "@/components/ServidorSheet";
 import ImportServidoresCSVDialog from "@/components/ImportServidoresCSVDialog";
 import type { Tables } from "@/integrations/supabase/types";
@@ -33,7 +39,7 @@ type Servidor = Tables<"servidores">;
 const AREAS_SERVICO = [
   "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
   "Logística", "Voz", "ADM", "Coordenação Geral",
-  "Intercessão", "DOC", "Outra área",
+  "Intercessão", "DOC", "Diretoria",
 ];
 
 const LOGOS_EQUIPES: Record<string, string> = {
@@ -49,6 +55,7 @@ const LOGOS_EQUIPES: Record<string, string> = {
   "Segurança": "seguranca.png",
   "Voz": "voz.png",
   "Coordenação Geral": "adm.png",
+  "Diretoria": "Logo%20Legendarios.png",
 };
 
 const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
@@ -80,6 +87,8 @@ export default function Servidores() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { role, profile } = useAuth();
+  const canDelete = role === "diretoria" || profile?.cargo === "coordenacao";
 
   const { data: servidores = [], isLoading } = useQuery({
     queryKey: ["servidores"],
@@ -111,6 +120,7 @@ export default function Servidores() {
   const [recusando, setRecusando] = useState(false);
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Servidor | null>(null);
 
   const existingCpfs = useMemo(() => servidores.map(s => s.cpf).filter(Boolean) as string[], [servidores]);
 
@@ -210,6 +220,15 @@ export default function Servidores() {
     }
     setRecusarTarget(null);
     setRecusarMotivo("");
+    queryClient.invalidateQueries({ queryKey: ["servidores"] });
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("servidores").delete().eq("id", deleteTarget.id);
+    if (error) { toast.error("Erro ao excluir: " + error.message); return; }
+    toast.success("Servidor excluído com sucesso");
+    setDeleteTarget(null);
     queryClient.invalidateQueries({ queryKey: ["servidores"] });
   }
 
@@ -377,7 +396,13 @@ export default function Servidores() {
               <Card key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium truncate">{s.nome}</span>
+                    <span className="font-medium truncate flex items-center gap-1">
+                      {s.origem === "convite" && <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400 shrink-0" />}
+                      {s.dados_completos === false && (
+                        <TooltipProvider><Tooltip><TooltipTrigger asChild><span><AlertTriangle className="h-3.5 w-3.5 text-yellow-400 animate-pulse shrink-0" /></span></TooltipTrigger><TooltipContent>Dados incompletos - aguardando preenchimento</TooltipContent></Tooltip></TooltipProvider>
+                      )}
+                      {s.nome}
+                    </span>
                     <Badge className={statusColors[st] ?? ""}>{statusLabels[st] ?? st}</Badge>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -398,8 +423,13 @@ export default function Servidores() {
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => { setRecusarTarget(s); setRecusarMotivo(""); }}>
                           <X className="h-4 w-4" />
-                        </Button>
+                       </Button>
                       </>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteTarget(s)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
                 </CardContent>
@@ -439,7 +469,15 @@ export default function Servidores() {
                 const st = s.status ?? "ativo";
                 return (
                   <TableRow key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
-                    <TableCell className="font-medium">{s.nome}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="flex items-center gap-1">
+                        {s.origem === "convite" && <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400 shrink-0" />}
+                        {s.dados_completos === false && (
+                          <TooltipProvider><Tooltip><TooltipTrigger asChild><span><AlertTriangle className="h-3.5 w-3.5 text-yellow-400 animate-pulse shrink-0" /></span></TooltipTrigger><TooltipContent>Dados incompletos - aguardando preenchimento</TooltipContent></Tooltip></TooltipProvider>
+                        )}
+                        {s.nome}
+                      </span>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">{calcAge(s.data_nascimento) ?? "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
                     <TableCell className="hidden lg:table-cell">{s.area_preferencia_1 ?? "—"}</TableCell>
@@ -468,7 +506,12 @@ export default function Servidores() {
                         )}
                         {st === "sem_area" && (
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-400 hover:text-orange-300" onClick={() => { setRealocarTarget(s); setRealocarArea(""); }}>
-                            <RefreshCw className="h-4 w-4" />
+                          <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteTarget(s)}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
@@ -577,6 +620,23 @@ export default function Servidores() {
       <ServidorSheet servidor={selectedServidor} open={!!selectedServidor} onOpenChange={open => { if (!open) setSelectedServidor(null); }} />
 
       <ImportServidoresCSVDialog open={importOpen} onOpenChange={setImportOpen} existingCpfs={existingCpfs} />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Servidor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir {deleteTarget?.nome}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

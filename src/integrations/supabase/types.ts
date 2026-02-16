@@ -331,6 +331,8 @@ export type Database = {
           id: string
           logo_url: string | null
           nome: string
+          sombra_02_id: string | null
+          sombra_03_id: string | null
           sombra_id: string | null
           top_id: string | null
         }
@@ -344,6 +346,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome: string
+          sombra_02_id?: string | null
+          sombra_03_id?: string | null
           sombra_id?: string | null
           top_id?: string | null
         }
@@ -357,6 +361,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome?: string
+          sombra_02_id?: string | null
+          sombra_03_id?: string | null
           sombra_id?: string | null
           top_id?: string | null
         }
@@ -378,6 +384,20 @@ export type Database = {
           {
             foreignKeyName: "areas_coordenador_id_fkey"
             columns: ["coordenador_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_sombra_02_id_fkey"
+            columns: ["sombra_02_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_sombra_03_id_fkey"
+            columns: ["sombra_03_id"]
             isOneToOne: false
             referencedRelation: "servidores"
             referencedColumns: ["id"]
@@ -2100,6 +2120,7 @@ export type Database = {
           cpf: string | null
           created_at: string | null
           cupom_desconto: string | null
+          dados_completos: boolean | null
           data_nascimento: string | null
           email: string | null
           endereco: string | null
@@ -2113,6 +2134,7 @@ export type Database = {
           igreja: string | null
           nome: string
           numero_legendario: string | null
+          origem: string | null
           pais: string | null
           qr_code: string | null
           recurso_descricao: string | null
@@ -2141,6 +2163,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           cupom_desconto?: string | null
+          dados_completos?: boolean | null
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
@@ -2154,6 +2177,7 @@ export type Database = {
           igreja?: string | null
           nome: string
           numero_legendario?: string | null
+          origem?: string | null
           pais?: string | null
           qr_code?: string | null
           recurso_descricao?: string | null
@@ -2182,6 +2206,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           cupom_desconto?: string | null
+          dados_completos?: boolean | null
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
@@ -2195,6 +2220,7 @@ export type Database = {
           igreja?: string | null
           nome?: string
           numero_legendario?: string | null
+          origem?: string | null
           pais?: string | null
           qr_code?: string | null
           recurso_descricao?: string | null
@@ -2438,10 +2464,12 @@ export type Database = {
           data_aprovacao: string | null
           email: string
           id: string
+          login_temporario: boolean | null
           motivo_recusa: string | null
           nome: string
           numero_legendario: string | null
           pode_aprovar: boolean | null
+          primeiro_acesso: boolean | null
           status: string | null
           telefone: string | null
           updated_at: string | null
@@ -2455,10 +2483,12 @@ export type Database = {
           data_aprovacao?: string | null
           email: string
           id: string
+          login_temporario?: boolean | null
           motivo_recusa?: string | null
           nome: string
           numero_legendario?: string | null
           pode_aprovar?: boolean | null
+          primeiro_acesso?: boolean | null
           status?: string | null
           telefone?: string | null
           updated_at?: string | null
@@ -2472,10 +2502,12 @@ export type Database = {
           data_aprovacao?: string | null
           email?: string
           id?: string
+          login_temporario?: boolean | null
           motivo_recusa?: string | null
           nome?: string
           numero_legendario?: string | null
           pode_aprovar?: boolean | null
+          primeiro_acesso?: boolean | null
           status?: string | null
           telefone?: string | null
           updated_at?: string | null
