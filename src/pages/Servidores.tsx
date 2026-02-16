@@ -135,13 +135,13 @@ export default function Servidores() {
   const semArea = useMemo(() => servidores.filter(s => s.status === "sem_area"), [servidores]);
 
   const areaCounts = useMemo(() => {
-    const map: Record<string, { aprovados: number; pendentes: number }> = {};
-    AREAS_SERVICO.forEach(a => { map[a] = { aprovados: 0, pendentes: 0 }; });
+    const map: Record<string, { total: number; pendentes: number }> = {};
+    AREAS_SERVICO.forEach(a => { map[a] = { total: 0, pendentes: 0 }; });
     servidores.forEach(s => {
       const area = s.area_servico;
       if (!area || !map[area]) return;
-      if (s.status === "aprovado") map[area].aprovados++;
-      else if (s.status === "pendente") map[area].pendentes++;
+      map[area].total++;
+      if (s.status === "pendente") map[area].pendentes++;
     });
     return map;
   }, [servidores]);
@@ -310,7 +310,7 @@ export default function Servidores() {
               onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
             >
               <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-                {c.aprovados}
+                {c.total}
               </Badge>
               {c.pendentes > 0 && (
                 <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
