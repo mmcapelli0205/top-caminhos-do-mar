@@ -1,36 +1,84 @@
 
 
-## Sistema de Permissoes Granulares - Parte 1: Hook e Regras
+## Sistema de Permissoes Granulares - Parte 2: Aplicar no AreaPortal
 
 ### Resumo
-Criar dois novos arquivos com o sistema centralizado de permissoes por cargo/posicao em cada area. Nenhum componente existente sera alterado nesta parte.
+Integrar o hook `usePermissoes` e as funcoes utilitarias de `permissoes.ts` no `AreaPortal.tsx` para controlar visibilidade de abas e permissoes de edicao/exclusao em cada componente. Ajustar componentes que ainda nao recebem props granulares.
 
 ### Arquivos
 
-**1. Novo: `src/lib/permissoes.ts`**
+**1. Alteracao: `src/pages/AreaPortal.tsx`**
 
-Arquivo de regras de permissao contendo:
-- Tipos: `NivelPermissao` ("E" | "V" | "EP" | "A" | "X"), `CargoArea`, `AbaPermissao`
-- Constante `PERMISSOES`: Record com as permissoes de cada area/cargo conforme especificado (Eventos, Hakuna, Seguranca, Logistica, Voz, Comunicacao, Midia, Intercessao, DOC, Louvor, ADM, Diretoria)
-- Constante `PERMISSOES_DIRETOR_ESPIRITUAL` com permissoes especificas
-- Funcoes utilitarias exportadas: `getPermissaoAba`, `isAbaVisivel`, `canEdit`, `canCreate`, `canDelete`, `canApprove`
-- Logica de fallback: se aba nao mapeada para area/cargo, retorna "X"
+- Importar `usePermissoes` e funcoes utilitarias (`isAbaVisivel`, `canEdit as canEditPerm`, `canCreate as canCreatePerm`, `canDelete as canDeletePerm`, `canApprove as canApprovePerm`)
+- Chamar `const { cargo, getPermissao, isDiretoria: isDiretoriaP } = usePermissoes(decodedNome);`
+- Remover as variaveis de permissao antigas (`isCoord`, `isDiretoria`, `canEdit`, `canEditPredicas`, `isSombra`, `canComment`, `podeAprovar`) e substituir por logica baseada no hook
+- `canComment` passa a ser: `canEditPerm(getPermissao("mural"))` ou `cargo !== "servidor"` (sombras e coords podem comentar)
+- Default tab: `cargo === "servidor" ? "mural" : "painel"`
 
-**2. Novo: `src/hooks/usePermissoes.ts`**
+**TabsList - visibilidade de cada aba:**
+- Painel: sempre visivel
+- Mural: `isAbaVisivel(getPermissao("mural"))`
+- Calendario: `isAbaVisivel(getPermissao("calendario"))`
+- Participantes: `isAbaVisivel(getPermissao("participantes"))`
+- Documentos: `isAbaVisivel(getPermissao("documentos"))`
+- Familias: condicao de area (Seguranca/Eventos) AND `isAbaVisivel(getPermissao("familias"))`
+- Tirolesa: condicao de area AND `isAbaVisivel(getPermissao("tirolesa"))`
+- Radar: area Midia AND `isAbaVisivel(getPermissao("radar"))`
+- IA Criativa: area Midia AND `isAbaVisivel(getPermissao("ia_criativa"))`
+- Homologacao: area ADM AND `isAbaVisivel(getPermissao("homologacao"))`
+- Cronograma: `isAbaVisivel(getPermissao("cronograma"))`
+- Predicas: `isAbaVisivel(getPermissao("predicas"))`
+- Pedidos: `isAbaVisivel(getPermissao("pedidos"))`
 
-Hook que combina `useAuth`, query da area (coordenadores/sombras) e query do servidor logado (por email) para determinar o `CargoArea` do usuario na area atual.
+**TabsContent - props de permissao:**
+- AreaHeader: `canEdit={canEditPerm(getPermissao("mural"))}`  (ou usar um check geral de coord/diretoria para editar header — manter isCoord/isDiretoria derivados do cargo)
+- AreaMural: `canEdit={canEditPerm(getPermissao("mural"))}`, `canComment={cargo !== "servidor"}`
+- AreaCalendario: `canEdit={canEditPerm(getPermissao("calendario"))}`
+- AreaDesignacoes: `canEdit={canEditPerm(getPermissao("participantes"))}`
+- AreaDocumentos: `canEdit={canEditPerm(getPermissao("documentos"))}`
+- Familias/Tirolesa: sem props de permissao (componentes autonomos), manter como esta
+- AreaRadar/AreaIACriativa: sem props (autonomos)
+- HomologacaoTimeline: manter `areaId`; o componente tem logica interna de permissao
+- CronogramaTop: manter logica especial de Logistica; para ADM usar `canEdit={canEditPerm(getPermissao("cronograma"))}`; para Logistica sub-tab logistica: `canEdit={cargo === "coord_01" || isDiretoriaP}`
+- PredicasTab: `canEdit={canEditPerm(getPermissao("predicas"))}`
+- AreaPedidos: adicionar props `canEdit`, `canDelete`, `canApprove`
 
-- Busca area por nome para comparar IDs de coordenadores/sombras com o servidor logado
-- Busca servidor pelo email do profile logado
-- Determina cargo: compara `servidor.id` com `area.coordenador_id`, `coordenador_02_id`, etc.
-- Diretoria recebe acesso total; Diretor Espiritual recebe permissoes especificas
-- Retorna: `{ cargo, getPermissao, isDiretoria, isDiretorEspiritual, isLoading }`
+**2. Alteracao: `src/components/area/AreaMural.tsx`**
+
+- Separar logica de editar e excluir: o botao Pencil (editar) aparece se `canEdit`, o botao Trash2 (excluir) aparece se `canEdit` (ja que canEdit = permissao "E" ou "A", que inclui excluir)
+- Nenhuma mudanca de interface necessaria — `canEdit` ja controla ambos os botoes (editar e excluir estao sob mesmo guard)
+- Manter como esta (a prop `canEdit` ja faz o controle correto)
+
+**3. Alteracao: `src/components/area/AreaCalendario.tsx`**
+
+- Mesma situacao: `canEdit` ja controla botoes de criar, editar e excluir eventos
+- Nenhuma alteracao necessaria na interface do componente
+
+**4. Alteracao: `src/components/area/AreaDesignacoes.tsx`**
+
+- `canEdit` ja controla designar, distribuir e remover
+- Nenhuma alteracao necessaria
+
+**5. Alteracao: `src/components/area/AreaDocumentos.tsx`**
+
+- `canEdit` ja controla upload e excluir
+- Nenhuma alteracao necessaria
+
+**6. Alteracao: `src/components/area/AreaPedidos.tsx`**
+
+- Adicionar props opcionais: `canEdit?: boolean`, `canDelete?: boolean`, `canApprove?: boolean`
+- Se `canEdit === false` (e `canDelete === false`): esconder botao "Novo Pedido" e botao de editar
+- Se `canEdit === true` e `canDelete === false` (EP): mostrar botao "Novo Pedido" e editar, mas nao excluir (atualmente nao ha botao excluir separado, so editar)
+- O componente atualmente permite criar e editar para qualquer usuario — adicionar guard: botao "Novo Pedido" visivel apenas se `canEdit !== false`
+- Botao editar (Pencil) visivel apenas se `canEdit !== false`
+- Defaults: `canEdit = true`, `canDelete = true` para manter compatibilidade
 
 ### Detalhes Tecnicos
 
 - Nenhuma migration necessaria
 - Nenhuma dependencia nova
-- 2 arquivos novos, 0 arquivos alterados
-- Hook usa React Query keys: `["area-permissoes", areaNome]` e `["servidor-logado", email]`
-- A query de servidor usa `maybeSingle()` em vez de `single()` para evitar erro quando servidor nao existe (caso de usuario sem registro em servidores)
+- O `AreaHeader` precisa continuar recebendo `canEdit` para permitir editar descricao da area e definir coordenadores/sombras — derivar de `cargo`: `const headerCanEdit = cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP;`
+- Componentes Familias, Tirolesa, AreaRadar, AreaIACriativa nao recebem props de permissao (sao paginas/componentes autonomos com suas proprias logicas internas)
+- O `usePermissoes` ja esta criado e retorna `cargo`, `getPermissao`, `isDiretoria`, `isDiretorEspiritual`, `isLoading`
+- Quando `isLoading` do usePermissoes for true, as abas ainda renderizam normalmente pois o cargo default e "servidor" (mais restritivo) — isso e seguro, as abas aparecem apos o carregamento
 
