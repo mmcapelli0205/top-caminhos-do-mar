@@ -34,7 +34,6 @@ const AREA_ICONS: Record<string, LucideIcon> = {
   "Voz": Music,
   "ADM": Briefcase,
   "Resgate": LifeBuoy,
-  "Coordenação Geral": Crown,
   "Intercessão": Heart,
   "Alimentação": Briefcase,
   "Tempo e Execução": Clock,
@@ -131,7 +130,6 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
             "Comunicação": "midia.png",
             "Segurança": "seguranca.png",
             "Voz": "voz.png",
-            "Coordenação Geral": "adm.png",
             "Diretoria": "Logo%20Legendarios.png",
           };
           const logoFile = LOGOS_EQUIPES[area.nome];
