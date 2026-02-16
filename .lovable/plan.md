@@ -1,110 +1,141 @@
 
 
-## Ajustes Multiplos no Sistema
+## Cadastro Rapido de Lideranca
 
 ### Resumo
-Quatro alteracoes independentes: botao excluir servidor (com permissao ADM/Diretoria), renomear "Outra area" para "Diretoria", expandir sombras de 1 para 3, e indicadores visuais para servidores convidados/dados incompletos.
+Criar sistema de cadastro rapido de membros da lideranca (Diretores, Coordenadores, Sombras) com login temporario, acessivel via botao na tela de Aprovacoes. Inclui tela de primeiro acesso para o usuario atualizar credenciais e completar perfil.
 
 ### Arquivos
 
-**1. Alteracao: `src/pages/Servidores.tsx`**
+**1. Alteracao: `supabase/functions/manage-users/index.ts`**
 
-AJUSTE 1 - Botao Excluir:
-- Importar `Trash2` do lucide e `useAuth` de `@/hooks/useAuth`
-- Importar `AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle` de `@/components/ui/alert-dialog`
-- Adicionar estado: `deleteTarget` (Servidor | null)
-- No hook useAuth, extrair `role`
-- `const canDelete = role === "diretoria" || profile?.cargo === "coordenacao"`
-- Na coluna Acoes (desktop, linha ~452-474), adicionar botao Trash2 vermelho se `canDelete`:
+Adicionar nova action `"create_temp_user"` que:
+- Recebe: `{ action: "create_temp_user", nome, equipe, cargo_area }`
+- Gera email temporario a partir do nome (slug: remover acentos, lowercase, espacos viram pontos, sufixo `@top1575.temp`)
+- Se email ja existir, adicionar numero incremental (joao.silva2@top1575.temp)
+- Senha padrao: `"TOP2026!"`
+- Cria usuario via `supabase.auth.admin.createUser({ email, password, email_confirm: true })`
+- Determina role: se cargo_area in ["Diretor", "Sub-Diretor", "Diretor Espiritual"] -> role = "diretoria", senao -> role = "coordenacao"
+- Insere em `user_profiles`: id, nome, email, status "aprovado", cargo = role, area_preferencia = equipe, login_temporario = true, primeiro_acesso = true
+- Insere em `user_roles`: user_id, role
+- Insere em `servidores`: nome, area_servico = equipe, cargo_area, status = "ativo", origem = "convite", dados_completos = false
+- Retorna: `{ user_id, email, senha: "TOP2026!" }`
+
+Verificacao de email duplicado: antes de criar, consultar auth users por email. Se existir, tentar com sufixo numerico ate encontrar disponivel.
+
+**2. Novo: `src/components/CadastroRapidoDialog.tsx`**
+
+Dialog com 3 estados internos: "form", "sucesso"
+
+**Estado "form"**:
+- Campo Nome Completo (input text, required)
+- Campo Equipe (Select): ADM, Eventos, Seguranca, Logistica, Hakuna, Voz, Comunicacao, Midia, Intercessao, DOC, Louvor, Diretoria
+- Campo Cargo (Select dinamico):
+  - Se equipe === "Diretoria": Diretor, Sub-Diretor, Diretor Espiritual
+  - Senao: Coordenador 01, Coordenador 02, Coordenador 03, Sombra 01, Sombra 02, Sombra 03
+- Botao "Cadastrar" (chama edge function manage-users com action create_temp_user)
+
+**Estado "sucesso"**:
+- Icone de sucesso verde
+- "Servidor cadastrado com sucesso!"
+- "Envie essas credenciais para {nome}:"
+- Card com borda laranja exibindo Login e Senha
+- Botao "Copiar Credenciais" (clipboard API)
+- Botao "Cadastrar Outro" (volta ao estado form, limpa campos)
+- Botao "Fechar"
+
+**3. Alteracao: `src/pages/Aprovacoes.tsx`**
+
+- Import CadastroRapidoDialog
+- Adicionar estado `showCadastroRapido` (boolean)
+- Extrair `role` do useAuth
+- No header (linha 240-244), adicionar botao "Cadastro Rapido Lideranca" com cor laranja, visivel apenas se `role === "diretoria"`
+- Renderizar `<CadastroRapidoDialog open={showCadastroRapido} onOpenChange={setShowCadastroRapido} />`
+
+**4. Novo: `src/pages/PrimeiroAcesso.tsx`**
+
+Pagina standalone (sem AppLayout/sidebar).
+
+**Etapa 1 - Atualizar Credenciais**:
+- Titulo: "Bem-vindo ao TOP Manager!"
+- Subtitulo: "Atualize seus dados de acesso"
+- Indicador visual: "Etapa 1 de 2"
+- Campo Novo Email (required, formato email valido)
+- Campo Nova Senha (required, minimo 6 chars)
+- Campo Confirmar Senha (must match)
+- Botao "Atualizar Acesso"
+- Ao salvar: `supabase.auth.updateUser({ email: novoEmail, password: novaSenha })`
+- Atualizar `user_profiles`: email = novoEmail, login_temporario = false
+- Avancar para Etapa 2
+
+**Etapa 2 - Completar Perfil**:
+- Titulo: "Complete seu perfil"
+- Indicador: "Etapa 2 de 2"
+- Campos: CPF, Telefone, Data de Nascimento, Igreja, Cidade, Estado, Endereco, CEP, Numero Legendario, Tamanho da Farda, Contato de Emergencia (nome, telefone, email), Habilidades, Experiencia
+- Botao "Salvar e Entrar"
+- Ao salvar: atualizar `servidores` (buscar pelo nome + origem = "convite" + dados_completos = false), marcar dados_completos = true
+- Atualizar `user_profiles`: primeiro_acesso = false
+- Redirecionar para /dashboard
+
+Design: tema escuro, centralizado, sem sidebar, max-w-2xl, steps visuais com badges numeradas
+
+**5. Alteracao: `src/App.tsx`**
+
+- Import PrimeiroAcesso
+- Adicionar rota FORA do AppLayout: `<Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />`
+
+**6. Alteracao: `src/pages/Login.tsx`**
+
+- Apos login bem-sucedido (no onAuthStateChange), antes de redirecionar para /dashboard:
+- Buscar `user_profiles` do usuario logado
+- Se `primeiro_acesso === true`, redirecionar para `/primeiro-acesso` em vez de `/dashboard`
+
+**7. Alteracao: `src/components/AppLayout.tsx`**
+
+- Apos carregar profile (linha 99), verificar `profile.primeiro_acesso === true`
+- Se sim, redirecionar para `/primeiro-acesso` (impede acesso ao sistema sem completar o fluxo)
+
+### Geracao de Email Temporario (logica no edge function)
+
 ```text
-{canDelete && (
-  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300"
-    onClick={() => setDeleteTarget(s)}>
-    <Trash2 className="h-4 w-4" />
-  </Button>
-)}
+function gerarEmailTemp(nome: string): string {
+  1. Remover acentos (normalize NFD, replace diacritics)
+  2. Lowercase
+  3. Trim, replace espacos por pontos
+  4. Remover caracteres especiais (manter apenas a-z, 0-9, pontos)
+  5. Adicionar sufixo @top1575.temp
+  Exemplo: "João Maria da Silva" -> "joao.maria.da.silva@top1575.temp"
+}
 ```
-- Mesma logica nos cards mobile (linha ~387-404)
-- AlertDialog de confirmacao no final do componente:
-```text
-<AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Excluir Servidor</AlertDialogTitle>
-      <AlertDialogDescription>
-        Tem certeza que deseja excluir {deleteTarget?.nome}? Esta acao nao pode ser desfeita.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-      <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>
-        Excluir
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
-```
-- Funcao `handleDelete`: delete em `servidores`, invalidar query, toast sucesso
-
-AJUSTE 2 - Renomear "Outra area" para "Diretoria":
-- No array `AREAS_SERVICO` (linha 33-37): substituir `"Outra area"` por `"Diretoria"`
-- No objeto `LOGOS_EQUIPES` (linha 39-52): adicionar `"Diretoria": "Logo%20Legendarios.png"`
-
-AJUSTE 4 - Indicadores visuais:
-- Importar `Star, AlertTriangle` (AlertTriangle ja importado) e `Tooltip, TooltipContent, TooltipProvider, TooltipTrigger` de `@/components/ui/tooltip`
-- Na tabela desktop (linha 442), substituir `{s.nome}` por:
-```text
-<span className="flex items-center gap-1">
-  {s.origem === "convite" && <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />}
-  {s.dados_completos === false && (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger><AlertTriangle className="h-3.5 w-3.5 text-yellow-400 animate-pulse" /></TooltipTrigger>
-        <TooltipContent>Dados incompletos - aguardando preenchimento</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )}
-  {s.nome}
-</span>
-```
-- Mesma logica nos cards mobile (linha 380)
-
-**2. Alteracao: `src/lib/coresEquipes.ts`**
-
-- Substituir `"Outra area"` (se existir) ou adicionar entrada `"Diretoria": "#1F2937"`
-- Verificar se ja nao existe — atualmente nao existe entrada "Outra area" neste arquivo, apenas adicionar "Diretoria"
-
-**3. Alteracao: `src/components/area/AreaHeader.tsx`**
-
-AJUSTE 2:
-- No objeto `AREA_ICONS` (linha 42): substituir `"Outra area": Puzzle` por `"Diretoria": Crown` (Crown ja importado)
-
-AJUSTE 3 - Expandir sombras:
-- Na funcao `handleSetLeader` (linha 105): expandir union type para incluir `"sombra_02_id" | "sombra_03_id"`
-- No grid de leadership cards (linha 162-192): expandir o array para incluir todos os 6 campos:
-```text
-const leaderFields = [
-  { field: "coordenador_id", label: "Coordenador" },
-  { field: "coordenador_02_id", label: "Coord. 02" },
-  { field: "coordenador_03_id", label: "Coord. 03" },
-  { field: "sombra_id", label: "Sombra 01" },
-  { field: "sombra_02_id", label: "Sombra 02" },
-  { field: "sombra_03_id", label: "Sombra 03" },
-];
-```
-- Todos os campos sombra_ recebem badge "Em treinamento"
-- Grid: `grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3`
-
-**4. Alteracao: `src/pages/ServidorForm.tsx`**
-
-AJUSTE 2:
-- No array `AREAS_SERVICO` (linha 28-31): substituir `"Outra area"` por `"Diretoria"`
 
 ### Detalhes Tecnicos
 
-- Nenhuma migration necessaria (todos os campos ja existem)
+- Nenhuma migration necessaria (campos login_temporario e primeiro_acesso ja existem)
 - Nenhuma dependencia nova
-- Campos `origem` e `dados_completos` ja existem em `servidores`
-- Campos `sombra_02_id` e `sombra_03_id` ja existem em `areas`
-- Para o delete, a tabela `servidores` nao tem policy de DELETE restritiva alem de `auth.uid() IS NOT NULL`, entao funciona para qualquer usuario autenticado — a restricao e feita no frontend via role check
+- A edge function `manage-users` ja tem a infraestrutura de autenticacao e verificacao de role "diretoria"
+- O trigger `handle_new_user` nao sera disparado porque `admin.createUser` ja insere direto; a edge function faz o insert manual em user_profiles (upsert ou verificar conflito com o trigger)
+- IMPORTANTE: Como o trigger `handle_new_user` automaticamente cria um registro em user_profiles ao criar usuario via admin API, a edge function deve usar UPSERT ou fazer o insert com ON CONFLICT para atualizar os campos adicionais (login_temporario, primeiro_acesso, status aprovado)
+- A Etapa 2 do primeiro acesso busca o servidor pelo user profile email linkado, ou pelo nome + origem convite
+- `updateUser` do Supabase Auth para troca de email pode enviar confirmacao; para evitar isso, o edge function pode usar `admin.updateUserById` com `email_confirm: true` — mas isso requer que a Etapa 1 chame uma edge function em vez do client-side updateUser
+
+### Fluxo de Redirecionamento
+
+```text
+Login -> verificar primeiro_acesso
+  |-- true  -> /primeiro-acesso (Etapa 1 -> Etapa 2 -> /dashboard)
+  |-- false -> /dashboard (fluxo normal)
+
+AppLayout -> verificar primeiro_acesso
+  |-- true  -> redirect /primeiro-acesso (seguranca)
+  |-- false -> renderizar normalmente
+```
+
+### Consideracao sobre updateUser no Primeiro Acesso
+
+A troca de email via `supabase.auth.updateUser({ email })` envia email de confirmacao por padrao. Para evitar isso e manter a experiencia fluida, a Etapa 1 deve chamar a edge function `manage-users` com uma nova action `"update_credentials"`:
+- Recebe: `{ action: "update_credentials", user_id, new_email, new_password }`
+- Usa `supabase.auth.admin.updateUserById(user_id, { email: new_email, password: new_password, email_confirm: true })`
+- Atualiza user_profiles: email, login_temporario = false
+- Retorna sucesso
+- O front-end entao re-autentica com as novas credenciais: `supabase.auth.signInWithPassword({ email: new_email, password: new_password })`
 
