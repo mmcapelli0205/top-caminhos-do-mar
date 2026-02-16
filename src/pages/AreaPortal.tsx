@@ -10,6 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { getUser } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissoes } from "@/hooks/usePermissoes";
+import {
+  isAbaVisivel,
+  canEdit as canEditPerm,
+  canCreate as canCreatePerm,
+  canDelete as canDeletePerm,
+  canApprove as canApprovePerm,
+} from "@/lib/permissoes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import AreaHeader from "@/components/area/AreaHeader";
@@ -117,18 +125,16 @@ export default function AreaPortal() {
     enabled: !!area?.id,
   });
 
-  // Permissions
-  const isCoord = area
-    ? [area.coordenador_id, area.coordenador_02_id, area.coordenador_03_id].includes(currentUser?.id ?? null)
-    : false;
-  const { profile, role } = useAuth();
-  const isDiretoria = role === "diretoria";
-  const podeAprovar = profile?.pode_aprovar === true;
-  const isSombra = area?.sombra_id === currentUser?.id;
-  const canEdit = isCoord || isDiretoria;
-  const canEditPredicas = decodedNome === "Intercessão" || decodedNome === "DOC";
-  const isServidorDaArea = currentUser?.area_servico === decodedNome;
-  const canComment = canEdit || isSombra || isServidorDaArea;
+  // Granular permissions via hook
+  const { cargo, getPermissao, isDiretoria: isDiretoriaP } = usePermissoes(decodedNome);
+
+  // Derived permission helpers
+  const headerCanEdit =
+    cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP;
+  const canComment = cargo !== "servidor";
+
+  // Default tab for servidores comuns
+  const defaultTab = cargo === "servidor" ? "mural" : "painel";
 
   if (loadingArea) {
     return (
@@ -156,26 +162,36 @@ export default function AreaPortal() {
 
       <AreaHeader
         area={area}
-        canEdit={canEdit}
+        canEdit={headerCanEdit}
         servidoresCount={servidoresCount}
         designacoesCount={designacoesCount}
       />
 
-      <Tabs defaultValue="painel" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full overflow-x-auto justify-start">
           <TabsTrigger value="painel">Painel</TabsTrigger>
-          <TabsTrigger value="mural">Mural</TabsTrigger>
-          <TabsTrigger value="calendario">Calendário</TabsTrigger>
-          <TabsTrigger value="participantes">Participantes</TabsTrigger>
-          <TabsTrigger value="documentos">Documentos</TabsTrigger>
-          {(decodedNome === "Segurança" || decodedNome === "Eventos") && <TabsTrigger value="familias">Famílias</TabsTrigger>}
-          {(decodedNome === "Segurança" || decodedNome === "Eventos") && <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>}
-          {decodedNome === "Mídia" && <TabsTrigger value="radar">Radar</TabsTrigger>}
-          {decodedNome === "Mídia" && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
-          {decodedNome === "ADM" && <TabsTrigger value="homologacao">Homologação</TabsTrigger>}
-          {(isDiretoria || isCoord || podeAprovar) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
-          <TabsTrigger value="predicas">Prédicas</TabsTrigger>
-          <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
+          {isAbaVisivel(getPermissao("mural")) && <TabsTrigger value="mural">Mural</TabsTrigger>}
+          {isAbaVisivel(getPermissao("calendario")) && <TabsTrigger value="calendario">Calendário</TabsTrigger>}
+          {isAbaVisivel(getPermissao("participantes")) && <TabsTrigger value="participantes">Participantes</TabsTrigger>}
+          {isAbaVisivel(getPermissao("documentos")) && <TabsTrigger value="documentos">Documentos</TabsTrigger>}
+          {(decodedNome === "Segurança" || decodedNome === "Eventos") && isAbaVisivel(getPermissao("familias")) && (
+            <TabsTrigger value="familias">Famílias</TabsTrigger>
+          )}
+          {(decodedNome === "Segurança" || decodedNome === "Eventos") && isAbaVisivel(getPermissao("tirolesa")) && (
+            <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>
+          )}
+          {decodedNome === "Mídia" && isAbaVisivel(getPermissao("radar")) && (
+            <TabsTrigger value="radar">Radar</TabsTrigger>
+          )}
+          {decodedNome === "Mídia" && isAbaVisivel(getPermissao("ia_criativa")) && (
+            <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>
+          )}
+          {decodedNome === "ADM" && isAbaVisivel(getPermissao("homologacao")) && (
+            <TabsTrigger value="homologacao">Homologação</TabsTrigger>
+          )}
+          {isAbaVisivel(getPermissao("cronograma")) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
+          {isAbaVisivel(getPermissao("predicas")) && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
+          {isAbaVisivel(getPermissao("pedidos")) && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
         </TabsList>
 
         {/* Tab Painel */}
@@ -297,19 +313,19 @@ export default function AreaPortal() {
         </TabsContent>
 
         <TabsContent value="mural">
-          <AreaMural area={area} canEdit={canEdit} canComment={canComment} currentUser={currentUser} />
+          <AreaMural area={area} canEdit={canEditPerm(getPermissao("mural"))} canComment={canComment} currentUser={currentUser} />
         </TabsContent>
 
         <TabsContent value="calendario">
-          <AreaCalendario area={area} canEdit={canEdit} currentUser={currentUser} />
+          <AreaCalendario area={area} canEdit={canEditPerm(getPermissao("calendario"))} currentUser={currentUser} />
         </TabsContent>
 
         <TabsContent value="participantes">
-          <AreaDesignacoes area={area} canEdit={canEdit} currentUser={currentUser} />
+          <AreaDesignacoes area={area} canEdit={canEditPerm(getPermissao("participantes"))} currentUser={currentUser} />
         </TabsContent>
 
         <TabsContent value="documentos">
-          <AreaDocumentos area={area} canEdit={canEdit} currentUser={currentUser} />
+          <AreaDocumentos area={area} canEdit={canEditPerm(getPermissao("documentos"))} currentUser={currentUser} />
         </TabsContent>
 
         {(decodedNome === "Segurança" || decodedNome === "Eventos") && (
@@ -342,7 +358,7 @@ export default function AreaPortal() {
           </TabsContent>
         )}
 
-        {(isDiretoria || isCoord || podeAprovar) && (
+        {isAbaVisivel(getPermissao("cronograma")) && (
           <TabsContent value="cronograma">
             {decodedNome === "Logística" ? (
               <Tabs defaultValue="oficial" className="w-full">
@@ -354,12 +370,12 @@ export default function AreaPortal() {
                   <CronogramaTop canEdit={false} cronogramaTipo="adm" />
                 </TabsContent>
                 <TabsContent value="logistica">
-                  <CronogramaTop canEdit={isCoord || isDiretoria} cronogramaTipo="logistica" />
+                  <CronogramaTop canEdit={cargo === "coord_01" || isDiretoriaP} cronogramaTipo="logistica" />
                 </TabsContent>
               </Tabs>
             ) : (
               <CronogramaTop
-                canEdit={decodedNome === "ADM" && (isCoord || isDiretoria)}
+                canEdit={canEditPerm(getPermissao("cronograma"))}
                 cronogramaTipo="adm"
               />
             )}
@@ -367,11 +383,15 @@ export default function AreaPortal() {
         )}
 
         <TabsContent value="predicas">
-          <PredicasTab canEdit={canEditPredicas && canEdit} />
+          <PredicasTab canEdit={canEditPerm(getPermissao("predicas"))} />
         </TabsContent>
 
         <TabsContent value="pedidos">
-          <AreaPedidos areaNome={decodedNome} />
+          <AreaPedidos
+            areaNome={decodedNome}
+            canEdit={canCreatePerm(getPermissao("pedidos"))}
+            canDelete={canDeletePerm(getPermissao("pedidos"))}
+          />
         </TabsContent>
       </Tabs>
     </div>
