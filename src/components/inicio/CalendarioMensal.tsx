@@ -113,19 +113,19 @@ export default function CalendarioMensal() {
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
 
   return (
-    <Card id="calendario-section" className="bg-slate-800/50 border-slate-600/30">
+    <Card id="calendario-section" className="bg-amber-50 border-amber-200">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5 text-primary" />
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CalendarDays className="h-5 w-5 text-amber-700" />
+          <CardTitle className="text-sm font-bold text-gray-900">
             {format(currentMonth, "MMMM yyyy", { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase())}
           </CardTitle>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-700 hover:text-gray-900" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-700 hover:text-gray-900" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -133,7 +133,7 @@ export default function CalendarioMensal() {
       <CardContent>
         <div className="grid grid-cols-7 gap-px">
           {WEEKDAYS.map((d) => (
-            <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">
+            <div key={d} className="text-center text-[10px] font-medium text-gray-600 py-1">
               {d}
             </div>
           ))}
@@ -146,9 +146,9 @@ export default function CalendarioMensal() {
               <div
                 className={`min-h-[52px] p-1 rounded-md text-center transition-colors ${
                   !inMonth ? "opacity-30" : ""
-                } ${isToday ? "ring-1 ring-primary bg-primary/5" : "hover:bg-muted/30"}`}
+                } ${isToday ? "ring-1 ring-orange-500 bg-orange-500 text-white" : "hover:bg-amber-100"}`}
               >
-                <span className={`text-xs ${isToday ? "font-bold text-primary" : "text-foreground"}`}>
+                <span className={`text-xs ${isToday ? "font-bold text-white" : "text-gray-700"}`}>
                   {format(day, "d")}
                 </span>
                 {dayEvents.length > 0 && (
