@@ -34,7 +34,7 @@ function getWeather(code: number) {
   return WMO[code] ?? { emoji: "🌤️", desc: "Parcialmente Nublado" };
 }
 
-const DAYS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const DAYS_PT = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 
 export default function WeatherCard() {
   const { data, isLoading, isError } = useQuery({
@@ -50,8 +50,8 @@ export default function WeatherCard() {
 
   if (isError) {
     return (
-      <Card className="bg-gradient-to-br from-blue-900/15 to-cyan-900/10 border-blue-600/15">
-        <CardContent className="p-4 text-center">
+      <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-md mx-auto">
+        <CardContent className="p-3 text-center">
           <CloudRain className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">Clima indisponível</p>
         </CardContent>
@@ -61,56 +61,55 @@ export default function WeatherCard() {
 
   if (isLoading || !data) {
     return (
-      <Card className="bg-gradient-to-br from-blue-900/15 to-cyan-900/10 border-blue-600/15">
-        <CardContent className="p-4"><Skeleton className="h-24 w-full" /></CardContent>
+      <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-md mx-auto">
+        <CardContent className="p-3"><Skeleton className="h-28 w-full" /></CardContent>
       </Card>
     );
   }
 
-  const current = data.current;
   const daily = data.daily;
-  const now = getWeather(current.weathercode);
 
-  // Next 3 days (skip today = index 0)
-  const forecast = [1, 2, 3].map((i) => {
+  // Build 4 columns: today (index 0) + 3 next days
+  const columns = [0, 1, 2, 3].map((i) => {
     const date = new Date(daily.time[i]);
     return {
       day: DAYS_PT[date.getDay()],
+      isToday: i === 0,
       weather: getWeather(daily.weathercode[i]),
       max: Math.round(daily.temperature_2m_max[i]),
       min: Math.round(daily.temperature_2m_min[i]),
-      rain: daily.precipitation_probability_max[i],
     };
   });
 
   return (
-    <Card className="bg-gradient-to-br from-blue-900/15 to-cyan-900/10 border-blue-600/15">
-      <CardContent className="p-4 space-y-3">
-        {/* Header + Today */}
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{now.emoji}</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-bold text-foreground">
-                {Math.round(current.temperature_2m)}°C
-              </p>
-              <p className="text-xs text-muted-foreground">{now.desc}</p>
-            </div>
-            <p className="text-[10px] text-muted-foreground">
-              💧 {current.relative_humidity_2m}% &nbsp; 💨 {Math.round(current.wind_speed_10m)} km/h
-            </p>
-          </div>
-          <p className="text-[10px] text-muted-foreground/60 shrink-0">🏔️ SP-148 Km 42</p>
-        </div>
+    <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-md mx-auto">
+      <CardContent className="p-3 space-y-2">
+        {/* Header */}
+        <p className="text-xs text-gray-400">Clima — SP-148 Km 42</p>
 
-        {/* Forecast */}
-        <div className="grid grid-cols-3 gap-1">
-          {forecast.map((f) => (
-            <div key={f.day} className="text-center p-1.5">
-              <p className="text-[10px] font-medium text-muted-foreground">{f.day}</p>
-              <p className="text-sm">{f.weather.emoji}</p>
-              <p className="text-[11px] text-foreground font-medium">{f.max}° / {f.min}°</p>
-              <p className="text-[9px] text-muted-foreground">🌧 {f.rain}%</p>
+        {/* 4-column grid */}
+        <div className="grid grid-cols-4 gap-3">
+          {columns.map((col) => (
+            <div key={col.day} className="flex flex-col items-center gap-1">
+              {/* Day badge */}
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                  col.isToday
+                    ? "bg-orange-500 text-white"
+                    : "bg-gray-600 text-white"
+                }`}
+              >
+                {col.isToday ? "HOJE" : col.day}
+              </span>
+
+              {/* Max temp */}
+              <span className="text-lg font-bold text-white">{col.max}°</span>
+
+              {/* Weather emoji */}
+              <span className="text-3xl leading-none">{col.weather.emoji}</span>
+
+              {/* Min temp */}
+              <span className="text-lg text-gray-400">{col.min}°</span>
             </div>
           ))}
         </div>

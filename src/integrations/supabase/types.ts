@@ -1524,6 +1524,7 @@ export type Database = {
           motivo: string | null
           participante_id: string | null
           prioridade: number | null
+          servidor_id: string | null
           top_id: string | null
         }
         Insert: {
@@ -1533,6 +1534,7 @@ export type Database = {
           motivo?: string | null
           participante_id?: string | null
           prioridade?: number | null
+          servidor_id?: string | null
           top_id?: string | null
         }
         Update: {
@@ -1542,6 +1544,7 @@ export type Database = {
           motivo?: string | null
           participante_id?: string | null
           prioridade?: number | null
+          servidor_id?: string | null
           top_id?: string | null
         }
         Relationships: [
@@ -1557,6 +1560,13 @@ export type Database = {
             columns: ["participante_id"]
             isOneToOne: false
             referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hakuna_participante_servidor_id_fkey"
+            columns: ["servidor_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
             referencedColumns: ["id"]
           },
           {
@@ -2163,12 +2173,14 @@ export type Database = {
           contato_telefone: string | null
           cpf: string | null
           created_at: string | null
+          crm: string | null
           cupom_desconto: string | null
           dados_completos: boolean | null
           data_nascimento: string | null
           email: string | null
           endereco: string | null
           especialidade: string | null
+          especialidade_medica: string | null
           estado: string | null
           estrangeiro: boolean | null
           experiencia: string | null
@@ -2180,6 +2192,7 @@ export type Database = {
           numero_legendario: string | null
           origem: string | null
           pais: string | null
+          profissao: string | null
           qr_code: string | null
           recurso_descricao: string | null
           sede: string | null
@@ -2206,12 +2219,14 @@ export type Database = {
           contato_telefone?: string | null
           cpf?: string | null
           created_at?: string | null
+          crm?: string | null
           cupom_desconto?: string | null
           dados_completos?: boolean | null
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
           especialidade?: string | null
+          especialidade_medica?: string | null
           estado?: string | null
           estrangeiro?: boolean | null
           experiencia?: string | null
@@ -2223,6 +2238,7 @@ export type Database = {
           numero_legendario?: string | null
           origem?: string | null
           pais?: string | null
+          profissao?: string | null
           qr_code?: string | null
           recurso_descricao?: string | null
           sede?: string | null
@@ -2249,12 +2265,14 @@ export type Database = {
           contato_telefone?: string | null
           cpf?: string | null
           created_at?: string | null
+          crm?: string | null
           cupom_desconto?: string | null
           dados_completos?: boolean | null
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
           especialidade?: string | null
+          especialidade_medica?: string | null
           estado?: string | null
           estrangeiro?: boolean | null
           experiencia?: string | null
@@ -2266,6 +2284,7 @@ export type Database = {
           numero_legendario?: string | null
           origem?: string | null
           pais?: string | null
+          profissao?: string | null
           qr_code?: string | null
           recurso_descricao?: string | null
           sede?: string | null

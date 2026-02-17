@@ -18,7 +18,6 @@ import ServidorSheet from "@/components/ServidorSheet";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Servidor = Tables<"servidores">;
-type Hakuna = Tables<"hakunas">;
 type HakunaPart = Tables<"hakuna_participante">;
 type Participante = Tables<"participantes">;
 
@@ -48,11 +47,10 @@ function calcAge(dob: string | null): number | null {
   return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 86400000));
 }
 
-function getDisplayProfissao(h: Hakuna | undefined): string {
-  if (!h) return "—";
-  const prof = h.profissao || h.especialidade_medica;
-  if (!prof) return "—";
-  if (prof === "Médico" && h.especialidade) return `Médico - ${h.especialidade}`;
+function getDisplayProfissao(s: Servidor): string {
+  const prof = s.profissao || s.especialidade_medica;
+  if (!prof) return "⚠️ Pendente";
+  if (prof === "Médico" && s.especialidade_medica) return `Médico - ${s.especialidade_medica}`;
   return prof;
 }
 
@@ -72,26 +70,20 @@ export default function EquipeTab() {
   const [linkingFor, setLinkingFor] = useState<string | null>(null);
 
   // Edit profissao dialog
-  const [editHakunaId, setEditHakunaId] = useState<string | null>(null);
+  const [editServId, setEditServId] = useState<string | null>(null);
   const [editProfissao, setEditProfissao] = useState("");
   const [editEspecialidade, setEditEspecialidade] = useState("");
+  const [editCrm, setEditCrm] = useState("");
 
   // Match confirm
   const [matchConfirmOpen, setMatchConfirmOpen] = useState(false);
 
+  // Main query: servidores da área Hakuna
   const { data: servidores = [], isLoading: loadS } = useQuery({
     queryKey: ["hk-servidores"],
     queryFn: async () => {
       const { data } = await supabase.from("servidores").select("*").eq("area_servico", "Hakuna").eq("status", "aprovado").order("nome");
       return (data ?? []) as Servidor[];
-    },
-  });
-
-  const { data: hakunas = [] } = useQuery({
-    queryKey: ["hk-hakunas"],
-    queryFn: async () => {
-      const { data } = await supabase.from("hakunas").select("*");
-      return (data ?? []) as Hakuna[];
     },
   });
 
@@ -111,25 +103,15 @@ export default function EquipeTab() {
     },
   });
 
-  const hakunaMap = useMemo(() => {
-    const m = new Map<string, Hakuna>();
-    hakunas.forEach((h) => { if (h.servidor_id) m.set(h.servidor_id, h); });
-    return m;
-  }, [hakunas]);
-
-  const hakunaById = useMemo(() => {
-    const m = new Map<string, Hakuna>();
-    hakunas.forEach((h) => m.set(h.id, h));
-    return m;
-  }, [hakunas]);
-
-  const vinculosByHakuna = useMemo(() => {
+  // Map vinculos by servidor_id (new) or hakuna_id (legacy)
+  const vinculosByServidor = useMemo(() => {
     const m = new Map<string, HakunaPart[]>();
     vinculos.forEach((v) => {
-      if (!v.hakuna_id) return;
-      const arr = m.get(v.hakuna_id) ?? [];
+      const key = v.servidor_id || v.hakuna_id;
+      if (!key) return;
+      const arr = m.get(key) ?? [];
       arr.push(v);
-      m.set(v.hakuna_id, arr);
+      m.set(key, arr);
     });
     return m;
   }, [vinculos]);
@@ -143,14 +125,13 @@ export default function EquipeTab() {
   const especCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     servidores.forEach((s) => {
-      const h = hakunaMap.get(s.id);
-      const prof = h?.profissao || h?.especialidade_medica || "Não definida";
+      const prof = s.profissao || s.especialidade_medica || "Não definida";
       counts[prof] = (counts[prof] || 0) + 1;
     });
     return counts;
-  }, [servidores, hakunaMap]);
+  }, [servidores]);
 
-  // Improved match logic
+  // Match logic using servidores directly
   const matchMutation = useMutation({
     mutationFn: async () => {
       // Delete existing vinculos
@@ -159,50 +140,39 @@ export default function EquipeTab() {
         if (delErr) throw delErr;
       }
 
-      // Build hakuna pools by profissao/especialidade
-      const hakunaServidorIds = new Map<string, Hakuna>();
-      servidores.forEach((s) => {
-        const h = hakunaMap.get(s.id);
-        if (h) hakunaServidorIds.set(s.id, h);
-      });
-
-      // Group hakunas: medicos by especialidade, others by profissao
+      // Group servidores: medicos by especialidade, others general
       const medicosByEsp = new Map<string, string[]>();
       const generalPool: string[] = [];
 
-      hakunaServidorIds.forEach((h, servId) => {
-        const prof = h.profissao || h.especialidade_medica || "";
+      servidores.forEach((s) => {
+        const prof = s.profissao || s.especialidade_medica || "";
         if (prof === "Médico") {
-          const esp = h.especialidade || "Clínico Geral";
+          const esp = s.especialidade_medica || "Clínico Geral";
           const arr = medicosByEsp.get(esp) ?? [];
-          arr.push(servId);
+          arr.push(s.id);
           medicosByEsp.set(esp, arr);
         } else if (["Psicólogo(a)", "Psiquiatra", "Dentista"].includes(prof)) {
-          // Specialist non-medico pools
           const arr = medicosByEsp.get(prof) ?? [];
-          arr.push(servId);
+          arr.push(s.id);
           medicosByEsp.set(prof, arr);
         } else {
-          generalPool.push(servId);
+          generalPool.push(s.id);
         }
       });
 
-      const counters = new Map<string, number>();
       const assignCount = new Map<string, number>();
       const inserts: any[] = [];
 
       function assignToPool(pool: string[], partId: string, motivo: string): boolean {
         if (pool.length === 0) return false;
-        // Find least loaded in pool
         const sorted = [...pool].sort((a, b) => (assignCount.get(a) ?? 0) - (assignCount.get(b) ?? 0));
         const target = sorted[0];
         if ((assignCount.get(target) ?? 0) >= MAX_PER_HAKUNA) return false;
         assignCount.set(target, (assignCount.get(target) ?? 0) + 1);
-        inserts.push({ hakuna_id: target, participante_id: partId, motivo, prioridade: 1 });
+        inserts.push({ servidor_id: target, participante_id: partId, motivo, prioridade: 1 });
         return true;
       }
 
-      // Separate participants with and without comorbities
       const withComorbidade: Participante[] = [];
       const withoutComorbidade: Participante[] = [];
       participantes.forEach((p) => {
@@ -210,7 +180,6 @@ export default function EquipeTab() {
         else withoutComorbidade.push(p);
       });
 
-      // 1) Assign comorbidity participants to specialists
       for (const p of withComorbidade) {
         const targetEsps = findCompatibleEspecialidades(p.doenca!);
         let assigned = false;
@@ -221,25 +190,21 @@ export default function EquipeTab() {
             if (assigned) break;
           }
         }
-        // Fallback to Clínico Geral
         if (!assigned) {
           const cgPool = medicosByEsp.get("Clínico Geral") ?? [];
           assigned = assignToPool(cgPool, p.id, `Comorbidade fallback: ${p.doenca?.substring(0, 40)}`);
         }
-        // Fallback to general pool
         if (!assigned) {
           assignToPool(generalPool, p.id, `Distribuição geral (comorbidade sem especialista)`);
         }
       }
 
-      // 2) Distribute non-comorbidity participants to general pool
       for (const p of withoutComorbidade) {
-        assignToPool(generalPool.length > 0 ? generalPool : [...hakunaServidorIds.keys()], p.id, "Distribuição geral");
+        assignToPool(generalPool.length > 0 ? generalPool : servidores.map((s) => s.id), p.id, "Distribuição geral");
       }
 
       if (inserts.length === 0) throw new Error("Nenhum vínculo a criar");
 
-      // Batch insert
       const batchSize = 500;
       for (let i = 0; i < inserts.length; i += batchSize) {
         const batch = inserts.slice(i, i + batchSize);
@@ -247,7 +212,7 @@ export default function EquipeTab() {
         if (error) throw error;
       }
 
-      return { total: inserts.length, hakunas: new Set(inserts.map((i) => i.hakuna_id)).size };
+      return { total: inserts.length, hakunas: new Set(inserts.map((i) => i.servidor_id)).size };
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
@@ -264,17 +229,19 @@ export default function EquipeTab() {
     }
   }
 
+  // Edit profissao/especialidade/crm directly on servidores
   const editProfMutation = useMutation({
     mutationFn: async () => {
-      if (!editHakunaId) return;
-      await supabase.from("hakunas").update({
+      if (!editServId) return;
+      await supabase.from("servidores").update({
         profissao: editProfissao,
-        especialidade: editProfissao === "Médico" ? editEspecialidade : null,
-      }).eq("id", editHakunaId);
+        especialidade_medica: editProfissao === "Médico" ? editEspecialidade : null,
+        crm: editCrm || null,
+      }).eq("id", editServId);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["hk-hakunas"] });
-      setEditHakunaId(null);
+      qc.invalidateQueries({ queryKey: ["hk-servidores"] });
+      setEditServId(null);
       toast({ title: "Profissão atualizada" });
     },
   });
@@ -285,8 +252,8 @@ export default function EquipeTab() {
   });
 
   const linkMutation = useMutation({
-    mutationFn: async ({ hakunaId, partId }: { hakunaId: string; partId: string }) => {
-      const { error } = await supabase.from("hakuna_participante").insert({ hakuna_id: hakunaId, participante_id: partId, motivo: "Manual" });
+    mutationFn: async ({ servidorId, partId }: { servidorId: string; partId: string }) => {
+      const { error } = await supabase.from("hakuna_participante").insert({ servidor_id: servidorId, participante_id: partId, motivo: "Manual" });
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["hk-vinculos"] }); setLinkingFor(null); setSearchPart(""); toast({ title: "Vinculado" }); },
@@ -296,17 +263,18 @@ export default function EquipeTab() {
     ? participantes.filter((p) => p.nome.toLowerCase().includes(searchPart.toLowerCase())).slice(0, 8)
     : [];
 
-  function openEditProfissao(h: Hakuna) {
-    setEditHakunaId(h.id);
-    setEditProfissao(h.profissao || "");
-    setEditEspecialidade(h.especialidade || "");
+  function openEditProfissao(s: Servidor) {
+    setEditServId(s.id);
+    setEditProfissao(s.profissao || "");
+    setEditEspecialidade(s.especialidade_medica || "");
+    setEditCrm(s.crm || "");
   }
 
   return (
     <div className="space-y-4">
       {/* Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total Aprovados</p><span className="text-2xl font-bold text-foreground">{servidores.length}</span></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total na Equipe</p><span className="text-2xl font-bold text-foreground">{servidores.length}</span></CardContent></Card>
         {Object.entries(especCounts).map(([esp, c]) => (
           <Card key={esp}><CardContent className="p-3"><p className="text-xs text-muted-foreground truncate">{esp}</p><span className="text-lg font-bold text-foreground">{c}</span></CardContent></Card>
         ))}
@@ -322,10 +290,9 @@ export default function EquipeTab() {
           {loadS ? (
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
           ) : servidores.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhum Hakuna aprovado.</p>
+            <p className="text-center text-muted-foreground py-8">Nenhum servidor Hakuna ativo.</p>
           ) : servidores.map((s) => {
-            const h = hakunaMap.get(s.id);
-            const vList = vinculosByHakuna.get(s.id) ?? [];
+            const vList = vinculosByServidor.get(s.id) ?? [];
             const isExp = expandedId === s.id;
             return (
               <Card key={s.id}>
@@ -333,11 +300,11 @@ export default function EquipeTab() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{s.nome}</p>
-                      <p className="text-sm text-muted-foreground">{getDisplayProfissao(h)}</p>
+                      <p className="text-sm text-muted-foreground">{getDisplayProfissao(s)}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Badge variant="secondary">{vList.length}</Badge>
-                      {h && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProfissao(h)}><Pencil className="h-4 w-4" /></Button>}
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProfissao(s)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(isExp ? null : s.id)}>
                         {isExp ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -370,10 +337,9 @@ export default function EquipeTab() {
                   <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
                 ))
               ) : servidores.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum Hakuna aprovado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum servidor Hakuna ativo.</TableCell></TableRow>
               ) : servidores.map((s) => {
-                const h = hakunaMap.get(s.id);
-                const vList = vinculosByHakuna.get(s.id) ?? [];
+                const vList = vinculosByServidor.get(s.id) ?? [];
                 const isExp = expandedId === s.id;
                 return (
                   <TableRow key={s.id} className="group">
@@ -383,13 +349,13 @@ export default function EquipeTab() {
                       </Button>
                     </TableCell>
                     <TableCell className="font-medium">{s.nome}</TableCell>
-                    <TableCell>{getDisplayProfissao(h)}</TableCell>
-                    <TableCell className="hidden md:table-cell">{h?.crm || h?.registro_profissional || "—"}</TableCell>
+                    <TableCell>{getDisplayProfissao(s)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{s.crm || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
                     <TableCell className="text-center"><Badge variant="secondary">{vList.length}</Badge></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {h && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProfissao(h)}><Pencil className="h-4 w-4" /></Button>}
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProfissao(s)}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
@@ -403,7 +369,7 @@ export default function EquipeTab() {
 
       {/* Expanded section */}
       {expandedId && (() => {
-        const vList = vinculosByHakuna.get(expandedId) ?? [];
+        const vList = vinculosByServidor.get(expandedId) ?? [];
         return (
           <div className="border border-border rounded-md p-3 md:p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -416,7 +382,7 @@ export default function EquipeTab() {
               <div className="space-y-2">
                 <Input placeholder="Buscar participante..." value={searchPart} onChange={(e) => setSearchPart(e.target.value)} />
                 {filteredParts.map((p) => (
-                  <Button key={p.id} variant="ghost" size="sm" className="w-full justify-start" onClick={() => linkMutation.mutate({ hakunaId: expandedId, partId: p.id })}>
+                  <Button key={p.id} variant="ghost" size="sm" className="w-full justify-start" onClick={() => linkMutation.mutate({ servidorId: expandedId, partId: p.id })}>
                     {p.nome} {p.doenca ? `(${p.doenca.substring(0, 30)})` : ""}
                   </Button>
                 ))}
@@ -495,7 +461,7 @@ export default function EquipeTab() {
       })()}
 
       {/* Edit Profissao Dialog */}
-      <Dialog open={!!editHakunaId} onOpenChange={(o) => { if (!o) setEditHakunaId(null); }}>
+      <Dialog open={!!editServId} onOpenChange={(o) => { if (!o) setEditServId(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Profissão</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -519,9 +485,13 @@ export default function EquipeTab() {
                 </Select>
               </div>
             )}
+            <div className="space-y-2">
+              <Label>CRM / Registro Profissional</Label>
+              <Input value={editCrm} onChange={(e) => setEditCrm(e.target.value)} placeholder="Ex: CRM 12345" />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditHakunaId(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setEditServId(null)}>Cancelar</Button>
             <Button onClick={() => editProfMutation.mutate()} disabled={!editProfissao || editProfMutation.isPending}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
