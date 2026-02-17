@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Users, Phone, Plus } from "lucide-react";
+import { ArrowLeft, Users, Phone, Plus, FileCheck, QrCode, AlertTriangle } from "lucide-react";
 import CronogramaTop from "@/components/cronograma/CronogramaTop";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis } from "recharts";
 import { getUser } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissoes } from "@/hooks/usePermissoes";
@@ -49,6 +52,8 @@ export default function AreaPortal() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = getUser();
+
+  const dashData = useDashboardData();
 
   // Fetch or auto-create area
   const { data: area, isLoading: loadingArea } = useQuery({
@@ -241,6 +246,59 @@ export default function AreaPortal() {
               </CardContent>
             </Card>
           </div>
+
+          {/* ADM-specific KPIs */}
+          {decodedNome === "ADM" && (
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <Card className="border-l-4" style={{ borderLeftColor: "hsl(142, 70%, 45%)" }}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><FileCheck className="h-3 w-3" /> Contratos Assinados</p>
+                  {dashData.isLoading ? <Skeleton className="h-8 w-24" /> : (
+                    <p className="text-2xl font-bold">{dashData.contratosAssinados}/{dashData.totalInscritos}</p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card className="border-l-4" style={{ borderLeftColor: "hsl(210, 80%, 55%)" }}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><QrCode className="h-3 w-3" /> Check-ins Realizados</p>
+                  {dashData.isLoading ? <Skeleton className="h-8 w-24" /> : (
+                    <p className="text-2xl font-bold">{dashData.checkinsRealizados}/{dashData.totalInscritos}</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Hakuna-specific KPIs */}
+          {decodedNome === "Hakuna" && (
+            <div className="mt-4 space-y-4">
+              <Card className="border-l-4" style={{ borderLeftColor: dashData.ergometricosPendentes > 0 ? "hsl(0, 70%, 50%)" : "hsl(220, 10%, 55%)" }}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Ergométricos Pendentes</p>
+                  {dashData.isLoading ? <Skeleton className="h-8 w-24" /> : (
+                    <p className="text-2xl font-bold">{dashData.ergometricosPendentes}</p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Participantes por Faixa Etária</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {dashData.isLoading ? <Skeleton className="h-[220px] w-full" /> : (
+                    <ChartContainer config={{ total: { label: "Participantes", color: "hsl(27, 82%, 50%)" } }} className="h-[220px] w-full">
+                      <BarChart data={dashData.ageData}>
+                        <XAxis dataKey="faixa" tick={{ fill: "hsl(220, 10%, 55%)", fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fill: "hsl(220, 10%, 55%)", fontSize: 12 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="total" fill="hsl(27, 82%, 50%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ChartContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Lista de Servidores */}
           <Card className="mt-4">

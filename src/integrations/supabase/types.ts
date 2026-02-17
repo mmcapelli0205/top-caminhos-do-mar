@@ -1080,6 +1080,41 @@ export type Database = {
           },
         ]
       }
+      ergometrico_config: {
+        Row: {
+          comorbidades_obrigatorias: string[] | null
+          id: string
+          idade_minima: number | null
+          top_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          comorbidades_obrigatorias?: string[] | null
+          id?: string
+          idade_minima?: number | null
+          top_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          comorbidades_obrigatorias?: string[] | null
+          id?: string
+          idade_minima?: number | null
+          top_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ergometrico_config_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ergometricos: {
         Row: {
           analisado_por: string | null
@@ -1539,8 +1574,10 @@ export type Database = {
           created_at: string | null
           crm: string | null
           disponibilidade: string | null
+          especialidade: string | null
           especialidade_medica: string | null
           id: string
+          profissao: string | null
           registro_profissional: string | null
           servidor_id: string | null
           top_id: string | null
@@ -1550,8 +1587,10 @@ export type Database = {
           created_at?: string | null
           crm?: string | null
           disponibilidade?: string | null
+          especialidade?: string | null
           especialidade_medica?: string | null
           id?: string
+          profissao?: string | null
           registro_profissional?: string | null
           servidor_id?: string | null
           top_id?: string | null
@@ -1561,8 +1600,10 @@ export type Database = {
           created_at?: string | null
           crm?: string | null
           disponibilidade?: string | null
+          especialidade?: string | null
           especialidade_medica?: string | null
           id?: string
+          profissao?: string | null
           registro_profissional?: string | null
           servidor_id?: string | null
           top_id?: string | null
