@@ -1,107 +1,102 @@
 
 
-## Ajustes Visuais do Dashboard e Sidebar -- 7 Itens
+## Participantes e Hakunas -- 4 Itens
 
-### Resumo
-Simplificar o Dashboard principal, melhorar estilos de cards, adicionar logo na sidebar, criar card de clima (Open-Meteo), e mover KPIs especificos para os paineis das areas ADM e Hakuna.
+### Item 7: Cidade do Participante + Filtro
+
+**Migration necessaria**: A tabela `participantes` nao possui coluna `cidade`. Criar:
+```sql
+ALTER TABLE participantes ADD COLUMN IF NOT EXISTS cidade TEXT;
+```
+
+**Arquivo: `src/pages/Participantes.tsx`**
+- Adicionar estado `filterCidade` (default "todos")
+- Extrair cidades unicas dos participantes carregados (front-end): `[...new Set(participantes.map(p => p.cidade).filter(Boolean))]`
+- Adicionar Select de cidade nos filtros (apos o filtro de Ergometrico)
+- Adicionar filtro na logica `filtered`: `if (filterCidade !== "todos") list = list.filter(p => p.cidade === filterCidade)`
+- Na tabela desktop: adicionar coluna "Cidade" apos "Igreja" (hidden lg:table-cell)
+- Nos cards mobile: adicionar cidade abaixo do nome
+
+**Arquivo: `src/pages/ParticipanteForm.tsx`**
+- Verificar se o formulario de cadastro ja tem campo cidade. Se nao, adicionar campo Input "Cidade" na secao de dados pessoais.
 
 ---
 
-### Arquivos Novos
+### Item 8: Ergometricos Configuravel
 
-**1. `src/components/dashboard/WeatherCard.tsx`**
+A tabela `ergometrico_config` ja existe com `idade_minima` (default 40) e `comorbidades_obrigatorias` (TEXT[]). Nenhuma migration necessaria.
 
-Componente novo que consome a API Open-Meteo (fetch puro, sem dependencia).
+**Arquivo: `src/components/hakunas/ErgometricosTab.tsx`**
 
-- URL: `https://api.open-meteo.com/v1/forecast?latitude=-23.7745&longitude=-46.5633&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&current=temperature_2m,weathercode,relative_humidity_2m,wind_speed_10m&timezone=America/Sao_Paulo&forecast_days=4`
-- useQuery com `staleTime: 30 * 60 * 1000` (30 min)
-- Layout: card com gradiente azul (`bg-gradient-to-br from-blue-900/30 to-cyan-900/20 border-blue-600/20`)
-- Hoje: icone WMO, temperatura atual (text-3xl), descricao, umidade e vento
-- Proximos 3 dias: grid-cols-3, dia da semana, icone, max/min, prob. chuva
-- Mapeamento weathercode -> emoji/descricao (0: sol, 1-3: parcialmente nublado, 45-48: nevoa, 51-55: garoa, 61-65: chuva, 80-82: pancadas, 95-99: tempestade)
-- Fallback: "Clima indisponivel" se erro
+Adicionar secao de configuracao no topo da aba:
+
+- Query: `supabase.from("ergometrico_config").select("*").limit(1).single()`
+- Card "Configuracao do Ergometrico" (colapsavel com Collapsible, aberto por default):
+  - Input number "Idade minima obrigatoria" (default do banco: 40)
+  - Multi-select/checkboxes para "Comorbidades obrigatorias"
+    - Opcoes fixas: Cardiopatia, Hipertensao, Diabetes, Asma, Epilepsia, Problemas Renais, Problemas Respiratorios
+    - Valores atuais carregados do campo `comorbidades_obrigatorias`
+  - Botao "Salvar Configuracao" (update na tabela `ergometrico_config`)
+
+- Alterar logica de filtragem de participantes:
+  - Atualmente filtra fixo `age >= 40`
+  - Mudar para: `age >= config.idade_minima` OU `participante.doenca` contem alguma das `config.comorbidades_obrigatorias`
+  - Assim participantes com comorbidade aparecem independente da idade
+
+- A configuracao so aparece se o usuario tem permissao de edicao (prop `canEdit` a ser passada do AreaPortal, ou verificacao interna)
 
 ---
 
-### Arquivos a Modificar
+### Item 9: Campo Especialidade/Profissao do Hakuna
 
-**2. `src/components/AppSidebar.tsx`**
+As colunas `profissao` e `especialidade` ja existem na tabela `hakunas`. Nenhuma migration necessaria.
 
-- Importar `SidebarFooter` de `@/components/ui/sidebar`
-- Adicionar `<SidebarFooter>` apos `</SidebarContent>` com a imagem dos Legendarios:
-  - URL: `https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Logo%20Legendarios.png`
-  - Classes: `h-16 w-auto mx-auto opacity-60`
-  - Quando sidebar colapsada (usar contexto `useSidebar` se disponivel, ou classes `group-data-[collapsible=icon]:h-8`): mostrar menor
+O codigo atual usa `especialidade_medica` para exibicao. Precisamos usar tambem `profissao` e `especialidade`.
 
-**3. `src/components/inicio/QuickActions.tsx` (Card da Area)**
+**Arquivo: `src/components/hakunas/EquipeTab.tsx`**
 
-- Alterar layout de horizontal (flex items-center gap-4) para vertical centralizado:
-  - `flex flex-col items-center text-center p-6`
-  - Logo: `h-16 w-16 object-contain mx-auto`
-  - Nome da equipe: `text-xl font-bold text-center mt-2`
-  - Texto "Acessar minha area": `text-sm text-gray-400 text-center mt-1`
-- Adicionar `hover:scale-[1.02] transition-transform` (ja tem)
+- Alterar exibicao da coluna "Especialidade" na tabela:
+  - Mostrar `profissao` como principal. Se `profissao === "Medico"` e `especialidade` existe, mostrar "Medico - {especialidade}"
+  - Exemplo: "Enfermeiro(a)", "Medico - Cardiologista", "Fisioterapeuta"
+  - Usar `h?.profissao` em vez de (ou complementando) `h?.especialidade_medica`
 
-**4. `src/pages/Dashboard.tsx`**
+- Adicionar dialog/modal para editar profissao e especialidade de um Hakuna:
+  - Botao de edicao na linha da tabela (icone Pencil)
+  - Dialog com:
+    - Select "Profissao" (obrigatorio): Medico, Enfermeiro(a), Fisioterapeuta, Massagista, Dentista, Nutricionista, Psicologo(a), Farmaceutico(a), Tecnico(a) de Enfermagem, Outro
+    - Select "Especialidade" (condicional, so aparece se profissao = "Medico"): Cardiologista, Ortopedista, Clinico Geral, Pediatra, Dermatologista, Neurologista, Ginecologista, Urologista, Psiquiatra, Anestesista, Cirurgiao, Outro
+  - Salvar: `supabase.from("hakunas").update({ profissao, especialidade }).eq("id", hakunaId)`
 
-Reestruturar o conteudo principal:
+- Nos cards resumo (especCounts), agrupar por `profissao` em vez de `especialidade_medica`
 
-- **TopRealTimeCard**: Aplicar estilo verde:
-  - Card: `bg-gradient-to-br from-green-900/40 to-green-800/20 border-green-600/30`
-  - Titulo centralizado, "TOP" branco + "Real-Time" verde (`text-green-400`)
-  - Icone Radio centralizado acima do titulo
-  - Subtexto centralizado
+---
 
-- **KPIs simplificados** (grid 2x2 ou 4 colunas):
-  - Total Participantes (manter)
-  - Total Servidores (NOVO - query count servidores status=ativo)
-  - Total Familias (manter `familiasFormadas`)
-  - Avisos Recentes (NOVO - query count area_avisos recentes, ou usar dado do MuralAvisos)
+### Item 10: Logica do Match Automatico Melhorada
 
-- **REMOVER**:
-  - Card "Contratos Assinados"
-  - Card "Check-ins Realizados"
-  - Card "Ergometricos Pendentes"
-  - Card "Participantes por Faixa Etaria" (grafico)
-  - Card "Status dos Participantes" (grafico) -- excluir completamente
+**Arquivo: `src/components/hakunas/EquipeTab.tsx`**
 
-- **WeatherCard**: Posicionar apos KPIs, antes do calendario
+Reescrever `matchMutation` com logica mais sofisticada:
 
-- **Avisos + Calendario lado a lado**: manter, mas calendario com fundo diferenciado
+1. Buscar TODOS os participantes (nao so os com doenca)
+2. Para cada participante nao vinculado:
+   - Se tem comorbidade: mapear para especialidade medica compativel
+     - Cardiopatia/Hipertensao/Arritmia -> buscar Hakuna com profissao="Medico" e especialidade contendo "Cardiologista" ou "Clinico Geral"
+     - Diabetes -> Clinico Geral
+     - Problemas ortopedicos -> Ortopedista ou Fisioterapeuta
+     - Problemas respiratorios/Asma -> Clinico Geral
+     - Depressao/Ansiedade -> Psicologo(a) ou Psiquiatra
+     - Fallback: Clinico Geral
+   - Se NAO tem comorbidade: distribuir entre Enfermeiros, Fisioterapeutas e outros
+3. Balancear quantidade: round-robin dentro de cada pool
+4. Limite maximo por Hakuna: 15 participantes (configuravel)
 
-- **useDashboardData**: Adicionar query de servidores ativos (count) e avisos recentes (count). Os campos removidos (`contratosAssinados`, `checkinsRealizados`, `ergometricosPendentes`, `ageData`, `statusData`) podem ser mantidos no hook (serao usados nos paineis das areas), so nao exibi-los no Dashboard.
+- Antes de executar, verificar se ja existem vinculos:
+  - Se sim: AlertDialog "Ja existem X vinculos. Deseja refazer? Os anteriores serao removidos."
+  - Se confirmado: deletar vinculos existentes e recriar
 
-**5. `src/hooks/useDashboardData.ts`**
+- Apos match: toast com resumo "Match gerado! X participantes vinculados a Y Hakunas"
 
-- Adicionar query para count de servidores ativos:
-  ```
-  supabase.from("servidores").select("*", { count: "exact", head: true }).eq("status", "ativo")
-  ```
-- Adicionar query para count de avisos recentes (ultimos 7 dias)
-- Retornar `totalServidores` e `avisosRecentes` no objeto
-
-**6. `src/components/inicio/CalendarioMensal.tsx`**
-
-- Alterar o Card wrapper para usar fundo diferenciado:
-  - `className="bg-slate-800/50 border-slate-600/30"`
-- A query ja busca de area_eventos com join em areas, e ja usa CORES_EQUIPES -- ja mostra eventos de todas as areas
-- Ja tem popover com badge colorido por area e horario -- nenhuma alteracao de query necessaria (Item 13 ja esta implementado)
-
-**7. `src/pages/AreaPortal.tsx`**
-
-Na aba "Painel":
-
-- **Quando `decodedNome === "ADM"`**: Apos os cards existentes (grid 2x4), adicionar:
-  - KpiCard "Contratos Assinados" (usar useDashboardData ou query local)
-  - KpiCard "Check-ins Realizados"
-  - Importar `useDashboardData` e usar `contratosAssinados`, `checkinsRealizados`, `totalInscritos`
-
-- **Quando `decodedNome === "Hakuna"`**: Apos os cards existentes, adicionar:
-  - KpiCard "Ergometricos Pendentes"
-  - Grafico "Participantes por Faixa Etaria" (BarChart com recharts)
-  - Importar `useDashboardData` e usar `ergometricosPendentes`, `ageData`
-
-Nota: para nao duplicar queries, importar `useDashboardData` no AreaPortal e renderizar condicionalmente.
+- A logica usa `profissao` e `especialidade` dos hakunas (nao mais `especialidade_medica`)
 
 ---
 
@@ -109,18 +104,16 @@ Nota: para nao duplicar queries, importar `useDashboardData` no AreaPortal e ren
 
 | Arquivo | Tipo | Descricao |
 |---|---|---|
-| `src/components/dashboard/WeatherCard.tsx` | Novo | Card de clima Open-Meteo |
-| `src/components/AppSidebar.tsx` | Alterar | Logo Legendarios no footer |
-| `src/components/inicio/QuickActions.tsx` | Alterar | Layout centralizado |
-| `src/pages/Dashboard.tsx` | Alterar | Simplificar KPIs, estilo TopRealTime, adicionar WeatherCard |
-| `src/hooks/useDashboardData.ts` | Alterar | Adicionar totalServidores e avisosRecentes |
-| `src/components/inicio/CalendarioMensal.tsx` | Alterar | Fundo diferenciado |
-| `src/pages/AreaPortal.tsx` | Alterar | Cards movidos para paineis ADM e Hakuna |
+| Migration | SQL | ADD COLUMN cidade TEXT em participantes |
+| `src/pages/Participantes.tsx` | Alterar | Filtro e coluna cidade |
+| `src/pages/ParticipanteForm.tsx` | Alterar | Campo cidade no formulario |
+| `src/components/hakunas/ErgometricosTab.tsx` | Alterar | Config ergometrico + logica comorbidades |
+| `src/components/hakunas/EquipeTab.tsx` | Alterar | Profissao/especialidade, dialog edicao, match melhorado |
 
 ### Detalhes Tecnicos
 
-- Nenhuma migration necessaria
-- Nenhuma dependencia nova (Open-Meteo e fetch puro)
-- Open-Meteo nao requer chave de API
-- O hook `useDashboardData` continua retornando todos os dados (contratosAssinados, ageData, etc.) para uso nos paineis das areas
-- Tratamento de erro no WeatherCard: try/catch com fallback visual
+- 1 migration: apenas `ALTER TABLE participantes ADD COLUMN cidade TEXT`
+- Tabelas `ergometrico_config`, `hakuna_participante` ja existem -- nenhuma criacao necessaria
+- Colunas `profissao` e `especialidade` ja existem em `hakunas` -- nenhum ALTER necessario
+- O match automatico roda no front-end (JS), nao precisa de Edge Function
+- Nenhuma dependencia nova
