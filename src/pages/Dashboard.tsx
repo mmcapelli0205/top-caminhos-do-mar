@@ -43,7 +43,7 @@ function TopRealTimeCard() {
 
   return (
     <Card
-      className={`cursor-pointer transition-all hover:shadow-md bg-gradient-to-br from-green-900/40 to-green-800/20 border-green-600/30 ${!isLive ? "opacity-50 pointer-events-none" : ""}`}
+      className={`cursor-pointer transition-all hover:shadow-md bg-gradient-to-br from-green-950 to-green-900 border-green-500 ${!isLive ? "opacity-50 pointer-events-none" : ""}`}
       onClick={() => isLive && navigate("/top-real-time")}
     >
       <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full">

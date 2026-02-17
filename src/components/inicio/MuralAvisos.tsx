@@ -37,10 +37,10 @@ export default function MuralAvisos() {
   };
 
   return (
-    <Card>
+    <Card className="bg-gradient-to-br from-yellow-900/30 to-amber-900/20 border-yellow-600/30">
       <CardHeader className="flex flex-row items-center gap-2 pb-3">
-        <Megaphone className="h-5 w-5 text-primary" />
-        <CardTitle className="text-sm font-medium text-muted-foreground">Últimos Avisos</CardTitle>
+        <Megaphone className="h-5 w-5 text-yellow-400" />
+        <CardTitle className="text-sm font-medium text-yellow-400">Últimos Avisos</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (

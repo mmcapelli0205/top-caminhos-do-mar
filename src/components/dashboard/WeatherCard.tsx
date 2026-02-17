@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CloudRain } from "lucide-react";
 
@@ -50,9 +50,9 @@ export default function WeatherCard() {
 
   if (isError) {
     return (
-      <Card className="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 border-blue-600/20">
-        <CardContent className="p-6 text-center">
-          <CloudRain className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+      <Card className="bg-gradient-to-br from-blue-900/15 to-cyan-900/10 border-blue-600/15">
+        <CardContent className="p-4 text-center">
+          <CloudRain className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">Clima indisponível</p>
         </CardContent>
       </Card>
@@ -61,8 +61,8 @@ export default function WeatherCard() {
 
   if (isLoading || !data) {
     return (
-      <Card className="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 border-blue-600/20">
-        <CardContent className="p-6"><Skeleton className="h-32 w-full" /></CardContent>
+      <Card className="bg-gradient-to-br from-blue-900/15 to-cyan-900/10 border-blue-600/15">
+        <CardContent className="p-4"><Skeleton className="h-24 w-full" /></CardContent>
       </Card>
     );
   }
@@ -84,40 +84,33 @@ export default function WeatherCard() {
   });
 
   return (
-    <Card className="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 border-blue-600/20">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          🏔️ Clima — SP-148 Km 42
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Today */}
-        <div className="flex items-center gap-4">
-          <span className="text-4xl">{now.emoji}</span>
-          <div>
-            <p className="text-3xl font-bold text-foreground">
-              {Math.round(current.temperature_2m)}°C
-            </p>
-            <p className="text-sm text-muted-foreground">{now.desc}</p>
-            <p className="text-xs text-muted-foreground">
+    <Card className="bg-gradient-to-br from-blue-900/15 to-cyan-900/10 border-blue-600/15">
+      <CardContent className="p-4 space-y-3">
+        {/* Header + Today */}
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{now.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-bold text-foreground">
+                {Math.round(current.temperature_2m)}°C
+              </p>
+              <p className="text-xs text-muted-foreground">{now.desc}</p>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
               💧 {current.relative_humidity_2m}% &nbsp; 💨 {Math.round(current.wind_speed_10m)} km/h
             </p>
           </div>
+          <p className="text-[10px] text-muted-foreground/60 shrink-0">🏔️ SP-148 Km 42</p>
         </div>
 
         {/* Forecast */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1">
           {forecast.map((f) => (
-            <div
-              key={f.day}
-              className="text-center rounded-lg bg-background/30 p-2"
-            >
-              <p className="text-xs font-medium text-muted-foreground">{f.day}</p>
-              <p className="text-lg">{f.weather.emoji}</p>
-              <p className="text-xs text-foreground font-medium">
-                {f.max}° / {f.min}°
-              </p>
-              <p className="text-[10px] text-muted-foreground">🌧 {f.rain}%</p>
+            <div key={f.day} className="text-center p-1.5">
+              <p className="text-[10px] font-medium text-muted-foreground">{f.day}</p>
+              <p className="text-sm">{f.weather.emoji}</p>
+              <p className="text-[11px] text-foreground font-medium">{f.max}° / {f.min}°</p>
+              <p className="text-[9px] text-muted-foreground">🌧 {f.rain}%</p>
             </div>
           ))}
         </div>
