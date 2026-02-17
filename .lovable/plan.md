@@ -1,54 +1,68 @@
 
 
-## Mover Hakunas para dentro da Area Hakuna (AreaPortal)
+## 3 Ajustes Rapidos
 
-### Resumo
-Remover a pagina standalone Hakunas do menu lateral e das rotas, e integrar suas 5 abas (Equipe, Ergometricos, Autorizacoes, Medicamentos, Equipamentos) dentro do AreaPortal quando a area e "Hakuna". As permissoes granulares ja mapeadas em `permissoes.ts` controlam visibilidade e edicao.
+### Ajuste 1: Legenda do Grafico de Despesas por Categoria (ResumoSection)
 
-### Arquivos a Modificar
+**Arquivo**: `src/components/financeiro/ResumoSection.tsx`
 
-**1. `src/pages/AreaPortal.tsx`**
+**Problema**: A legenda (badges abaixo do PieChart) filtra categorias usando o array fixo `ALL_CATEGORIAS` (linhas 32-38, 112-114). Categorias como "Obrigatorio Global" e "Medicamentos" nao estao nesse array, entao aparecem no grafico mas nao na legenda.
 
-- Importar os 5 componentes existentes:
-  - `EquipeTab` de `@/components/hakunas/EquipeTab`
-  - `ErgometricosTab` de `@/components/hakunas/ErgometricosTab`
-  - `AutorizacoesTab` de `@/components/hakunas/AutorizacoesTab`
-  - `MedicamentosEstoqueTab` de `@/components/hakunas/MedicamentosEstoqueTab`
-  - `EquipamentosEstoqueTab` de `@/components/hakunas/EquipamentosEstoqueTab`
-- Importar `Plus` e `Wand2` de lucide-react, e `useNavigate` (ja importado)
+**Correcao**: Substituir a logica de `categoryBadges` para usar diretamente os dados do `pieData` (que contem TODAS as categorias com despesas), sem filtrar por `ALL_CATEGORIAS`. Cada badge recebe uma cor indexada pela posicao no array pieData.
 
-- No TabsList, apos "Pedidos", adicionar 5 abas condicionais (apenas quando `decodedNome === "Hakuna"`):
-  - Equipe: `isAbaVisivel(getPermissao("equipe"))`
-  - Ergometricos: `isAbaVisivel(getPermissao("ergometricos"))`
-  - Autorizacoes: `isAbaVisivel(getPermissao("autorizacoes"))`
-  - Medicamentos: `isAbaVisivel(getPermissao("medicamentos"))`
-  - Equipamentos: `isAbaVisivel(getPermissao("equipamentos"))`
+```
+// Antes (filtra por ALL_CATEGORIAS):
+const categoryBadges = ALL_CATEGORIAS
+  .map((cat, i) => ({ cat, value: catMap.get(cat) ?? 0, colorIdx: i }))
+  .filter((c) => c.value > 0);
 
-- Adicionar 5 TabsContent correspondentes, com os componentes existentes renderizados diretamente (eles nao recebem props de permissao atualmente — manter assim nesta fase, pois a logica interna de cada tab ja funciona)
+// Depois (mostra TODAS as categorias com despesa):
+const categoryBadges = pieData.map((d, i) => ({
+  cat: d.name,
+  value: d.value,
+  colorIdx: i,
+}));
+```
 
-- Na aba "equipe", adicionar um wrapper com botoes "+ Novo Hakuna" e "Gerar Match Automatico" antes do `EquipeTab`, visiveis apenas se `canEditPerm(getPermissao("equipe"))`. O botao "Novo Hakuna" navega para `/servidores/novo?area=Hakuna`.
+A `div` com `flex-wrap` ja existe (linha 257), entao categorias extras quebram em novas linhas naturalmente.
 
-**2. `src/lib/auth.ts`**
+---
 
-- Remover o item de menu com id 5 ("Hakunas", url "/hakunas") do array `ALL_MENU_ITEMS`
-- Remover import `HeartPulse` se nao for mais usado por outros itens
+### Ajuste 2: Default Tab = "painel" para todos
 
-**3. `src/App.tsx`**
+**Arquivo**: `src/pages/AreaPortal.tsx`
 
-- Remover a rota `<Route path="/hakunas" element={<Hakunas />} />`
-- Remover o import `Hakunas` de `@/pages/Hakunas`
+**Problema**: Linha 142 define `const defaultTab = cargo === "servidor" ? "mural" : "painel"`, fazendo servidores comuns cairem no Mural.
 
-**4. `src/pages/Hakunas.tsx`**
+**Correcao**: Alterar para `const defaultTab = "painel"` — todos os usuarios abrem no Painel.
 
-- NAO deletar o arquivo — manter como referencia
+---
 
-### Detalhes Tecnicos
+### Ajuste 3: Botao Relatorio Consolidado no Resumo
 
-- Os 5 componentes de abas ja existem como arquivos separados em `src/components/hakunas/`
-- Os componentes nao precisam de alteracoes — eles funcionam de forma autonoma com suas proprias queries
-- O botao "Gerar Match Automatico" atualmente esta dentro do `EquipeTab` (linha 178), entao NAO precisa ser duplicado no AreaPortal. Ele ja aparece automaticamente ao renderizar `EquipeTab`.
-- O botao "+ Novo Hakuna" do `Hakunas.tsx` (linha 36) navegava para `/servidores/novo?area=Hakuna`. Adicionar um botao equivalente acima do EquipeTab no AreaPortal, controlado por permissao.
-- Nenhuma migration necessaria
-- Nenhuma dependencia nova
-- O TabsList ja tem `overflow-x-auto` para scroll horizontal no mobile
+**Arquivo**: `src/components/financeiro/ResumoSection.tsx`
 
+**Problema**: O botao "Relatorio Consolidado" so existe na aba Despesas.
+
+**Correcao**: 
+- Importar `RelatorioConsolidado` e `BarChart3` no `ResumoSection`
+- Adicionar estado `showRelatorio`
+- Se `showRelatorio` for true, renderizar `<RelatorioConsolidado onBack={() => setShowRelatorio(false)} />`
+- Adicionar botao "Relatorio Consolidado" ao lado do botao "Exportar PDF" no header (linha 157-162)
+- Manter o botao existente em DespesasSection (nao remover)
+
+O ResumoSection passara a ter dois botoes no header:
+- "Exportar PDF" (ja existe)
+- "Relatorio Consolidado" (novo)
+
+---
+
+### Resumo de Alteracoes
+
+| Arquivo | Alteracao |
+|---|---|
+| `src/components/financeiro/ResumoSection.tsx` | Corrigir legenda + adicionar botao Relatorio |
+| `src/pages/AreaPortal.tsx` | Mudar defaultTab para "painel" |
+| `src/components/financeiro/DespesasSection.tsx` | Nenhuma (manter botao existente) |
+
+Nenhuma migration, nenhuma dependencia nova.
