@@ -39,6 +39,7 @@ const schema = z.object({
   tamanho_farda: z.string().optional(),
   condicionamento: z.number().min(1).max(5).optional(),
   instagram: z.string().max(100).optional(),
+  cidade: z.string().max(200).optional(),
   doenca: z.string().max(1000).optional(),
   medicamentos: z.string().max(1000).optional(),
   alergia_alimentar: z.string().max(1000).optional(),
@@ -113,6 +114,7 @@ export default function ParticipanteForm() {
         tamanho_farda: data.tamanho_farda ?? undefined,
         condicionamento: data.condicionamento ?? 3,
         instagram: data.instagram ?? "",
+        cidade: data.cidade ?? "",
         doenca: data.doenca ?? "",
         medicamentos: data.medicamentos ?? "",
         alergia_alimentar: data.alergia_alimentar ?? "",
@@ -167,6 +169,7 @@ export default function ParticipanteForm() {
       tamanho_farda: values.tamanho_farda || null,
       condicionamento: values.condicionamento ?? null,
       instagram: values.instagram || null,
+      cidade: values.cidade || null,
       doenca: values.doenca || null,
       medicamentos: values.medicamentos || null,
       alergia_alimentar: values.alergia_alimentar || null,
@@ -316,6 +319,12 @@ export default function ParticipanteForm() {
                 onChange={(e) => field.onChange(e.target.value.replace(/^@/, ""))} />
             </div>
           </FormControl>
+        </FormItem>
+      )} />
+      <FormField control={form.control} name="cidade" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Cidade</FormLabel>
+          <FormControl><Input {...field} value={field.value ?? ""} placeholder="Ex: São Paulo" /></FormControl>
         </FormItem>
       )} />
     </div>
