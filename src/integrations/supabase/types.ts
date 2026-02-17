@@ -1791,6 +1791,7 @@ export type Database = {
           altura: number | null
           amigo_parente: string | null
           checkin_realizado: boolean | null
+          cidade: string | null
           condicionamento: number | null
           contato_email: string | null
           contato_nome: string | null
@@ -1829,6 +1830,7 @@ export type Database = {
           altura?: number | null
           amigo_parente?: string | null
           checkin_realizado?: boolean | null
+          cidade?: string | null
           condicionamento?: number | null
           contato_email?: string | null
           contato_nome?: string | null
@@ -1867,6 +1869,7 @@ export type Database = {
           altura?: number | null
           amigo_parente?: string | null
           checkin_realizado?: boolean | null
+          cidade?: string | null
           condicionamento?: number | null
           contato_email?: string | null
           contato_nome?: string | null

@@ -7,17 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
-import { Upload, FileText, Search as SearchIcon, Info } from "lucide-react";
+import { Upload, FileText, Search as SearchIcon, Info, Settings, ChevronDown, Save } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Participante = Tables<"participantes">;
 type Ergometrico = Tables<"ergometricos">;
+
+const COMORBIDADES_OPTIONS = [
+  "Cardiopatia", "Hipertensão", "Diabetes", "Asma",
+  "Epilepsia", "Problemas Renais", "Problemas Respiratórios",
+];
 
 function calcAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -36,6 +44,29 @@ export default function ErgometricosTab() {
   const [analyzeStatus, setAnalyzeStatus] = useState("aprovado");
   const [analyzeObs, setAnalyzeObs] = useState("");
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [configOpen, setConfigOpen] = useState(true);
+  const [configIdadeMinima, setConfigIdadeMinima] = useState(40);
+  const [configComorbidades, setConfigComorbidades] = useState<string[]>([]);
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  const { data: ergConfig } = useQuery({
+    queryKey: ["ergometrico-config"],
+    queryFn: async () => {
+      const { data } = await supabase.from("ergometrico_config").select("*").limit(1).single();
+      return data;
+    },
+  });
+
+  // Sync config state when loaded
+  useMemo(() => {
+    if (ergConfig) {
+      setConfigIdadeMinima(ergConfig.idade_minima ?? 40);
+      setConfigComorbidades(ergConfig.comorbidades_obrigatorias ?? []);
+    }
+  }, [ergConfig]);
+
+  const activeIdadeMinima = ergConfig?.idade_minima ?? 40;
+  const activeComorbidades = ergConfig?.comorbidades_obrigatorias ?? [];
 
   const { data: participantes = [], isLoading: loadP } = useQuery({
     queryKey: ["erg-participantes"],
@@ -59,29 +90,59 @@ export default function ErgometricosTab() {
     return m;
   }, [ergometricos]);
 
-  const parts40 = useMemo(() => participantes.filter((p) => {
+  // Filter: age >= config OR has matching comorbidity
+  const partsErgObrigatorio = useMemo(() => participantes.filter((p) => {
     const age = calcAge(p.data_nascimento);
-    return age !== null && age >= 40;
-  }), [participantes]);
+    if (age !== null && age >= activeIdadeMinima) return true;
+    if (p.doenca && activeComorbidades.length > 0) {
+      const doencaLower = p.doenca.toLowerCase();
+      return activeComorbidades.some((c) => doencaLower.includes(c.toLowerCase()));
+    }
+    return false;
+  }), [participantes, activeIdadeMinima, activeComorbidades]);
 
   const filtered = useMemo(() => {
-    if (filter === "todos") return parts40;
-    return parts40.filter((p) => {
+    if (filter === "todos") return partsErgObrigatorio;
+    return partsErgObrigatorio.filter((p) => {
       const erg = ergMap.get(p.id);
       const status = erg?.status ?? p.ergometrico_status ?? "pendente";
       return status === filter;
     });
-  }, [parts40, filter, ergMap]);
+  }, [partsErgObrigatorio, filter, ergMap]);
 
   const counts = useMemo(() => {
-    const c = { total: parts40.length, pendente: 0, enviado: 0, aprovado: 0, reprovado: 0, dispensado: 0 };
-    parts40.forEach((p) => {
+    const c = { total: partsErgObrigatorio.length, pendente: 0, enviado: 0, aprovado: 0, reprovado: 0, dispensado: 0 };
+    partsErgObrigatorio.forEach((p) => {
       const erg = ergMap.get(p.id);
       const s = erg?.status ?? p.ergometrico_status ?? "pendente";
       if (s in c) (c as any)[s]++;
     });
     return c;
-  }, [parts40, ergMap]);
+  }, [partsErgObrigatorio, ergMap]);
+
+  async function saveConfig() {
+    setSavingConfig(true);
+    try {
+      if (ergConfig?.id) {
+        await supabase.from("ergometrico_config").update({
+          idade_minima: configIdadeMinima,
+          comorbidades_obrigatorias: configComorbidades,
+          updated_at: new Date().toISOString(),
+        }).eq("id", ergConfig.id);
+      } else {
+        await supabase.from("ergometrico_config").insert({
+          idade_minima: configIdadeMinima,
+          comorbidades_obrigatorias: configComorbidades,
+        });
+      }
+      qc.invalidateQueries({ queryKey: ["ergometrico-config"] });
+      toast({ title: "Configuração salva" });
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingConfig(false);
+    }
+  }
 
   const handleUpload = async (partId: string, file: File) => {
     setUploadingFor(partId);
@@ -126,15 +187,76 @@ export default function ErgometricosTab() {
     },
   });
 
+  function toggleComorbidade(c: string) {
+    setConfigComorbidades((prev) =>
+      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {/* Config Section */}
+      <Collapsible open={configOpen} onOpenChange={setConfigOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardContent className="p-4 cursor-pointer flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-foreground">Configuração do Ergométrico</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${configOpen ? "rotate-180" : ""}`} />
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="px-4 pb-4 pt-0 space-y-4">
+              <div className="space-y-2">
+                <Label>Idade mínima obrigatória</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={configIdadeMinima}
+                    onChange={(e) => setConfigIdadeMinima(Number(e.target.value))}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">anos</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Comorbidades obrigatórias</Label>
+                <p className="text-xs text-muted-foreground">Participantes com essas condições devem fazer ergométrico independente da idade</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {COMORBIDADES_OPTIONS.map((c) => (
+                    <div key={c} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={configComorbidades.includes(c)}
+                        onCheckedChange={() => toggleComorbidade(c)}
+                      />
+                      <span className="text-sm">{c}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Button onClick={saveConfig} disabled={savingConfig} size="sm">
+                <Save className="h-4 w-4 mr-1" /> Salvar Configuração
+              </Button>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertDescription>Participantes com 40+ anos precisam de teste ergométrico aprovado</AlertDescription>
+        <AlertDescription>
+          Participantes com {activeIdadeMinima}+ anos
+          {activeComorbidades.length > 0 && ` ou com ${activeComorbidades.join(", ")}`}
+          {" "}precisam de teste ergométrico aprovado
+        </AlertDescription>
       </Alert>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {([["Total 40+", counts.total], ["Pendentes", counts.pendente], ["Enviados", counts.enviado], ["Aprovados", counts.aprovado], ["Reprovados", counts.reprovado], ["Dispensados", counts.dispensado]] as [string, number][]).map(([label, val]) => (
+        {([["Obrigatórios", counts.total], ["Pendentes", counts.pendente], ["Enviados", counts.enviado], ["Aprovados", counts.aprovado], ["Reprovados", counts.reprovado], ["Dispensados", counts.dispensado]] as [string, number][]).map(([label, val]) => (
           <Card key={label}><CardContent className="p-3"><p className="text-xs text-muted-foreground">{label}</p><span className="text-lg font-bold text-foreground">{val}</span></CardContent></Card>
         ))}
       </div>
@@ -160,13 +282,17 @@ export default function ErgometricosTab() {
           ) : filtered.map((p) => {
             const erg = ergMap.get(p.id);
             const status = erg?.status ?? p.ergometrico_status ?? "pendente";
+            const age = calcAge(p.data_nascimento);
             return (
               <Card key={p.id}>
                 <CardContent className="p-3 space-y-2">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{p.nome}</p>
-                      <p className="text-sm text-muted-foreground">Idade: {calcAge(p.data_nascimento)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Idade: {age ?? "—"}
+                        {p.doenca && ` • ${p.doenca.substring(0, 30)}`}
+                      </p>
                     </div>
                     <Badge variant={STATUS_COLORS[status] as any ?? "secondary"}>{status}</Badge>
                   </div>
@@ -196,6 +322,7 @@ export default function ErgometricosTab() {
               <TableRow>
                 <TableHead className="sticky left-0 bg-card z-10">Nome</TableHead>
                 <TableHead>Idade</TableHead>
+                <TableHead>Condição</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="hidden md:table-cell">Arquivo</TableHead>
                 <TableHead className="hidden lg:table-cell">Observações</TableHead>
@@ -205,10 +332,10 @@ export default function ErgometricosTab() {
             <TableBody>
               {loadP ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                  <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
                 ))
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum participante encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum participante encontrado</TableCell></TableRow>
               ) : filtered.map((p) => {
                 const erg = ergMap.get(p.id);
                 const status = erg?.status ?? p.ergometrico_status ?? "pendente";
@@ -216,6 +343,7 @@ export default function ErgometricosTab() {
                   <TableRow key={p.id}>
                     <TableCell className="sticky left-0 bg-card z-10 font-medium">{p.nome}</TableCell>
                     <TableCell>{calcAge(p.data_nascimento)}</TableCell>
+                    <TableCell className="max-w-[150px] truncate">{p.doenca ?? "—"}</TableCell>
                     <TableCell><Badge variant={STATUS_COLORS[status] as any ?? "secondary"}>{status}</Badge></TableCell>
                     <TableCell className="hidden md:table-cell">
                       {erg?.arquivo_url ? (<a href={erg.arquivo_url} target="_blank" rel="noreferrer" className="text-primary underline flex items-center gap-1"><FileText className="h-3 w-3" /> Ver PDF</a>) : "—"}

@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Wand2, UserMinus, UserPlus, Eye } from "lucide-react";
+import { ChevronDown, ChevronRight, Wand2, UserMinus, UserPlus, Eye, Pencil } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ServidorSheet from "@/components/ServidorSheet";
 import type { Tables } from "@/integrations/supabase/types";
@@ -18,27 +22,45 @@ type Hakuna = Tables<"hakunas">;
 type HakunaPart = Tables<"hakuna_participante">;
 type Participante = Tables<"participantes">;
 
+const PROFISSOES = [
+  "Médico", "Enfermeiro(a)", "Fisioterapeuta", "Massagista", "Dentista",
+  "Nutricionista", "Psicólogo(a)", "Farmacêutico(a)", "Técnico(a) de Enfermagem", "Outro",
+];
+
+const ESPECIALIDADES = [
+  "Cardiologista", "Ortopedista", "Clínico Geral", "Pediatra", "Dermatologista",
+  "Neurologista", "Ginecologista", "Urologista", "Psiquiatra", "Anestesista", "Cirurgião", "Outro",
+];
+
+const MAX_PER_HAKUNA = 15;
+
+const COMORBIDADE_MAP: [RegExp, string[]][] = [
+  [/cardio|coração|hipertens|arritmia|marca-passo/i, ["Cardiologista", "Clínico Geral"]],
+  [/diabetes|insulina|glicemia/i, ["Clínico Geral"]],
+  [/ortop|fratura|coluna|hérnia|artrose|artrite/i, ["Ortopedista", "Fisioterapeuta"]],
+  [/respirat|asma|pneumo/i, ["Clínico Geral"]],
+  [/depress|ansiedade|psic|pânico/i, ["Psicólogo(a)", "Psiquiatra"]],
+  [/dental|dente/i, ["Dentista"]],
+];
+
 function calcAge(dob: string | null): number | null {
   if (!dob) return null;
   return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 86400000));
 }
 
-const KEYWORD_MAP: [RegExp, string][] = [
-  [/diabetes|insulina|glicemia/i, "Médico"],
-  [/cadeirante|prótese|amputação|mobilidade|fisio/i, "Fisioterapeuta"],
-  [/cardio|coração|marca-passo|arritmia/i, "Médico"],
-  [/dor|coluna|hérnia|artrose|artrite/i, "Fisioterapeuta"],
-  [/visual|cego|visão/i, "Médico"],
-  [/auditiv|surd/i, "Médico"],
-  [/depressão|ansiedade|psic/i, "Psicólogo"],
-  [/dental|dente/i, "Dentista"],
-];
+function getDisplayProfissao(h: Hakuna | undefined): string {
+  if (!h) return "—";
+  const prof = h.profissao || h.especialidade_medica;
+  if (!prof) return "—";
+  if (prof === "Médico" && h.especialidade) return `Médico - ${h.especialidade}`;
+  return prof;
+}
 
-function matchEspecialidade(doenca: string): string | null {
-  for (const [regex, esp] of KEYWORD_MAP) {
-    if (regex.test(doenca)) return esp;
+function findCompatibleEspecialidades(doenca: string): string[] {
+  for (const [regex, esps] of COMORBIDADE_MAP) {
+    if (regex.test(doenca)) return esps;
   }
-  return null;
+  return ["Clínico Geral"];
 }
 
 export default function EquipeTab() {
@@ -48,6 +70,14 @@ export default function EquipeTab() {
   const [selectedServidor, setSelectedServidor] = useState<Servidor | null>(null);
   const [searchPart, setSearchPart] = useState("");
   const [linkingFor, setLinkingFor] = useState<string | null>(null);
+
+  // Edit profissao dialog
+  const [editHakunaId, setEditHakunaId] = useState<string | null>(null);
+  const [editProfissao, setEditProfissao] = useState("");
+  const [editEspecialidade, setEditEspecialidade] = useState("");
+
+  // Match confirm
+  const [matchConfirmOpen, setMatchConfirmOpen] = useState(false);
 
   const { data: servidores = [], isLoading: loadS } = useQuery({
     queryKey: ["hk-servidores"],
@@ -87,6 +117,12 @@ export default function EquipeTab() {
     return m;
   }, [hakunas]);
 
+  const hakunaById = useMemo(() => {
+    const m = new Map<string, Hakuna>();
+    hakunas.forEach((h) => m.set(h.id, h));
+    return m;
+  }, [hakunas]);
+
   const vinculosByHakuna = useMemo(() => {
     const m = new Map<string, HakunaPart[]>();
     vinculos.forEach((v) => {
@@ -108,44 +144,139 @@ export default function EquipeTab() {
     const counts: Record<string, number> = {};
     servidores.forEach((s) => {
       const h = hakunaMap.get(s.id);
-      const esp = h?.especialidade_medica || "Não definida";
-      counts[esp] = (counts[esp] || 0) + 1;
+      const prof = h?.profissao || h?.especialidade_medica || "Não definida";
+      counts[prof] = (counts[prof] || 0) + 1;
     });
     return counts;
   }, [servidores, hakunaMap]);
 
+  // Improved match logic
   const matchMutation = useMutation({
     mutationFn: async () => {
-      const partsComDoenca = participantes.filter((p) => p.doenca && p.doenca.trim().length > 0);
-      if (partsComDoenca.length === 0) throw new Error("Nenhum participante com doença preenchida");
-      const hakunasByEsp = new Map<string, string[]>();
+      // Delete existing vinculos
+      if (vinculos.length > 0) {
+        const { error: delErr } = await supabase.from("hakuna_participante").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        if (delErr) throw delErr;
+      }
+
+      // Build hakuna pools by profissao/especialidade
+      const hakunaServidorIds = new Map<string, Hakuna>();
       servidores.forEach((s) => {
         const h = hakunaMap.get(s.id);
-        const esp = h?.especialidade_medica || "Geral";
-        const arr = hakunasByEsp.get(esp) ?? [];
-        arr.push(s.id);
-        hakunasByEsp.set(esp, arr);
+        if (h) hakunaServidorIds.set(s.id, h);
       });
+
+      // Group hakunas: medicos by especialidade, others by profissao
+      const medicosByEsp = new Map<string, string[]>();
+      const generalPool: string[] = [];
+
+      hakunaServidorIds.forEach((h, servId) => {
+        const prof = h.profissao || h.especialidade_medica || "";
+        if (prof === "Médico") {
+          const esp = h.especialidade || "Clínico Geral";
+          const arr = medicosByEsp.get(esp) ?? [];
+          arr.push(servId);
+          medicosByEsp.set(esp, arr);
+        } else if (["Psicólogo(a)", "Psiquiatra", "Dentista"].includes(prof)) {
+          // Specialist non-medico pools
+          const arr = medicosByEsp.get(prof) ?? [];
+          arr.push(servId);
+          medicosByEsp.set(prof, arr);
+        } else {
+          generalPool.push(servId);
+        }
+      });
+
       const counters = new Map<string, number>();
+      const assignCount = new Map<string, number>();
       const inserts: any[] = [];
-      const linkedIds = new Set(vinculos.map((v) => v.participante_id));
-      for (const p of partsComDoenca) {
-        if (linkedIds.has(p.id)) continue;
-        const targetEsp = matchEspecialidade(p.doenca!) ?? "Geral";
-        let pool = hakunasByEsp.get(targetEsp);
-        if (!pool || pool.length === 0) pool = servidores.map((s) => s.id);
-        if (pool.length === 0) continue;
-        const idx = (counters.get(targetEsp) ?? 0) % pool.length;
-        counters.set(targetEsp, idx + 1);
-        inserts.push({ hakuna_id: pool[idx], participante_id: p.id, motivo: `Auto: ${p.doenca?.substring(0, 60)} → ${targetEsp}`, prioridade: 1 });
+
+      function assignToPool(pool: string[], partId: string, motivo: string): boolean {
+        if (pool.length === 0) return false;
+        // Find least loaded in pool
+        const sorted = [...pool].sort((a, b) => (assignCount.get(a) ?? 0) - (assignCount.get(b) ?? 0));
+        const target = sorted[0];
+        if ((assignCount.get(target) ?? 0) >= MAX_PER_HAKUNA) return false;
+        assignCount.set(target, (assignCount.get(target) ?? 0) + 1);
+        inserts.push({ hakuna_id: target, participante_id: partId, motivo, prioridade: 1 });
+        return true;
       }
-      if (inserts.length === 0) throw new Error("Nenhum novo vínculo a criar");
-      const { error } = await supabase.from("hakuna_participante").insert(inserts);
-      if (error) throw error;
-      return inserts.length;
+
+      // Separate participants with and without comorbities
+      const withComorbidade: Participante[] = [];
+      const withoutComorbidade: Participante[] = [];
+      participantes.forEach((p) => {
+        if (p.doenca && p.doenca.trim().length > 0) withComorbidade.push(p);
+        else withoutComorbidade.push(p);
+      });
+
+      // 1) Assign comorbidity participants to specialists
+      for (const p of withComorbidade) {
+        const targetEsps = findCompatibleEspecialidades(p.doenca!);
+        let assigned = false;
+        for (const esp of targetEsps) {
+          const pool = medicosByEsp.get(esp);
+          if (pool && pool.length > 0) {
+            assigned = assignToPool(pool, p.id, `Comorbidade: ${p.doenca?.substring(0, 40)} → ${esp}`);
+            if (assigned) break;
+          }
+        }
+        // Fallback to Clínico Geral
+        if (!assigned) {
+          const cgPool = medicosByEsp.get("Clínico Geral") ?? [];
+          assigned = assignToPool(cgPool, p.id, `Comorbidade fallback: ${p.doenca?.substring(0, 40)}`);
+        }
+        // Fallback to general pool
+        if (!assigned) {
+          assignToPool(generalPool, p.id, `Distribuição geral (comorbidade sem especialista)`);
+        }
+      }
+
+      // 2) Distribute non-comorbidity participants to general pool
+      for (const p of withoutComorbidade) {
+        assignToPool(generalPool.length > 0 ? generalPool : [...hakunaServidorIds.keys()], p.id, "Distribuição geral");
+      }
+
+      if (inserts.length === 0) throw new Error("Nenhum vínculo a criar");
+
+      // Batch insert
+      const batchSize = 500;
+      for (let i = 0; i < inserts.length; i += batchSize) {
+        const batch = inserts.slice(i, i + batchSize);
+        const { error } = await supabase.from("hakuna_participante").insert(batch);
+        if (error) throw error;
+      }
+
+      return { total: inserts.length, hakunas: new Set(inserts.map((i) => i.hakuna_id)).size };
     },
-    onSuccess: (count) => { qc.invalidateQueries({ queryKey: ["hk-vinculos"] }); toast({ title: `${count} vínculo(s) criado(s)` }); },
-    onError: (e: any) => toast({ title: "Match", description: e.message, variant: "destructive" }),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["hk-vinculos"] });
+      toast({ title: `Match gerado! ${result.total} participantes vinculados a ${result.hakunas} Hakunas` });
+    },
+    onError: (e: any) => toast({ title: "Erro no Match", description: e.message, variant: "destructive" }),
+  });
+
+  function handleMatchClick() {
+    if (vinculos.length > 0) {
+      setMatchConfirmOpen(true);
+    } else {
+      matchMutation.mutate();
+    }
+  }
+
+  const editProfMutation = useMutation({
+    mutationFn: async () => {
+      if (!editHakunaId) return;
+      await supabase.from("hakunas").update({
+        profissao: editProfissao,
+        especialidade: editProfissao === "Médico" ? editEspecialidade : null,
+      }).eq("id", editHakunaId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hk-hakunas"] });
+      setEditHakunaId(null);
+      toast({ title: "Profissão atualizada" });
+    },
   });
 
   const unlinkMutation = useMutation({
@@ -165,6 +296,12 @@ export default function EquipeTab() {
     ? participantes.filter((p) => p.nome.toLowerCase().includes(searchPart.toLowerCase())).slice(0, 8)
     : [];
 
+  function openEditProfissao(h: Hakuna) {
+    setEditHakunaId(h.id);
+    setEditProfissao(h.profissao || "");
+    setEditEspecialidade(h.especialidade || "");
+  }
+
   return (
     <div className="space-y-4">
       {/* Cards */}
@@ -175,7 +312,7 @@ export default function EquipeTab() {
         ))}
       </div>
 
-      <Button variant="outline" className={isMobile ? "w-full" : ""} onClick={() => matchMutation.mutate()} disabled={matchMutation.isPending}>
+      <Button variant="outline" className={isMobile ? "w-full" : ""} onClick={handleMatchClick} disabled={matchMutation.isPending}>
         <Wand2 className="h-4 w-4 mr-1" /> Gerar Match Automático
       </Button>
 
@@ -196,10 +333,11 @@ export default function EquipeTab() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{s.nome}</p>
-                      <p className="text-sm text-muted-foreground">{h?.especialidade_medica ?? "—"}</p>
+                      <p className="text-sm text-muted-foreground">{getDisplayProfissao(h)}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Badge variant="secondary">{vList.length}</Badge>
+                      {h && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProfissao(h)}><Pencil className="h-4 w-4" /></Button>}
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(isExp ? null : s.id)}>
                         {isExp ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -219,7 +357,7 @@ export default function EquipeTab() {
               <TableRow>
                 <TableHead className="w-8" />
                 <TableHead>Nome</TableHead>
-                <TableHead>Especialidade</TableHead>
+                <TableHead>Profissão/Especialidade</TableHead>
                 <TableHead className="hidden md:table-cell">CRM/Registro</TableHead>
                 <TableHead className="hidden md:table-cell">Telefone</TableHead>
                 <TableHead className="text-center">Vinculados</TableHead>
@@ -245,12 +383,15 @@ export default function EquipeTab() {
                       </Button>
                     </TableCell>
                     <TableCell className="font-medium">{s.nome}</TableCell>
-                    <TableCell>{h?.especialidade_medica ?? "—"}</TableCell>
+                    <TableCell>{getDisplayProfissao(h)}</TableCell>
                     <TableCell className="hidden md:table-cell">{h?.crm || h?.registro_profissional || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
                     <TableCell className="text-center"><Badge variant="secondary">{vList.length}</Badge></TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
+                      <div className="flex justify-end gap-1">
+                        {h && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProfissao(h)}><Pencil className="h-4 w-4" /></Button>}
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedServidor(s)}><Eye className="h-4 w-4" /></Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -352,6 +493,57 @@ export default function EquipeTab() {
           </div>
         );
       })()}
+
+      {/* Edit Profissao Dialog */}
+      <Dialog open={!!editHakunaId} onOpenChange={(o) => { if (!o) setEditHakunaId(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Profissão</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Profissão *</Label>
+              <Select value={editProfissao} onValueChange={(v) => { setEditProfissao(v); if (v !== "Médico") setEditEspecialidade(""); }}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {PROFISSOES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {editProfissao === "Médico" && (
+              <div className="space-y-2">
+                <Label>Especialidade</Label>
+                <Select value={editEspecialidade} onValueChange={setEditEspecialidade}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {ESPECIALIDADES.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditHakunaId(null)}>Cancelar</Button>
+            <Button onClick={() => editProfMutation.mutate()} disabled={!editProfissao || editProfMutation.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Match Confirm Dialog */}
+      <AlertDialog open={matchConfirmOpen} onOpenChange={setMatchConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Refazer Match?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Já existem {vinculos.length} vínculos. Deseja refazer? Os vínculos anteriores serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setMatchConfirmOpen(false); matchMutation.mutate(); }}>
+              Refazer Match
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ServidorSheet servidor={selectedServidor} open={!!selectedServidor} onOpenChange={(o) => { if (!o) setSelectedServidor(null); }} />
     </div>

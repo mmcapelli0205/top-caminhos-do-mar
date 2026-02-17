@@ -64,6 +64,7 @@ export default function Participantes() {
   const [filterFamilia, setFilterFamilia] = useState("todos");
   const [filterContrato, setFilterContrato] = useState("todos");
   const [filterErgo, setFilterErgo] = useState("todos");
+  const [filterCidade, setFilterCidade] = useState("todos");
   const [sortKey, setSortKey] = useState<SortKey>("nome");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,9 +84,13 @@ export default function Participantes() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo]);
+  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo, filterCidade]);
 
-  useEffect(() => { setSelectedIds(new Set()); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo, currentPage]);
+  useEffect(() => { setSelectedIds(new Set()); }, [debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo, filterCidade, currentPage]);
+
+  const cidadesUnicas = useMemo(() => {
+    return [...new Set(participantes.map((p) => p.cidade).filter(Boolean))].sort() as string[];
+  }, [participantes]);
 
   const getFamiliaNumero = useCallback((fid: number | null) => {
     if (fid == null) return null;
@@ -108,8 +113,9 @@ export default function Participantes() {
     if (filterContrato === "sim") list = list.filter((p) => p.contrato_assinado);
     if (filterContrato === "nao") list = list.filter((p) => !p.contrato_assinado);
     if (filterErgo !== "todos") list = list.filter((p) => p.ergometrico_status === filterErgo);
+    if (filterCidade !== "todos") list = list.filter((p) => p.cidade === filterCidade);
     return list;
-  }, [participantes, debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo]);
+  }, [participantes, debouncedSearch, filterStatus, filterFamilia, filterContrato, filterErgo, filterCidade]);
 
   const sorted = useMemo(() => {
     const copy = [...filtered];
@@ -273,6 +279,17 @@ export default function Participantes() {
             <SelectItem value="dispensado">Dispensado</SelectItem>
           </SelectContent>
         </Select>
+        {cidadesUnicas.length > 0 && (
+          <Select value={filterCidade} onValueChange={setFilterCidade}>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas Cidades</SelectItem>
+              {cidadesUnicas.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Batch action bar */}
@@ -315,9 +332,10 @@ export default function Participantes() {
                     </div>
                     <Badge className={statusColors[p.status ?? "inscrito"] ?? ""}>{p.status ?? "inscrito"}</Badge>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    {age != null && <span>Idade: {age}</span>}
-                    {famNum != null && <span>Família: {famNum}</span>}
+                   {p.cidade && <p className="text-xs text-muted-foreground">{p.cidade}</p>}
+                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                     {age != null && <span>Idade: {age}</span>}
+                     {famNum != null && <span>Família: {famNum}</span>}
                     <span className="flex items-center gap-1">
                       Contrato: {p.contrato_assinado ? <CheckCircle className="h-3.5 w-3.5 text-green-400" /> : <XCircle className="h-3.5 w-3.5 text-red-400" />}
                     </span>
@@ -352,6 +370,7 @@ export default function Participantes() {
                 <TableHead className="cursor-pointer hidden md:table-cell" onClick={() => toggleSort("idade")}>Idade<SortIcon col="idade" /></TableHead>
                 <TableHead className="hidden md:table-cell">Telefone</TableHead>
                 <TableHead className="hidden lg:table-cell">Igreja</TableHead>
+                <TableHead className="hidden lg:table-cell">Cidade</TableHead>
                 <TableHead className="hidden md:table-cell cursor-pointer" onClick={() => toggleSort("familia")}>Família<SortIcon col="familia" /></TableHead>
                 <TableHead>Contrato</TableHead>
                 <TableHead className="hidden md:table-cell">Ergométrico</TableHead>
@@ -363,7 +382,7 @@ export default function Participantes() {
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                     Nenhum participante encontrado.
                   </TableCell>
                 </TableRow>
@@ -385,6 +404,7 @@ export default function Participantes() {
                       <TableCell className="hidden md:table-cell">{age ?? "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">{p.telefone ?? "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">{p.igreja ?? "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{p.cidade ?? "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">{famNum != null ? famNum : "—"}</TableCell>
                       <TableCell>
                         {p.contrato_assinado
