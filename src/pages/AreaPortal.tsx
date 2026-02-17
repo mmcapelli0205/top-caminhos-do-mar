@@ -138,8 +138,7 @@ export default function AreaPortal() {
     cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP;
   const canComment = cargo !== "servidor";
 
-  // Default tab for servidores comuns
-  const defaultTab = cargo === "servidor" ? "mural" : "painel";
+  const defaultTab = "painel";
 
   if (loadingArea) {
     return (
