@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { FileDown } from "lucide-react";
+import { FileDown, BarChart3 } from "lucide-react";
 import jsPDF from "jspdf";
+import RelatorioConsolidado from "./RelatorioConsolidado";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -43,6 +44,7 @@ const fmt = (v: number) =>
 const ResumoSection = () => {
   const [ticketPercent, setTicketPercent] = useState(10);
   const [globalPercent, setGlobalPercent] = useState(0);
+  const [showRelatorio, setShowRelatorio] = useState(false);
 
   const { data: participantes } = useQuery({
     queryKey: ["fin-participantes"],
@@ -109,9 +111,11 @@ const ResumoSection = () => {
     { name: "Despesas", valor: despesaTotal },
   ];
 
-  const categoryBadges = ALL_CATEGORIAS
-    .map((cat, i) => ({ cat, value: catMap.get(cat) ?? 0, colorIdx: i }))
-    .filter((c) => c.value > 0);
+  const categoryBadges = pieData.map((d, i) => ({
+    cat: d.name,
+    value: d.value,
+    colorIdx: i,
+  }));
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -151,14 +155,23 @@ const ResumoSection = () => {
     doc.save("balanco-financeiro-top1575.pdf");
   };
 
+  if (showRelatorio) {
+    return <RelatorioConsolidado onBack={() => setShowRelatorio(false)} />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with export */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Resumo Financeiro</h3>
-        <Button variant="outline" size="sm" onClick={exportPDF}>
-          <FileDown className="h-4 w-4 mr-1" /> Exportar PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowRelatorio(true)}>
+            <BarChart3 className="h-4 w-4 mr-1" /> Relatório Consolidado
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportPDF}>
+            <FileDown className="h-4 w-4 mr-1" /> Exportar PDF
+          </Button>
+        </div>
       </div>
 
       {/* Cards */}
