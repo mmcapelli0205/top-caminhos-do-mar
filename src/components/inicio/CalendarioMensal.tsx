@@ -113,7 +113,7 @@ export default function CalendarioMensal() {
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
 
   return (
-    <Card id="calendario-section">
+    <Card id="calendario-section" className="bg-slate-800/50 border-slate-600/30">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-primary" />

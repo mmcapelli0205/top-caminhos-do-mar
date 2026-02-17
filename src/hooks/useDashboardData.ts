@@ -34,7 +34,6 @@ export function useDashboardData() {
     },
   });
 
-
   const familiasQuery = useQuery({
     queryKey: ["dashboard-familias"],
     queryFn: async () => {
@@ -46,10 +45,40 @@ export function useDashboardData() {
     },
   });
 
-  const isLoading = participantesQuery.isLoading || familiasQuery.isLoading;
+  const servidoresQuery = useQuery({
+    queryKey: ["dashboard-servidores-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("servidores")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "ativo");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const avisosQuery = useQuery({
+    queryKey: ["dashboard-avisos-recentes"],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const { count, error } = await supabase
+        .from("area_avisos")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", sevenDaysAgo.toISOString());
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const isLoading =
+    participantesQuery.isLoading || familiasQuery.isLoading ||
+    servidoresQuery.isLoading || avisosQuery.isLoading;
 
   const participantes = participantesQuery.data ?? [];
   const familiasCount = familiasQuery.data ?? 0;
+  const totalServidores = servidoresQuery.data ?? 0;
+  const avisosRecentes = avisosQuery.data ?? 0;
 
   // KPI computations
   const ativos = participantes.filter((p) => p.status !== "cancelado");
@@ -95,6 +124,8 @@ export function useDashboardData() {
     familiasFormadas,
     familiasCount,
     participantesAlocados,
+    totalServidores,
+    avisosRecentes,
     ageData,
     statusData,
   };

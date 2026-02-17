@@ -56,30 +56,28 @@ export default function QuickActions({ userEmail }: Props) {
       className="cursor-pointer hover:scale-[1.02] transition-all border-border h-full"
       onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
     >
-      <CardContent className="flex items-center gap-4 p-8">
+      <CardContent className="flex flex-col items-center text-center p-6">
         {logoFile && !imgError ? (
           <img
             src={`${ASSET_BASE}${logoFile}`}
             alt={area}
-            className="h-24 w-24 md:h-32 md:w-32 object-contain shrink-0"
+            className="h-16 w-16 object-contain mx-auto"
             onError={() => setImgError(true)}
           />
         ) : (
           <div
-            className="h-24 w-24 md:h-32 md:w-32 rounded-full flex items-center justify-center shrink-0"
+            className="h-16 w-16 rounded-full flex items-center justify-center"
             style={{ backgroundColor: bgColor }}
           >
-            <span className="text-3xl md:text-4xl font-bold" style={{ color: textColor }}>
+            <span className="text-xl font-bold" style={{ color: textColor }}>
               {initials}
             </span>
           </div>
         )}
-        <div className="min-w-0">
-          <p className="font-bold text-lg text-foreground">{area}</p>
-          <p className="text-sm text-muted-foreground flex items-center gap-1">
-            Acessar minha área <ChevronRight className="h-4 w-4" />
-          </p>
-        </div>
+        <p className="font-bold text-xl text-foreground mt-2">{area}</p>
+        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+          Acessar minha área <ChevronRight className="h-4 w-4" />
+        </p>
       </CardContent>
     </Card>
   );

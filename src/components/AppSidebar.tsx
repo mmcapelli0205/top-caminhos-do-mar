@@ -4,6 +4,7 @@ import { getVisibleMenuItems } from "@/lib/auth";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -48,6 +49,13 @@ export function AppSidebar({ cargo, podeAprovar = false }: Props) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-4">
+        <img
+          src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Logo%20Legendarios.png"
+          alt="Legendários"
+          className="h-16 w-auto mx-auto opacity-60 group-data-[collapsible=icon]:h-8 transition-all"
+        />
+      </SidebarFooter>
     </Sidebar>
   );
 }
