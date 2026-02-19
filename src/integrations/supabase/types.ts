@@ -2557,6 +2557,7 @@ export type Database = {
           desceu: boolean | null
           desceu_em: string | null
           familia_id: number | null
+          grupo_tipo: string | null
           id: string
           observacao: string | null
           ordem: number | null
@@ -2573,6 +2574,7 @@ export type Database = {
           desceu?: boolean | null
           desceu_em?: string | null
           familia_id?: number | null
+          grupo_tipo?: string | null
           id?: string
           observacao?: string | null
           ordem?: number | null
@@ -2589,6 +2591,7 @@ export type Database = {
           desceu?: boolean | null
           desceu_em?: string | null
           familia_id?: number | null
+          grupo_tipo?: string | null
           id?: string
           observacao?: string | null
           ordem?: number | null
@@ -2627,6 +2630,7 @@ export type Database = {
       tirolesa_termo_aceite: {
         Row: {
           aceito_em: string | null
+          assinatura_base64: string | null
           created_at: string | null
           id: string
           participante_id: string | null
@@ -2638,6 +2642,7 @@ export type Database = {
         }
         Insert: {
           aceito_em?: string | null
+          assinatura_base64?: string | null
           created_at?: string | null
           id?: string
           participante_id?: string | null
@@ -2649,6 +2654,7 @@ export type Database = {
         }
         Update: {
           aceito_em?: string | null
+          assinatura_base64?: string | null
           created_at?: string | null
           id?: string
           participante_id?: string | null
