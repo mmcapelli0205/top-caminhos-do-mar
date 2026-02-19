@@ -53,6 +53,7 @@ import {
   FlaskConical,
   CheckCircle2,
   FileText,
+  Download,
 } from "lucide-react";
 import jsPDF from "jspdf";
 
@@ -95,9 +96,69 @@ export default function Tirolesa() {
   // Config / Termo
   const [showConfigTermo, setShowConfigTermo] = useState(false);
   const [textoTermo, setTextoTermo] = useState(
-    "Eu, participante, declaro estar ciente dos riscos da atividade de tirolesa e autorizo minha participação mediante avaliação física prévia. Declaro que fui informado sobre as restrições de peso e condições de saúde necessárias para a prática segura da atividade."
+    `TERMO INFORMAÇÕES IMPORTANTES E CONHECIMENTO DE RISCOS E RESPONSABILIDADES - TIROLESA – VOO DA SERRA
+
+Este Termo está em conformidade com a Política de Segurança da MSV AVENTURA LTDA – Tirolesa Voo da Serra e com a ABNT NBR ISO 21101 – Turismo de Aventura (Requisito 6.1.3).
+
+LEIA ATENTAMENTE E REPASSE AS INFORMAÇÕES AOS ACOMPANHANTES:
+
+ORIENTAÇÕES GERAIS
+• Antes da atividade, todos os participantes receberão instruções técnicas e de segurança, que devem ser rigorosamente seguidas.
+• A atividade ocorre exclusivamente em locais autorizados, com uso obrigatório dos equipamentos de proteção individual e coletivo.
+• A MSV AVENTURA LTDA é responsável pela operação, contando com equipe treinada para gestão de riscos, auto resgate e primeiros socorros.
+• Os condutores devem ser respeitados e suas orientações seguidas para a segurança de todos.
+
+CIÊNCIA E RESPONSABILIDADES DO PARTICIPANTE
+• Comprometo-me a seguir todas as orientações da equipe operacional.
+• Estou ciente da disponibilização de seguro facultativo e equipamentos de proteção em condições adequadas de uso.
+• Declaro que minhas informações de saúde e condições físicas são verdadeiras, responsabilizando-me por dados omitidos ou incorretos.
+• Reconheço que a atividade pode ser adiada, alterada ou cancelada por motivos de segurança, sem direito a reembolso em caso de cancelamento ou desistência.
+• Estou ciente dos riscos inerentes a prática da atividade em ambiente natural, tais como: quedas, escorregões, picadas de animais, insolação, hipotermia, intempéries climáticas, mal súbito, entre outros.
+• Condições climáticas adversas podem ocasionar a suspensão ou encerramento imediato da atividade.
+• O não cumprimento das orientações implica responsabilidade integral do participante por eventuais danos a si ou a terceiros.
+
+CONDUTA E PREPARO
+• Atividades de aventura envolvem riscos controlados e exigem disposição, atenção e espírito colaborativo.
+• Utilizar roupas confortáveis e calçados fechados e adequados.
+• Manter conduta respeitosa com a equipe e demais participantes.
+
+MENORES DE IDADE
+• Autorizo, quando aplicável, a descida dupla de menores, estando ciente das regras e procedimentos de segurança.
+• Assumo total responsabilidade por condutas inadequadas do menor e por eventuais danos decorrentes.
+• Menores que recusarem a descida serão conduzidos com segurança pela equipe até seus responsáveis.
+
+COMUNICAÇÃO
+• Qualquer situação não prevista neste Termo deverá ser comunicada imediatamente à equipe da Tirolesa – Voo da Serra.
+
+CONDIÇÕES DA ATIVIDADE
+• Atividade: Tirolesa Voo da Serra
+• Peso Mínimo: 35 kg (voo exclusivo)
+• Peso Máximo: 120 kg (individual) e 170 kg (duplo)
+• Idade Mínima: a partir de 8 anos (voo exclusivo) a partir de 5 anos (voo duplo – acompanhado de um participante acima de 18 anos).
+• Obrigatório: uso de calçado fechado
+• Altura mínima: 1 metro
+
+DECLARAÇÃO
+Declaro que estou fisicamente e mentalmente apto, li e aceito todas as condições deste Termo, estando ciente dos riscos e responsabilidades inerentes à atividade. Reconheço que a MSV AVENTURA LTDA e seus colaboradores não se responsabilizam por eventos de caso fortuito, força maior ou pelo descumprimento das orientações de segurança.
+
+Declaro ainda estar ciente e de acordo com o uso e armazenamento dos meus dados pessoais, conforme a LGPD (Lei nº 13.709/2018) e demais normas legais aplicáveis.`
   );
   const [savingTermo, setSavingTermo] = useState(false);
+
+  // Briefing Prévio (local, sem persistência)
+  const BRIEFING_ITEMS = [
+    { id: "voo_ind", categoria: "INFORMAÇÕES SOBRE A ATIVIDADE", texto: "Informar sobre voo individual: a partir de 8 anos, peso mínimo 35kg, peso máximo 120kg" },
+    { id: "voo_dup", categoria: "INFORMAÇÕES SOBRE A ATIVIDADE", texto: "Informar sobre voo duplo: a partir de 5 anos, acompanhado de maior de 18 anos, peso máximo combinado 170kg" },
+    { id: "restrict", categoria: "RESTRIÇÕES DE SAÚDE", texto: "Verificar restrições: hipertensão, fobia de altura, problemas cardíacos, dificuldades respiratórias, desmaios/convulsões, efeito de álcool/entorpecentes, parte do corpo imobilizada, pós-operatório, suspeita de gestação/gestante" },
+    { id: "roupas", categoria: "VESTIMENTA E EQUIPAMENTOS", texto: "Orientar sobre roupas confortáveis e calçados fechados (não é permitido sem blusa)" },
+    { id: "balanca", categoria: "VESTIMENTA E EQUIPAMENTOS", texto: "Informar sobre pesagem obrigatória em balança antes da atividade (peso total incluindo mochilas, acessórios e vestimentas)" },
+    { id: "termo", categoria: "TERMO DE RESPONSABILIDADE", texto: "Garantir que o participante faça o aceite e assine o Termo de forma digital" },
+    { id: "proibidos", categoria: "PERTENCES NÃO PERMITIDOS NA DESCIDA", texto: "Orientar sobre itens proibidos: piercing no umbigo, brincos grandes, colares, pulseiras com pingentes, relógio, mochilas grandes, pochetes, bags, bolsas de lado, pertences nos bolsos (mesmo com zíper), celulares e câmeras sem suporte adequado" },
+    { id: "sacolinha", categoria: "PERTENCES NÃO PERMITIDOS NA DESCIDA", texto: "Oferecer sacochila para itens pequenos (devolver na desequipagem)" },
+    { id: "permitidos", categoria: "PERTENCES PERMITIDOS NA DESCIDA", texto: "Informar itens permitidos: mochilas pequenas, sacochilas, brincos pequenos, óculos de grau/sol (bem presos), celulares e câmeras com suporte adequado" },
+  ];
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [briefingChecked, setBriefingChecked] = useState<Set<string>>(new Set());
 
   // Match Manual de Solos
   const [showMatchManual, setShowMatchManual] = useState(false);
@@ -597,6 +658,70 @@ export default function Tirolesa() {
 
   const isLoading = loadingParts || duplasQuery.isLoading;
 
+  // TODO: Substituir exportação CSV por webhook quando API da MSV Aventura estiver disponível
+  const getTermosAceitosData = async () => {
+    const { data: termoRows } = await (supabase.from("tirolesa_termo_aceite" as any) as any)
+      .select("*")
+      .eq("status", "aceito")
+      .eq("top_id", topId);
+
+    if (!termoRows || termoRows.length === 0) return [];
+
+    const { data: partsData } = await supabase
+      .from("participantes")
+      .select("id, nome, cpf, telefone, email, peso, altura, data_nascimento")
+      .in("id", termoRows.map((t: any) => t.participante_id));
+
+    const partByIdMap = new Map((partsData ?? []).map((p: any) => [p.id, p]));
+
+    return termoRows.map((t: any) => {
+      const p = partByIdMap.get(t.participante_id) ?? {};
+      return {
+        nome: (p as any).nome ?? "",
+        cpf: (p as any).cpf ?? "",
+        telefone: (p as any).telefone ?? "",
+        email: (p as any).email ?? "",
+        peso_kg: (p as any).peso ?? "",
+        altura_m: (p as any).altura ?? "",
+        data_nascimento: (p as any).data_nascimento ?? "",
+        status_termo: t.status,
+        data_aceite: t.aceito_em ? new Date(t.aceito_em).toLocaleString("pt-BR") : "",
+        servidor: t.registrado_por_nome ?? "",
+        assinatura_base64: t.assinatura_base64 ?? "",
+      };
+    });
+  };
+
+  const handleExportarCSV = async () => {
+    if (!topId) return;
+    try {
+      const rows = await getTermosAceitosData();
+      if (rows.length === 0) {
+        toast({ title: "Nenhum termo aceito para exportar" });
+        return;
+      }
+      const headers = ["Nome Completo", "CPF", "Telefone", "E-mail", "Peso (kg)", "Altura (m)", "Data Nascimento", "Status Termo", "Data/Hora Aceite", "Servidor que Registrou", "Assinatura (base64)"];
+      const csvContent = [
+        headers.join(";"),
+        ...rows.map((r) => Object.values(r).map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";")),
+      ].join("\n");
+
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const datePart = new Date().toISOString().split("T")[0];
+      link.href = url;
+      link.setAttribute("download", `termos_tirolesa_TOP1575_${datePart}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: `✅ CSV exportado com ${rows.length} termos aceitos!` });
+    } catch (e: any) {
+      toast({ title: "Erro ao exportar CSV", variant: "destructive" });
+    }
+  };
+
   // Grupos efetivos para exibição
   const gruposEfetivosDisplay = useMemo(() => {
     if (modoAtivo === "simulacao" && simulacaoResult) {
@@ -657,6 +782,14 @@ export default function Tirolesa() {
           )}
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportarCSV}
+            disabled={!topId}
+          >
+            <Download className="h-4 w-4 mr-1" /> Exportar Termos (CSV)
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -788,6 +921,64 @@ export default function Tirolesa() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Configuração de Agrupamento */}
+      {/* Briefing Prévio */}
+      <Card>
+        <CardHeader className="p-4 pb-2">
+          <button
+            className="flex items-center justify-between w-full text-left"
+            onClick={() => setShowBriefing((v) => !v)}
+          >
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Briefing Prévio
+              {briefingChecked.size === BRIEFING_ITEMS.length && (
+                <Badge className="text-xs bg-green-500/20 text-green-700 border-green-300">✅ Briefing Completo</Badge>
+              )}
+              <span className="text-xs font-normal text-muted-foreground">
+                ({briefingChecked.size}/{BRIEFING_ITEMS.length} itens)
+              </span>
+            </CardTitle>
+            {showBriefing ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </CardHeader>
+        {showBriefing && (
+          <CardContent className="p-4 pt-0 space-y-4">
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setBriefingChecked(new Set(BRIEFING_ITEMS.map(i => i.id)))}>
+                Marcar todos
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setBriefingChecked(new Set())}>
+                Limpar
+              </Button>
+            </div>
+            {Array.from(new Set(BRIEFING_ITEMS.map(i => i.categoria))).map(cat => (
+              <div key={cat} className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{cat}</p>
+                {BRIEFING_ITEMS.filter(i => i.categoria === cat).map(item => (
+                  <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                    <Checkbox
+                      id={`briefing-${item.id}`}
+                      checked={briefingChecked.has(item.id)}
+                      onCheckedChange={(v) => {
+                        setBriefingChecked(prev => {
+                          const next = new Set(prev);
+                          if (v) next.add(item.id); else next.delete(item.id);
+                          return next;
+                        });
+                      }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <label htmlFor={`briefing-${item.id}`} className={`text-sm cursor-pointer leading-snug ${briefingChecked.has(item.id) ? "line-through text-muted-foreground" : ""}`}>
+                      {item.texto}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Configuração de Agrupamento */}
       <Card>
