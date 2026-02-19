@@ -10,6 +10,7 @@ import {
   Settings,
   UserCheck,
   Radio,
+  Map,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -54,6 +55,7 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 10, title: "Configurações", url: "/configuracoes", icon: Settings },
   { id: 12, title: "Aprovações", url: "/aprovacoes", icon: UserCheck },
   { id: 13, title: "TOP Real Time", url: "/top-real-time", icon: Radio },
+  { id: 14, title: "Mapa da Trilha", url: "/kmz", icon: Map },
 ];
 
 export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): MenuItem[] {
@@ -66,27 +68,26 @@ export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): 
       items = ALL_MENU_ITEMS.filter((item) => ![12].includes(item.id));
       break;
 
-
     // Radar visible to coordenacao+ roles
 
     case "coordenacao":
     case "coord02":
     case "coord03":
       items = ALL_MENU_ITEMS.filter((item) =>
-        [1, 2, 4, 6, 8, 9, 13].includes(item.id)
+        [1, 2, 4, 6, 8, 9, 13, 14].includes(item.id)
       );
       break;
 
     case "sombra":
-      items = ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
+      items = ALL_MENU_ITEMS.filter((item) => [1, 8, 14].includes(item.id));
       break;
 
     case "servidor":
-      items = ALL_MENU_ITEMS.filter((item) => [1, 8].includes(item.id));
+      items = ALL_MENU_ITEMS.filter((item) => [1, 8, 14].includes(item.id));
       break;
 
     default:
-      items = ALL_MENU_ITEMS.filter((item) => [1].includes(item.id));
+      items = ALL_MENU_ITEMS.filter((item) => [1, 14].includes(item.id));
   }
 
   if (podeAprovar) {
