@@ -6,10 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Phone, Thermometer, Droplets, Heart, Pill, ClipboardList, Clock, Search } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Camera, Phone, Thermometer, Droplets, Heart, Pill, ClipboardList, Clock, Search, FileText } from "lucide-react";
 import { maskCPF } from "@/lib/cpf";
 import type { Participante } from "@/hooks/useParticipantes";
 
@@ -64,6 +72,13 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
 
   const [manualCodigo, setManualCodigo] = useState("");
   const [manualCpf, setManualCpf] = useState("");
+
+  // Termo de Responsabilidade
+  const [termoStatus, setTermoStatus] = useState<"pendente" | "aceito" | "recusado" | null>(null);
+  const [termoDialogOpen, setTermoDialogOpen] = useState(false);
+  const [termoTexto, setTermoTexto] = useState("Eu, participante, declaro estar ciente dos riscos da atividade de tirolesa e autorizo minha participação mediante avaliação física prévia.");
+  const [termoCheckbox, setTermoCheckbox] = useState(false);
+  const [savingTermo, setSavingTermo] = useState(false);
 
   const cachedParticipantes = useRef<Participante[]>([]);
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -124,6 +139,22 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
     setHistorico(data ?? []);
   };
 
+  // Carregar texto do termo e status do participante
+  const loadTermoData = async (participanteId: string) => {
+    // Texto do termo (config)
+    const { data: cfgData } = await (supabase.from("tirolesa_config" as any) as any).select("texto_termo").limit(1).maybeSingle();
+    if (cfgData?.texto_termo) setTermoTexto(cfgData.texto_termo);
+
+    // Status do termo para este participante
+    const { data: termoData } = await (supabase.from("tirolesa_termo_aceite" as any) as any)
+      .select("status")
+      .eq("participante_id", participanteId)
+      .limit(1)
+      .maybeSingle();
+    setTermoStatus(termoData?.status ?? "pendente");
+    setTermoCheckbox(false);
+  };
+
   const lookupParticipante = async (codigo: string) => {
     let found: Participante | null = null;
     if (isOnline) {
@@ -136,6 +167,7 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
     setNotFound(false);
     setParticipante(found);
     resetProntuario();
+    setTermoStatus(null);
 
     if (isOnline) {
       const { data: hp } = await supabase
@@ -151,6 +183,7 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
 
       if (servidor) loadMedications(servidor.id);
       loadHistorico(found.id);
+      loadTermoData(found.id);
     }
   };
 
@@ -182,6 +215,7 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
     setNotFound(false);
     setParticipante(found);
     resetProntuario();
+    setTermoStatus(null);
     if (isOnline) {
       const { data: hp } = await supabase
         .from("hakuna_participante")
@@ -195,6 +229,7 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
       } else setHakuna(null);
       if (servidor) loadMedications(servidor.id);
       loadHistorico(found.id);
+      loadTermoData(found.id);
     }
   };
 
@@ -283,6 +318,32 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
       toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSalvarTermo = async (novoStatus: "aceito" | "recusado") => {
+    if (!participante) return;
+    setSavingTermo(true);
+    try {
+      await (supabase.from("tirolesa_termo_aceite" as any) as any).upsert({
+        participante_id: participante.id,
+        top_id: participante.top_id ?? null,
+        status: novoStatus,
+        registrado_por: userId ?? null,
+        registrado_por_nome: servidor?.nome ?? null,
+        aceito_em: novoStatus === "aceito" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "participante_id,top_id" });
+      setTermoStatus(novoStatus);
+      setTermoDialogOpen(false);
+      setTermoCheckbox(false);
+      toast({
+        title: novoStatus === "aceito" ? "✅ Termo aceito registrado!" : "❌ Recusa do termo registrada.",
+      });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar termo", variant: "destructive" });
+    } finally {
+      setSavingTermo(false);
     }
   };
 
@@ -400,11 +461,46 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
             </Card>
           )}
 
+          {/* SEÇÃO: TERMO DE RESPONSABILIDADE DA TIROLESA */}
+          <Card className={
+            termoStatus === "aceito"
+              ? "border-green-500/50 bg-green-500/5"
+              : termoStatus === "recusado"
+              ? "border-destructive/50 bg-destructive/5"
+              : "border-border bg-muted/30"
+          }>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Tirolesa — Termo de Responsabilidade
+                </p>
+                {termoStatus === "aceito" && (
+                  <Badge className="bg-green-600 text-white text-xs">✅ Aceito</Badge>
+                )}
+                {termoStatus === "recusado" && (
+                  <Badge variant="destructive" className="text-xs">❌ Recusado</Badge>
+                )}
+                {(termoStatus === "pendente" || termoStatus === null) && (
+                  <Badge variant="outline" className="text-xs text-muted-foreground">⏳ Pendente</Badge>
+                )}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => { setTermoCheckbox(false); setTermoDialogOpen(true); }}
+              >
+                <FileText className="h-4 w-4 mr-2" /> Abrir Termo de Responsabilidade
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* SEÇÃO 2: PRONTUÁRIO */}
           <Card>
             <CardContent className="p-4">
               <p className="text-lg font-bold flex items-center gap-2 mb-4">
                 <ClipboardList className="h-5 w-5" /> Prontuário de Atendimento
+
               </p>
               <Tabs defaultValue="registrar">
                 <TabsList className="w-full">
@@ -549,11 +645,59 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
             </CardContent>
           </Card>
 
-          <Button onClick={() => { setParticipante(null); setHakuna(null); setHistorico([]); }} className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700">
+          <Button
+            onClick={() => { setParticipante(null); setHakuna(null); setHistorico([]); setTermoStatus(null); }}
+            className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700"
+          >
             <Camera className="h-5 w-5 mr-2" /> Bipar Outra Pulseira
           </Button>
         </div>
       )}
+
+      {/* Dialog: Termo de Responsabilidade */}
+      <Dialog open={termoDialogOpen} onOpenChange={setTermoDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" /> Termo de Responsabilidade — Tirolesa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-4 py-2">
+            <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">
+              {termoTexto}
+            </div>
+            <div className="flex items-start gap-3 p-3 border rounded-lg">
+              <Checkbox
+                id="termo-checkbox"
+                checked={termoCheckbox}
+                onCheckedChange={(v) => setTermoCheckbox(!!v)}
+                className="mt-0.5"
+              />
+              <label htmlFor="termo-checkbox" className="text-sm cursor-pointer leading-snug">
+                O participante <strong>{participante?.nome}</strong> leu e aceita o Termo de Responsabilidade da Tirolesa.
+              </label>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="border-destructive text-destructive hover:bg-destructive/10 flex-1"
+              onClick={() => handleSalvarTermo("recusado")}
+              disabled={savingTermo}
+            >
+              ❌ Recusar Termo
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white flex-1"
+              disabled={!termoCheckbox || savingTermo}
+              onClick={() => handleSalvarTermo("aceito")}
+            >
+              ✅ Confirmar Aceite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
