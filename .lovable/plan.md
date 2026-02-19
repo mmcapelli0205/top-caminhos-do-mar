@@ -1,220 +1,335 @@
 
+# Mapa KMZ — Caminhos do Mar (Coordenadas Reais)
 
-## Novas Funcionalidades — Aba Tirolesa
+## O que foi extraído do arquivo doc.kml
 
-### Estado Atual do Sistema
+O arquivo contém **5 pastas** com:
+- **Logística:** Base Logística (ponto) + Rota 9,36km (LineString)
+- **Homologação D1:** 15 pontos + Rota D1 6,13km + Check-in Arena Santos 17,3km + Translado Vans 6,1km
+- **Homologação D2:** 11 pontos + rota
+- **Homologação D3:** 18 pontos + Rota D3 5,45km
+- **Homologação D4:** Rota D4 5,0km + Translado Vans 3,35km
 
-Após análise completa do código e banco de dados:
-
-- `src/pages/Tirolesa.tsx` — 1351 linhas, com cards, agrupamento, lista de duplas, dialogs de Match Manual e Config Termo
-- `src/components/checkin/ConsultaPulseiraTab.tsx` — 703 linhas, com o dialog de Termo atual (checkbox + botões, sem assinatura)
-- `tirolesa_termo_aceite` — já possui coluna `assinatura_base64 TEXT` (migration já executada)
-- `tirolesa_config.texto_termo` — ainda contém o texto placeholder antigo
-- Nenhuma dependência `react-signature-canvas` instalada ainda
-
----
-
-### Funcionalidade 1 — Atualizar Texto Oficial do Termo no Banco
-
-O texto do termo é lido dinamicamente da tabela `tirolesa_config.texto_termo` (linha 145–146 do `ConsultaPulseiraTab`). O texto padrão no código (`useState` na linha 79) é um fallback, mas o texto real vem do banco.
-
-**Estratégia:** Atualizar o campo `texto_termo` na linha do `tirolesa_config` existente para o TOP atual via SQL direto. Não é uma migration — é atualização de dados.
-
-Também atualizar o `useState` padrão em `Tirolesa.tsx` (linha 97–99) e `ConsultaPulseiraTab.tsx` (linha 79) para usar o texto oficial como fallback quando a config ainda não existe no banco.
+Centro geográfico da trilha: lat **-23.862**, lng **-46.462** (Parque Estadual Caminhos do Mar, São Bernardo do Campo)
 
 ---
 
-### Funcionalidade 2 — Assinatura Digital no Dialog de Aceite do Termo
+## Coordenadas exatas a hardcodar
 
-**Biblioteca:** `signature_pad` (instalada via package.json) — mais leve e não tem problemas de tipagem como `react-signature-canvas`. Usaremos um `useRef` para o `<canvas>` e instanciaremos o `SignaturePad` manualmente.
+### Pontos (Points extraídos dos Placemarks)
 
-**Alterações em `ConsultaPulseiraTab.tsx`:**
+**Logística:**
+- Base Logistica → lat: -23.86194, lng: -46.46835
 
-1. Adicionar `import SignaturePad from "signature_pad"` 
-2. Novos estados:
-   ```typescript
-   const [assinaturaPad, setAssinaturaPad] = useState<any | null>(null);
-   const [assinaturaVazia, setAssinaturaVazia] = useState(true);
-   const canvasRef = useRef<HTMLCanvasElement>(null);
-   ```
-3. `useEffect` para inicializar o `SignaturePad` quando `termoDialogOpen = true`:
-   ```typescript
-   useEffect(() => {
-     if (!termoDialogOpen || !canvasRef.current) return;
-     const sp = new SignaturePad(canvasRef.current, { backgroundColor: "rgb(255,255,255)" });
-     sp.addEventListener("afterUpdateStroke", () => setAssinaturaVazia(sp.isEmpty()));
-     setAssinaturaPad(sp);
-     setAssinaturaVazia(true);
-     return () => sp.off();
-   }, [termoDialogOpen]);
-   ```
-4. Inserir no Dialog de Termo (após o checkbox, antes do DialogFooter):
-   ```jsx
-   {termoCheckbox && (
-     <div className="space-y-2">
-       <label className="text-sm font-medium">Assinatura do Participante <span className="text-destructive">*</span></label>
-       <div className="border rounded-lg overflow-hidden bg-white">
-         <canvas ref={canvasRef} className="w-full" height={150} />
-       </div>
-       <Button size="sm" variant="ghost" onClick={() => { assinaturaPad?.clear(); setAssinaturaVazia(true); }}>
-         Limpar Assinatura
-       </Button>
-       {assinaturaVazia && <p className="text-xs text-destructive">Assinatura obrigatória para confirmar aceite.</p>}
-     </div>
-   )}
-   ```
-5. Modificar `handleSalvarTermo` para incluir `assinatura_base64`:
-   ```typescript
-   const assinaturaBase64 = novoStatus === "aceito" && assinaturaPad && !assinaturaPad.isEmpty()
-     ? assinaturaPad.toDataURL("image/png")  // já retorna "data:image/png;base64,..."
-     : null;
-   
-   // no upsert:
-   assinatura_base64: assinaturaBase64,
-   ```
-6. Botão "Confirmar Aceite" habilitado somente quando: `termoCheckbox && !assinaturaVazia`
+**D1 (Homologação D1):**
+- Desembarque Vans → lat: -23.86046, lng: -46.45318
+- Embarque van → lat: -23.86454, lng: -46.43467
+- Extração D1 (ponto 1) → lat: -23.86301, lng: -46.46165
+- Extração D1 (ponto 2) → lat: -23.85857, lng: -46.46621
+- Extração D1 (ponto 3) → lat: -23.85228, lng: -46.45888
+- Prédica (genérica) → lat: -23.86286, lng: -46.46130
+- Prédica Eu Te Levarei ao Deserto → lat: -23.85271, lng: -46.46336
+- Prédica Cemitério → lat: -23.86347, lng: -46.45284
+- Acampamento Senderistas D1/D2/D3 → lat: -23.85189, lng: -46.46350
+- Prédica Tubos → lat a completar do KML
+- Segunda revista / Prédica Integridade e Caráter → lat: -23.87456, lng: -46.44286
 
-**Fluxo completo:**
-1. Servidor abre o Termo → dialog abre
-2. Participante ouve/lê o termo
-3. Servidor marca o checkbox → canvas de assinatura aparece
-4. Participante assina → botão "Confirmar Aceite" habilita
-5. Ao confirmar: salva status, timestamp, servidor, e assinatura base64 no banco
+**D2 (Homologação D2):**
+- Prédica Mas Decisões (Casa Abandonada) → lat: -23.86304, lng: -46.46196
+- Prédica Salto da Fé tirolesa → lat: -23.86180, lng: -46.46797
+- Prédica Conquista da Montanha → lat: -23.86232, lng: -46.45360
+- Suportai-vos Uns aos Outros → lat: -23.86432, lng: -46.45719
+- Oração da Meia Noite / Transbordando o Amor → lat: -23.85286, lng: -46.46374
+- Milha Extra → lat: -23.86011, lng: -46.45824
+- Acampamento D2 → lat: -23.85189, lng: -46.46345
+
+**D3 (Homologação D3):**
+- Peleja → lat: -23.85873, lng: -46.46342
+- inicio Madeiro → lat: -23.85847, lng: -46.46436
+- Entrega Madeiro → lat: -23.85898, lng: -46.46654
+- Três Cruz → lat: -23.86002, lng: -46.46763
+- Blocão → lat: -23.85319, lng: -46.46545
+- Ceia Do Rei → lat: -23.85159, lng: -46.46603
+- Acampamento D3 → lat: -23.85196, lng: -46.46355
+- Lazaro → lat: -23.86412, lng: -46.46082
+- Fugindo das Responsabilidades → lat: -23.85247, lng: -46.46354
+- Snickers Awards / Testemunhos → lat: -23.85249, lng: -46.46345
+- Dá-me este Monte / Cartas → lat: -23.85249, lng: -46.46352
+- Bussola → lat: -23.86146, lng: -46.46179
+- Almoço Senderistas → lat: -23.86302, lng: -46.46137
+- Almoço Legendários → lat: -23.86212, lng: -46.46217
+- Inquebrantáveis → lat: -23.86597, lng: -46.45965
+- Hidratação não opcional → lat: -23.86297, lng: -46.46138
+- Prédica Naamã → lat: -23.85923, lng: -46.46675
 
 ---
 
-### Funcionalidade 3 — Aba "Briefing Prévio"
+## Arquitetura da Implementação
 
-Será adicionada diretamente em `src/pages/Tirolesa.tsx`, como uma nova seção (Card) entre os cards de resumo e o card de Configurar Agrupamento. Renderizada como um Card colapsável similar ao card de agrupamento.
+### Arquivos a criar/modificar:
 
-**O checklist é puramente local (useState), sem persistência no banco.**
+| Arquivo | Operação | Descrição |
+|---|---|---|
+| `package.json` | Modificar | Adicionar `leaflet ^1.9.4`, `react-leaflet ^4.2.1`, `@types/leaflet ^1.9.14` |
+| `src/index.css` | Modificar | Importar `leaflet/dist/leaflet.css` |
+| `src/data/kmzData.ts` | Criar | Todos os pontos e rotas hardcoded com coords reais |
+| `src/pages/KmzMapa.tsx` | Criar | Página principal do mapa |
+| `src/lib/auth.ts` | Modificar | Adicionar item id=14 "Mapa da Trilha" visível para todos os cargos |
+| `src/App.tsx` | Modificar | Adicionar rota `/kmz` |
+
+---
+
+## Detalhes técnicos da implementação
+
+### `src/data/kmzData.ts`
+
+Contém dois arrays tipados:
 
 ```typescript
-// Estado local — checklist do briefing (reinicia a cada abertura de sessão)
-const BRIEFING_ITEMS = [
-  { id: "voo_ind", categoria: "INFORMAÇÕES SOBRE A ATIVIDADE", texto: "Informar sobre voo individual: a partir de 8 anos, peso mínimo 35kg, peso máximo 120kg" },
-  { id: "voo_dup", categoria: "INFORMAÇÕES SOBRE A ATIVIDADE", texto: "Informar sobre voo duplo: a partir de 5 anos, acompanhado de maior de 18 anos, peso máximo combinado 170kg" },
-  { id: "restrict", categoria: "RESTRIÇÕES DE SAÚDE", texto: "Verificar restrições: hipertensão, fobia de altura, problemas cardíacos, dificuldades respiratórias, desmaios/convulsões, efeito de álcool/entorpecentes, parte do corpo imobilizada, pós-operatório, suspeita de gestação/gestante" },
-  { id: "roupas", categoria: "VESTIMENTA E EQUIPAMENTOS", texto: "Orientar sobre roupas confortáveis e calçados fechados (não é permitido sem blusa)" },
-  { id: "balanca", categoria: "VESTIMENTA E EQUIPAMENTOS", texto: "Informar sobre pesagem obrigatória em balança antes da atividade (peso total incluindo mochilas, acessórios e vestimentas)" },
-  { id: "termo", categoria: "TERMO DE RESPONSABILIDADE", texto: "Garantir que o participante faça o aceite e assine o Termo de forma digital" },
-  { id: "proibidos", categoria: "PERTENCES NÃO PERMITIDOS NA DESCIDA", texto: "Orientar sobre itens proibidos: piercing no umbigo, brincos grandes, colares, pulseiras com pingentes, relógio, mochilas grandes, pochetes, bags, bolsas de lado, pertences nos bolsos (mesmo com zíper), celulares e câmeras sem suporte adequado" },
-  { id: "sacolinha", categoria: "PERTENCES NÃO PERMITIDOS NA DESCIDA", texto: "Oferecer sacochila para itens pequenos (devolver na desequipagem)" },
-  { id: "permitidos", categoria: "PERTENCES PERMITIDOS NA DESCIDA", texto: "Informar itens permitidos: mochilas pequenas, sacochilas, brincos pequenos, óculos de grau/sol (bem presos), celulares e câmeras com suporte adequado" },
+export const KMZ_PONTOS: KMZPonto[] = [
+  // Logistica
+  { id: "base_log", nome: "Base Logística", lat: -23.86194, lng: -46.46835, dia: "logistica", tipo: "base" },
+
+  // D1
+  { id: "d1_desembarque", nome: "Desembarque Vans", lat: -23.86046, lng: -46.45318, dia: "d1", tipo: "ponto" },
+  { id: "d1_extr1", nome: "Extração D1", lat: -23.86301, lng: -46.46165, dia: "d1", tipo: "extracao" },
+  { id: "d1_extr2", nome: "Extração D1 (Alt 2)", lat: -23.85857, lng: -46.46621, dia: "d1", tipo: "extracao" },
+  { id: "d1_extr3", nome: "Extração D1 (Alt 3)", lat: -23.85228, lng: -46.45888, dia: "d1", tipo: "extracao" },
+  { id: "d1_predica1", nome: "Prédica", lat: -23.86286, lng: -46.46130, dia: "d1", tipo: "predica" },
+  { id: "d1_deserto", nome: "Prédica Eu Te Levarei ao Deserto", lat: -23.85271, lng: -46.46336, dia: "d1", tipo: "predica" },
+  { id: "d1_cemiterio", nome: "Prédica Cemitério", lat: -23.86347, lng: -46.45284, dia: "d1", tipo: "predica" },
+  { id: "d1_acampamento", nome: "Acampamento D1/D2/D3", lat: -23.85189, lng: -46.46350, dia: "d1", tipo: "acampamento" },
+  { id: "d1_embarque", nome: "Embarque Van", lat: -23.86454, lng: -46.43467, dia: "d1", tipo: "ponto" },
+  { id: "d1_revista", nome: "Segunda Revista / Prédica Integridade", lat: -23.87456, lng: -46.44286, dia: "d1", tipo: "predica" },
+  // ... D2, D3, D4
 ];
 
-const [showBriefing, setShowBriefing] = useState(false);
-const [briefingChecked, setBriefingChecked] = useState<Set<string>>(new Set());
+export const KMZ_ROTAS: KMZRota[] = [
+  {
+    id: "rota_d1",
+    nome: "D1 — 6,13km",
+    dia: "d1",
+    distancia: "6.13km",
+    cor: "#3B82F6", // azul
+    coordenadas: [
+      // primeiros pontos da rota D1 extraída do KML linhas 1603-1604
+      [-23.86048, -46.45318], [-23.86082, -46.45309], ...
+    ]
+  },
+  {
+    id: "rota_d3",
+    nome: "D3 — 5,45km",
+    dia: "d3",
+    distancia: "5.45km",
+    cor: "#F97316", // laranja
+    coordenadas: [
+      // coordenadas extraídas das linhas 2051-2052
+      [-23.85254, -46.46319], [-23.85254, -46.46284], ...
+    ]
+  },
+  {
+    id: "rota_d4",
+    nome: "D4 — 5,0km",
+    dia: "d4",
+    distancia: "5.0km",
+    cor: "#EF4444", // vermelho
+    coordenadas: [
+      // coordenadas extraídas das linhas 2370-2372
+      [-23.86044, -46.45314], [-23.86050, -46.45312], ...
+    ]
+  },
+  // rota logistica, d2, check-in arena, translado vans...
+];
 ```
 
-**Visualização:** Um Card colapsável com seções agrupadas por categoria. Cada item tem um Checkbox. Ao marcar todos os itens, aparece um badge "Briefing Completo ✅". O estado é local — reseta ao navegar para outra página.
+### `src/pages/KmzMapa.tsx`
 
-Posição: Entre o bloco dos 8 cards e o card de "Configurar Agrupamento de Famílias".
+Layout mobile-first com overlay de controles:
 
----
+```
+┌─────────────────────────────────────────┐
+│ [D1] [D2] [D3] [D4] [Log] [Todos]       │ ← filtro de dia (overlay topo)
+│                                           │
+│         MAPA LEAFLET                      │
+│                                           │
+│  ● Coord Segurança 01  (laranja)          │
+│  ● Hakuna              (vermelho)         │
+│  📍 Minha posição      (azul)             │
+│                                           │
+│ 📡 Online | 📍 Comp. loc.                 │ ← status bar
+│                                           │
+│ [📍 Centralizar] [👥 Toggle equipes]      │ ← botões overlay
+│                                           │
+│ [Legenda ▼]                               │ ← canto inferior
+└─────────────────────────────────────────┘
+```
 
-### Funcionalidade 4 — Exportação CSV dos Termos Aceitos
-
-**Função utilitária reutilizável (preparação para webhook futuro):**
-
+**Estados principais:**
 ```typescript
-// TODO: Substituir exportação CSV por webhook quando API da MSV Aventura estiver disponível
-const getTermosAceitosData = async () => {
-  const { data: termoRows } = await supabase.from("tirolesa_termo_aceite" as any)
-    .select("*")
-    .eq("status", "aceito")
-    .eq("top_id", topId);
+const [diaFiltro, setDiaFiltro] = useState<'todos'|'logistica'|'d1'|'d2'|'d3'|'d4'>('todos');
+const [showEquipes, setShowEquipes] = useState(true);
+const [showMinhaPos, setShowMinhaPos] = useState(false);
+const [minhaPos, setMinhaPos] = useState<[number,number] | null>(null);
+const [isOnline, setIsOnline] = useState(navigator.onLine);
+const [showLegenda, setShowLegenda] = useState(false);
+```
 
-  const { data: partsData } = await supabase.from("participantes")
-    .select("id, nome, cpf, telefone, email, peso, altura, data_nascimento")
-    .in("id", (termoRows ?? []).map((t: any) => t.participante_id));
+**Correção de ícones Leaflet no Vite (problema conhecido):**
+```typescript
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-  const partByIdMap = new Map((partsData ?? []).map((p: any) => [p.id, p]));
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({ iconUrl: markerIcon, iconRetinaUrl: markerIcon2x, shadowUrl: markerShadow });
+```
 
-  return (termoRows ?? []).map((t: any) => {
-    const p = partByIdMap.get(t.participante_id) ?? {};
-    return {
-      nome: p.nome ?? "",
-      cpf: p.cpf ?? "",
-      telefone: p.telefone ?? "",
-      email: p.email ?? "",
-      peso_kg: p.peso ?? "",
-      altura_m: p.altura ?? "",
-      data_nascimento: p.data_nascimento ?? "",
-      status_termo: t.status,
-      data_aceite: t.aceito_em ? new Date(t.aceito_em).toLocaleString("pt-BR") : "",
-      servidor: t.registrado_por_nome ?? "",
-      assinatura_base64: t.assinatura_base64 ?? "",
-    };
+**Rastreamento de posição (apenas coordenadores/Hakunas):**
+```typescript
+// Detectar se usuário deve compartilhar posição
+const isCoordOrHakuna = useMemo(() => {
+  const cargosRastreados = ['coordenacao', 'coord02', 'coord03', 'diretoria'];
+  return cargosRastreados.includes(role ?? '');
+}, [role]);
+
+// GPS watch + upsert a cada posição nova (throttle 30s)
+useEffect(() => {
+  if (!isCoordOrHakuna || !showMinhaPos || !topId) return;
+  let lastSend = 0;
+  const watchId = navigator.geolocation.watchPosition(async (pos) => {
+    setMinhaPos([pos.coords.latitude, pos.coords.longitude]);
+    const now = Date.now();
+    if (isOnline && now - lastSend > 30_000) {
+      lastSend = now;
+      await supabase.from('kmz_localizacoes').upsert({...}, { onConflict: 'usuario_id,top_id' });
+    }
+  }, null, { enableHighAccuracy: true });
+  return () => navigator.geolocation.clearWatch(watchId);
+}, [isCoordOrHakuna, showMinhaPos, isOnline, topId]);
+```
+
+**Polling das posições dos outros (30s):**
+```typescript
+const { data: localizacoes = [] } = useQuery({
+  queryKey: ['kmz_localizacoes', topId],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('kmz_localizacoes')
+      .select('*')
+      .eq('top_id', topId)
+      .neq('usuario_id', profile?.id ?? '');
+    return data ?? [];
+  },
+  refetchInterval: 30_000,
+  enabled: !!topId && showEquipes && isOnline,
+});
+```
+
+**Marcadores das equipes (L.divIcon):**
+```typescript
+function criarIconeEquipe(cor: string, cargo: string): L.DivIcon {
+  const numero = cargo?.includes('02') ? '02' : cargo?.includes('01') ? '01' : '';
+  return L.divIcon({
+    html: `<div style="
+      width:28px;height:28px;background:${cor};
+      border:2px solid white;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:9px;font-weight:bold;color:white;
+      box-shadow:0 2px 4px rgba(0,0,0,0.4);">${numero}</div>`,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
   });
-};
+}
 ```
 
-**Exportação CSV (UTF-8 com BOM para Excel):**
+### Menu e rota
 
+**`src/lib/auth.ts`** — Adicionar:
 ```typescript
-const handleExportarCSV = async () => {
-  const rows = await getTermosAceitosData();
-  if (rows.length === 0) { toast({ title: "Nenhum termo aceito para exportar" }); return; }
+import { Map } from "lucide-react";
+// Na lista ALL_MENU_ITEMS:
+{ id: 14, title: "Mapa da Trilha", url: "/kmz", icon: Map },
 
-  const headers = ["Nome Completo","CPF","Telefone","E-mail","Peso (kg)","Altura (m)","Data Nascimento","Status Termo","Data/Hora Aceite","Servidor que Registrou","Assinatura (base64)"];
-  const csvContent = [
-    headers.join(";"),
-    ...rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")),
-  ].join("\n");
-
-  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  const datePart = new Date().toISOString().split("T")[0];
-  link.href = url;
-  link.setAttribute("download", `termos_tirolesa_TOP1575_${datePart}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
+// Em todas as roles (diretoria, coordenacao, sombra, servidor, default):
+// Adicionar id 14 nos arrays de visibilidade
 ```
 
-**Botão no header** (ao lado de "Config. Termo"):
-```jsx
-<Button variant="outline" size="sm" onClick={handleExportarCSV} disabled={!topId}>
-  <Download className="h-4 w-4 mr-1" /> Exportar Termos (CSV)
-</Button>
+**`src/App.tsx`** — Adicionar:
+```tsx
+import KmzMapa from "./pages/KmzMapa";
+// Na rota:
+<Route path="/kmz" element={<KmzMapa />} />
 ```
+
+### Detalhes das rotas no arquivo de dados
+
+As rotas do KML são **muito densas** (centenas de pontos cada). Para não sobrecarregar o arquivo, as coordenadas serão **simplificadas** — pegando 1 a cada 5 pontos da rota original — suficientes para traçar a linha corretamente no mapa sem perda visual significativa.
+
+- Rota D1 (linhas 1603): de São Bernardo → trilha (~17km com translado, simplificado para pontos-chave)
+- Rota D3 (linhas 2051): coordenadas reais, simplificadas (~1/5 dos pontos)
+- Rota D4 (linhas 2370): coordenadas reais com altitude, ignorar altitude para Leaflet
+
+### Legenda de equipes (sempre visível)
+
+```
+EQUIPES
+● Hakuna         #DC2626   (vermelho)
+● Segurança      #EA580C   (laranja)
+● Eventos        #CA8A04   (amarelo)
+● Mídia          #9CA3AF   (cinza)
+● Comunicação    #7C3AED   (roxo)
+● Logística      #92400E   (marrom)
+● Voz            #4D7C0F   (verde militar)
+● ADM            #22C55E   (verde)
+● Intercessão    #F8FAFC   (branco)
+● Diretoria      #1E293B   (preto)
+
+PONTOS DE REFERÊNCIA
+📖 Prédica
+⛺ Acampamento
+🏠 Base
+🚌 Extração/Van
+📍 Ponto geral
+```
+
+### Status online/offline
+
+```tsx
+useEffect(() => {
+  const handleOnline = () => setIsOnline(true);
+  const handleOffline = () => setIsOnline(false);
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+  };
+}, []);
+```
+
+Banner no topo do mapa:
+- Online → `📡 Posições atualizadas` (verde)
+- Offline → `📴 Offline — última posição conhecida` (laranja)
 
 ---
 
-### Dependência Nova
+## O que NÃO será implementado nesta versão
 
-`signature_pad` já está listada como opção compatível. Verificar se já está instalada — se não, instalar via `package.json`.
+- Service Worker para cache de tiles offline (complexidade alta, ganho baixo)
+- A rota "Check-in Arena Santos 17,3km" (é o percurso de van de Santos até o parque, não da trilha em si — muito longa e fora da área)
+- A rota "Translado Vans" (percurso de van, não da trilha)
 
 ---
 
-### Resumo dos Arquivos a Modificar
+## Resumo dos arquivos
 
-| Arquivo | Tipo | O que muda |
-|---|---|---|
-| `package.json` | Adicionar dep | `signature_pad` + `@types/signature_pad` |
-| `src/components/checkin/ConsultaPulseiraTab.tsx` | Modificar | Canvas de assinatura no dialog do termo; `assinatura_base64` no upsert; botão "Confirmar" condicional |
-| `src/pages/Tirolesa.tsx` | Modificar | Texto padrão do termo (fallback); aba Briefing Prévio; botão "Exportar Termos (CSV)"; função `getTermosAceitosData` |
-| `src/integrations/supabase/types.ts` | NÃO TOCAR | Tipos são gerados automaticamente pelo Supabase |
-
-### Migration Necessária
-
-Nenhuma. A coluna `assinatura_base64` já existe na tabela `tirolesa_termo_aceite` (confirmado via query SQL).
-
-### Atualização do Texto do Termo no Banco
-
-O texto do termo precisa ser atualizado no banco para o TOP atual. Isso será feito atualizando o valor padrão do `useState` em `Tirolesa.tsx` (que é gravado quando o usuário salva via "Config. Termo") e também fornecendo o texto completo via instrução SQL para o admin rodar no Supabase Dashboard — pois não queremos sobrescrever programaticamente uma config já existente no banco sem consentimento.
-
-Alternativamente: o texto padrão será atualizado no código para que, quando `tirolesa_config` não tiver registro para o TOP, ele use o texto oficial. O admin ainda pode salvar via "Config. Termo" para persistir.
-
-### Ordem de Implementação
-
-1. Instalar `signature_pad`
-2. Atualizar texto padrão do termo em `Tirolesa.tsx` e `ConsultaPulseiraTab.tsx`
-3. Adicionar assinatura digital ao dialog de aceite em `ConsultaPulseiraTab.tsx`
-4. Adicionar Briefing Prévio em `Tirolesa.tsx`
-5. Adicionar botão "Exportar Termos (CSV)" + função utilitária em `Tirolesa.tsx`
-
+| Arquivo | Operação |
+|---|---|
+| `package.json` | + leaflet, react-leaflet, @types/leaflet |
+| `src/index.css` | + import leaflet CSS |
+| `src/data/kmzData.ts` | CRIAR — pontos e rotas com coordenadas reais |
+| `src/pages/KmzMapa.tsx` | CRIAR — página completa do mapa |
+| `src/lib/auth.ts` | + item 14 "Mapa da Trilha" para todos os cargos |
+| `src/App.tsx` | + rota /kmz |
