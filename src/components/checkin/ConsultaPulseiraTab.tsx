@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Phone, Thermometer, Droplets, Heart, Pill, ClipboardList, Clock } from "lucide-react";
+import { Camera, Phone, Thermometer, Droplets, Heart, Pill, ClipboardList, Clock, Search } from "lucide-react";
+import { maskCPF } from "@/lib/cpf";
 import type { Participante } from "@/hooks/useParticipantes";
 
 interface Props {
@@ -60,6 +61,9 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
   const [estoqueGeral, setEstoqueGeral] = useState<any[]>([]);
   // History
   const [historico, setHistorico] = useState<any[]>([]);
+
+  const [manualCodigo, setManualCodigo] = useState("");
+  const [manualCpf, setManualCpf] = useState("");
 
   const cachedParticipantes = useRef<Participante[]>([]);
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -153,6 +157,45 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
   const resetProntuario = () => {
     setTemperatura(""); setGlicemia(""); setPressaoSis(""); setPressaoDia("");
     setMedId(""); setMedQtd(""); setMedVia(""); setObservacoes("");
+  };
+
+  const handleBuscaCodigo = async () => {
+    const codigo = manualCodigo.trim();
+    if (!codigo) return;
+    await lookupParticipante(codigo);
+    if (!participante) {
+      // lookupParticipante sets notFound if not found
+    }
+  };
+
+  const handleBuscaCpf = async () => {
+    const cpfLimpo = manualCpf.replace(/\D/g, "");
+    if (cpfLimpo.length !== 11) { toast({ title: "CPF inválido", variant: "destructive" }); return; }
+    let found: Participante | null = null;
+    if (isOnline) {
+      const { data } = await supabase.from("participantes").select("*").eq("cpf", cpfLimpo).maybeSingle();
+      found = data as Participante | null;
+    } else {
+      found = cachedParticipantes.current.find(p => p.cpf.replace(/\D/g, "") === cpfLimpo) ?? null;
+    }
+    if (!found) { setNotFound(true); setParticipante(null); return; }
+    setNotFound(false);
+    setParticipante(found);
+    resetProntuario();
+    if (isOnline) {
+      const { data: hp } = await supabase
+        .from("hakuna_participante")
+        .select("servidor_id, servidores:servidor_id(nome, profissao)")
+        .eq("participante_id", found.id)
+        .limit(1)
+        .maybeSingle();
+      if (hp && (hp as any).servidores) {
+        const srv = (hp as any).servidores;
+        setHakuna({ nome: srv.nome, profissao: srv.profissao });
+      } else setHakuna(null);
+      if (servidor) loadMedications(servidor.id);
+      loadHistorico(found.id);
+    }
   };
 
   const startScanner = async () => {
@@ -270,6 +313,36 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
           ) : (
             <Button variant="outline" onClick={stopScanner} className="w-full h-14">Parar Scanner</Button>
           )}
+
+          {/* Busca Manual */}
+          <div className="space-y-3 pt-2">
+            <p className="text-sm text-muted-foreground">Ou busque manualmente:</p>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex gap-2">
+                <Input
+                  value={manualCodigo}
+                  onChange={e => setManualCodigo(e.target.value)}
+                  placeholder="TOP-1575-0001"
+                  className="h-12 flex-1"
+                />
+                <Button onClick={handleBuscaCodigo} className="h-12 px-4" disabled={!manualCodigo.trim()}>
+                  <Search className="h-4 w-4 mr-1" /> Código
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={manualCpf}
+                  onChange={e => setManualCpf(maskCPF(e.target.value))}
+                  placeholder="000.000.000-00"
+                  className="h-12 flex-1"
+                  inputMode="numeric"
+                />
+                <Button onClick={handleBuscaCpf} className="h-12 px-4" disabled={manualCpf.replace(/\D/g, "").length !== 11}>
+                  <Search className="h-4 w-4 mr-1" /> CPF
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

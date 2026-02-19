@@ -28,6 +28,8 @@ export function RealizarCheckinTab({ userId }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingQueue, setPendingQueue] = useState<any[]>([]);
+  const [manualCodigo, setManualCodigo] = useState("");
+  const [manualCpfScan, setManualCpfScan] = useState("");
 
   // Offline cache
   const cachedParticipantes = useRef<Participante[]>([]);
@@ -274,6 +276,32 @@ export function RealizarCheckinTab({ userId }: Props) {
     setParticipante(null);
     setPesoCheckin("");
     setNumLegendario("");
+    setManualCodigo("");
+    setManualCpfScan("");
+  };
+
+  const handleBuscaCodigoManual = async () => {
+    const codigo = manualCodigo.trim();
+    if (!codigo) return;
+    await handlePulseiraScan(codigo);
+  };
+
+  const handleBuscaCpfManual = async () => {
+    const cpfLimpo = manualCpfScan.replace(/\D/g, "");
+    if (cpfLimpo.length !== 11) { toast({ title: "CPF inválido", variant: "destructive" }); return; }
+    let found: Participante | null = null;
+    if (isOnline) {
+      const { data } = await supabase.from("participantes").select("*").eq("cpf", cpfLimpo).maybeSingle();
+      found = data as Participante | null;
+    } else {
+      found = cachedParticipantes.current.find(p => p.cpf.replace(/\D/g, "") === cpfLimpo) ?? null;
+    }
+    if (!found) { toast({ title: "CPF não encontrado", variant: "destructive" }); return; }
+    if (found.checkin_realizado) { toast({ title: "Participante já realizou check-in", variant: "destructive" }); return; }
+    setParticipante(found);
+    setCpf(manualCpfScan);
+    // CPF found but no bracelet scanned yet — go to CPF step so they scan bracelet
+    setStep("cpf");
   };
 
   const familiaNum = participante?.familia_id ?? null;
@@ -312,6 +340,36 @@ export function RealizarCheckinTab({ userId }: Props) {
               Parar Scanner
             </Button>
           )}
+
+          {/* Busca Manual */}
+          <div className="space-y-3 pt-2">
+            <p className="text-sm text-muted-foreground">Ou busque manualmente:</p>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex gap-2">
+                <Input
+                  value={manualCodigo}
+                  onChange={e => setManualCodigo(e.target.value)}
+                  placeholder="TOP-1575-0001"
+                  className="h-12 flex-1"
+                />
+                <Button onClick={handleBuscaCodigoManual} className="h-12 px-4" disabled={!manualCodigo.trim()}>
+                  <Search className="h-4 w-4 mr-1" /> Código
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={manualCpfScan}
+                  onChange={e => setManualCpfScan(maskCPF(e.target.value))}
+                  placeholder="000.000.000-00"
+                  className="h-12 flex-1"
+                  inputMode="numeric"
+                />
+                <Button onClick={handleBuscaCpfManual} className="h-12 px-4" disabled={manualCpfScan.replace(/\D/g, "").length !== 11}>
+                  <Search className="h-4 w-4 mr-1" /> CPF
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
