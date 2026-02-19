@@ -1,102 +1,86 @@
 
 
-## Participantes e Hakunas -- 4 Itens
+## Sistema de Check-in com Pulseiras QR Code -- Reestruturacao Completa
 
-### Item 7: Cidade do Participante + Filtro
+### Resumo
 
-**Migration necessaria**: A tabela `participantes` nao possui coluna `cidade`. Criar:
-```sql
-ALTER TABLE participantes ADD COLUMN IF NOT EXISTS cidade TEXT;
-```
-
-**Arquivo: `src/pages/Participantes.tsx`**
-- Adicionar estado `filterCidade` (default "todos")
-- Extrair cidades unicas dos participantes carregados (front-end): `[...new Set(participantes.map(p => p.cidade).filter(Boolean))]`
-- Adicionar Select de cidade nos filtros (apos o filtro de Ergometrico)
-- Adicionar filtro na logica `filtered`: `if (filterCidade !== "todos") list = list.filter(p => p.cidade === filterCidade)`
-- Na tabela desktop: adicionar coluna "Cidade" apos "Igreja" (hidden lg:table-cell)
-- Nos cards mobile: adicionar cidade abaixo do nome
-
-**Arquivo: `src/pages/ParticipanteForm.tsx`**
-- Verificar se o formulario de cadastro ja tem campo cidade. Se nao, adicionar campo Input "Cidade" na secao de dados pessoais.
+Reescrever a pagina de Check-in com 4 abas (Pulseiras, Realizar Check-in, Consultar Pulseira, Gestao), integrando o sistema de pulseiras QR Code como "documento" do participante durante o evento. Inclui modo offline basico e integracao com o painel Hakuna.
 
 ---
 
-### Item 8: Ergometricos Configuravel
+### Nenhuma migration necessaria
 
-A tabela `ergometrico_config` ja existe com `idade_minima` (default 40) e `comorbidades_obrigatorias` (TEXT[]). Nenhuma migration necessaria.
-
-**Arquivo: `src/components/hakunas/ErgometricosTab.tsx`**
-
-Adicionar secao de configuracao no topo da aba:
-
-- Query: `supabase.from("ergometrico_config").select("*").limit(1).single()`
-- Card "Configuracao do Ergometrico" (colapsavel com Collapsible, aberto por default):
-  - Input number "Idade minima obrigatoria" (default do banco: 40)
-  - Multi-select/checkboxes para "Comorbidades obrigatorias"
-    - Opcoes fixas: Cardiopatia, Hipertensao, Diabetes, Asma, Epilepsia, Problemas Renais, Problemas Respiratorios
-    - Valores atuais carregados do campo `comorbidades_obrigatorias`
-  - Botao "Salvar Configuracao" (update na tabela `ergometrico_config`)
-
-- Alterar logica de filtragem de participantes:
-  - Atualmente filtra fixo `age >= 40`
-  - Mudar para: `age >= config.idade_minima` OU `participante.doenca` contem alguma das `config.comorbidades_obrigatorias`
-  - Assim participantes com comorbidade aparecem independente da idade
-
-- A configuracao so aparece se o usuario tem permissao de edicao (prop `canEdit` a ser passada do AreaPortal, ou verificacao interna)
+A tabela `pulseiras` ja existe com todas as colunas necessarias: `codigo`, `status`, `participante_id`, `vinculada_em`, `vinculada_por`, `desvinculada_em`, `desvinculada_por`, `top_id`. A tabela `participantes` ja possui `qr_code`, `peso_checkin`, `numero_legendario`, `checkin_realizado`, `checkin_em`, `checkin_por`. Nenhuma alteracao de schema necessaria.
 
 ---
 
-### Item 9: Campo Especialidade/Profissao do Hakuna
+### Arquivos Novos (4)
 
-As colunas `profissao` e `especialidade` ja existem na tabela `hakunas`. Nenhuma migration necessaria.
+**1. `src/components/checkin/PulseirasTab.tsx`**
+- Header com badges: X disponiveis / Y vinculadas / Z total
+- Secao "Gerar Novas Pulseiras":
+  - Input number (default 150, max 500)
+  - Busca TOP ativo: `supabase.from("tops").select("id, numero").order("created_at", { ascending: false }).limit(1).maybeSingle()`
+  - Busca ultima pulseira para continuar sequencia: query `pulseiras` com `order("codigo", desc).limit(1)` e parse do sequencial
+  - Gera registros em batch: `TOP-{numero}-{seq.padStart(4,'0')}`
+- Botao "Baixar QR Codes (ZIP)": reutiliza logica existente do QrCodeTab (qrcode + jszip)
+- Tabela de pulseiras com filtro de status (Todas/Disponiveis/Vinculadas/Danificadas)
+- Acao "Marcar como danificada"
 
-O codigo atual usa `especialidade_medica` para exibicao. Precisamos usar tambem `profissao` e `especialidade`.
+**2. `src/components/checkin/RealizarCheckinTab.tsx`**
+- Fluxo em 4 passos com state machine (step: 1|2|3|4)
+- Passo 1: Botao "Bipar Pulseira" (h-16, bg-orange-500), abre Html5Qrcode, valida formato TOP-XXXX-XXXX
+- Passo 2: Input CPF com mascara (maskCPF de `@/lib/cpf`), busca participante por CPF
+- Passo 3: Card de confirmacao com familia em destaque (bg-orange-500), pesagem (input peso_checkin), alerta se diferenca > 3kg, campo numero_legendario, card de doencas/condicoes
+- Passo 4: Botao "CONFIRMAR CHECK-IN" (h-16, bg-green-600). Ao confirmar:
+  - UPDATE participantes SET qr_code, peso_checkin, numero_legendario, checkin_realizado=true, checkin_em=NOW(), checkin_por
+  - UPDATE pulseiras SET status='vinculada', participante_id, vinculada_em, vinculada_por
+  - Tela de sucesso com dados e instrucoes ("Entregar placa familia X")
+  - Botao "Proximo Check-in" volta ao Passo 1
+- Todos os botoes com tamanho mobile-first (min h-14, text-lg)
+- Modo offline: carrega todos participantes e pulseiras no mount, fila local de check-ins pendentes, banner amarelo quando offline, sincroniza ao reconectar
 
-**Arquivo: `src/components/hakunas/EquipeTab.tsx`**
+**3. `src/components/checkin/ConsultaPulseiraTab.tsx`**
+- Botao "Bipar Pulseira" (h-16, bg-blue-600)
+- Lê QR Code, busca participante pelo qr_code
+- Se encontrou: card de emergencia com 3 secoes:
+  - TOPO: Alerta Medico (bg-red-900/80 se tem doenca, bg-green-900/40 se nao). Lista doencas, medicamentos, alergias
+  - MEIO: Identificacao (nome, familia, idade). Hakuna responsavel (busca em hakuna_participante com join servidor)
+  - RODAPE: Contato de emergencia (contato_nome, contato_telefone com link tel:)
+- Botao "Bipar Outra Pulseira"
+- Mesmo modo offline do RealizarCheckinTab
 
-- Alterar exibicao da coluna "Especialidade" na tabela:
-  - Mostrar `profissao` como principal. Se `profissao === "Medico"` e `especialidade` existe, mostrar "Medico - {especialidade}"
-  - Exemplo: "Enfermeiro(a)", "Medico - Cardiologista", "Fisioterapeuta"
-  - Usar `h?.profissao` em vez de (ou complementando) `h?.especialidade_medica`
-
-- Adicionar dialog/modal para editar profissao e especialidade de um Hakuna:
-  - Botao de edicao na linha da tabela (icone Pencil)
-  - Dialog com:
-    - Select "Profissao" (obrigatorio): Medico, Enfermeiro(a), Fisioterapeuta, Massagista, Dentista, Nutricionista, Psicologo(a), Farmaceutico(a), Tecnico(a) de Enfermagem, Outro
-    - Select "Especialidade" (condicional, so aparece se profissao = "Medico"): Cardiologista, Ortopedista, Clinico Geral, Pediatra, Dermatologista, Neurologista, Ginecologista, Urologista, Psiquiatra, Anestesista, Cirurgiao, Outro
-  - Salvar: `supabase.from("hakunas").update({ profissao, especialidade }).eq("id", hakunaId)`
-
-- Nos cards resumo (especCounts), agrupar por `profissao` em vez de `especialidade_medica`
+**4. `src/components/checkin/GestaoCheckinTab.tsx`**
+- Cards resumo: Total, Check-ins Realizados (verde), Pendentes (amarelo), barra de progresso
+- Tabela: Nome, Familia, Peso Inscricao, Peso Check-in, Diferenca (verde/vermelho), Nro Legendario, Status, Acoes
+- Filtros: familia (select), status (realizado/pendente), busca por nome
+- Acao "Desvincular": AlertDialog de confirmacao, reseta participante e libera pulseira
+- Mobile: cards em vez de tabela (useIsMobile)
 
 ---
 
-### Item 10: Logica do Match Automatico Melhorada
+### Arquivos a Modificar (3)
 
-**Arquivo: `src/components/hakunas/EquipeTab.tsx`**
+**5. `src/pages/CheckIn.tsx`**
+- Reescrever completamente com 4 abas: Pulseiras, Realizar Check-in, Consultar Pulseira, Gestao
+- Importar useAuth para verificar permissoes
+- Buscar servidor do usuario logado para verificar area_servico
+- Logica de permissao:
+  - cargo "diretoria" ou servidor com area "ADM": todas as abas
+  - Servidor com area "Hakuna": apenas aba "Consultar Pulseira" (defaultValue="consultar")
+  - Outros: redirecionar para /dashboard
+- Suporte a query param `?tab=consultar` para navegacao direta
+- Manter useParticipantes para dados compartilhados
 
-Reescrever `matchMutation` com logica mais sofisticada:
+**6. `src/lib/auth.ts`**
+- Na funcao `getVisibleMenuItems`: adicionar item Check-in (id 9) para cargos "coordenacao", "coord02", "coord03" (atualmente so diretoria ve)
+- Hakunas sao servidores normais, entao a visibilidade do menu para eles sera tratada de forma especial: o AppLayout precisara verificar area_servico para mostrar o item Check-in a servidores da area Hakuna
 
-1. Buscar TODOS os participantes (nao so os com doenca)
-2. Para cada participante nao vinculado:
-   - Se tem comorbidade: mapear para especialidade medica compativel
-     - Cardiopatia/Hipertensao/Arritmia -> buscar Hakuna com profissao="Medico" e especialidade contendo "Cardiologista" ou "Clinico Geral"
-     - Diabetes -> Clinico Geral
-     - Problemas ortopedicos -> Ortopedista ou Fisioterapeuta
-     - Problemas respiratorios/Asma -> Clinico Geral
-     - Depressao/Ansiedade -> Psicologo(a) ou Psiquiatra
-     - Fallback: Clinico Geral
-   - Se NAO tem comorbidade: distribuir entre Enfermeiros, Fisioterapeutas e outros
-3. Balancear quantidade: round-robin dentro de cada pool
-4. Limite maximo por Hakuna: 15 participantes (configuravel)
-
-- Antes de executar, verificar se ja existem vinculos:
-  - Se sim: AlertDialog "Ja existem X vinculos. Deseja refazer? Os anteriores serao removidos."
-  - Se confirmado: deletar vinculos existentes e recriar
-
-- Apos match: toast com resumo "Match gerado! X participantes vinculados a Y Hakunas"
-
-- A logica usa `profissao` e `especialidade` dos hakunas (nao mais `especialidade_medica`)
+**7. `src/pages/AreaPortal.tsx`**
+- Na aba "Painel" quando `decodedNome === "Hakuna"`:
+  - Adicionar card "Consultar Pulseira" com icone QrCode
+  - Ao clicar: `navigate("/check-in?tab=consultar")`
+  - Visivel para todos os servidores da area Hakuna
 
 ---
 
@@ -104,16 +88,23 @@ Reescrever `matchMutation` com logica mais sofisticada:
 
 | Arquivo | Tipo | Descricao |
 |---|---|---|
-| Migration | SQL | ADD COLUMN cidade TEXT em participantes |
-| `src/pages/Participantes.tsx` | Alterar | Filtro e coluna cidade |
-| `src/pages/ParticipanteForm.tsx` | Alterar | Campo cidade no formulario |
-| `src/components/hakunas/ErgometricosTab.tsx` | Alterar | Config ergometrico + logica comorbidades |
-| `src/components/hakunas/EquipeTab.tsx` | Alterar | Profissao/especialidade, dialog edicao, match melhorado |
+| `src/components/checkin/PulseirasTab.tsx` | Novo | Geracao e gestao de pulseiras |
+| `src/components/checkin/RealizarCheckinTab.tsx` | Novo | Fluxo check-in em 4 passos, mobile-first |
+| `src/components/checkin/ConsultaPulseiraTab.tsx` | Novo | Consulta de emergencia por pulseira |
+| `src/components/checkin/GestaoCheckinTab.tsx` | Novo | Painel administrativo de check-ins |
+| `src/pages/CheckIn.tsx` | Reescrever | 4 abas com permissoes |
+| `src/lib/auth.ts` | Alterar | Visibilidade do menu Check-in para coordenadores |
+| `src/pages/AreaPortal.tsx` | Alterar | Card "Consultar Pulseira" no painel Hakuna |
 
 ### Detalhes Tecnicos
 
-- 1 migration: apenas `ALTER TABLE participantes ADD COLUMN cidade TEXT`
-- Tabelas `ergometrico_config`, `hakuna_participante` ja existem -- nenhuma criacao necessaria
-- Colunas `profissao` e `especialidade` ja existem em `hakunas` -- nenhum ALTER necessario
-- O match automatico roda no front-end (JS), nao precisa de Edge Function
-- Nenhuma dependencia nova
+- Nenhuma migration necessaria (tabelas e colunas ja existem)
+- Nenhuma dependencia nova (html5-qrcode, qrcode, jszip ja estao no projeto)
+- O modo offline usa useState/useRef (sem localStorage) — dados pendentes perdidos se fechar aba
+- O scanner QR usa `Html5Qrcode` com `facingMode: "environment"` (camera traseira)
+- Prefixo de pulseira: `TOP-{numero_do_top}-{sequencial_4_digitos}`
+- O fluxo de check-in atualiza DUAS tabelas atomicamente (participantes + pulseiras)
+- Contato de emergencia usa campos existentes: `contato_nome` e `contato_telefone` da tabela participantes
+- Consulta do Hakuna responsavel: busca em `hakuna_participante` usando `participante_id`, com join em `servidores` usando `servidor_id`
+- Os componentes antigos `QrCodeTab.tsx` e `CheckInTab.tsx` serao substituidos (podem ser removidos ou mantidos como referencia)
+
