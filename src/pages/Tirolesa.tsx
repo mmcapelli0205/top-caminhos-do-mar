@@ -280,33 +280,50 @@ export default function Tirolesa() {
   }, [solosAtivos]);
 
   // --- Agrupamento helpers ---
-  const saveGrupos = useCallback(async (newGrupos: number[][]) => {
+  const saveGrupos = useCallback(async (newGrupos: number[][]): Promise<boolean> => {
     const rows = configQuery.data ?? [];
-    if (rows.length > 0) {
-      await (supabase.from("tirolesa_config" as any) as any)
-        .update({ grupos: newGrupos, updated_at: new Date().toISOString() })
-        .eq("id", rows[0].id);
-    } else {
-      await (supabase.from("tirolesa_config" as any) as any).insert({
-        top_id: topId,
-        grupos: newGrupos,
-        texto_termo: textoTermo,
-      });
+    try {
+      if (rows.length > 0) {
+        const { error } = await (supabase.from("tirolesa_config" as any) as any)
+          .update({ grupos: newGrupos, updated_at: new Date().toISOString() })
+          .eq("id", rows[0].id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase.from("tirolesa_config" as any) as any).insert({
+          top_id: topId,
+          grupos: newGrupos,
+          texto_termo: textoTermo,
+        });
+        if (error) throw error;
+      }
+      queryClient.invalidateQueries({ queryKey: ["tirolesa_config"] });
+      return true;
+    } catch (e: any) {
+      toast({ title: e.message || "Erro ao salvar agrupamento", variant: "destructive" });
+      return false;
     }
-    queryClient.invalidateQueries({ queryKey: ["tirolesa_config"] });
-  }, [configQuery.data, topId, textoTermo, queryClient]);
+  }, [configQuery.data, topId, textoTermo, queryClient, toast]);
 
   const handleTodasJuntas = async () => {
     const g = [familias.map((f) => f.id)];
     setGrupos(g);
-    await saveGrupos(g);
-    toast({ title: "Todas as famílias agrupadas!" });
+    const ok = await saveGrupos(g);
+    if (ok) toast({ title: "Todas as famílias agrupadas!" });
   };
 
   const handleResetarGrupos = async () => {
+    const prevGrupos = grupos;
     setGrupos([]);
-    await saveGrupos([]);
-    toast({ title: "Agrupamento resetado" });
+    setSimulacaoResult(null);
+    setMatchManualPairs([]);
+    setModoAtivo("none");
+    const ok = await saveGrupos([]);
+    if (ok) {
+      toast({ title: "Agrupamento resetado" });
+    } else {
+      // Revert local state on DB failure
+      setGrupos(prevGrupos);
+    }
   };
 
   const handleAddGrupo = async () => {
@@ -316,9 +333,18 @@ export default function Tirolesa() {
   };
 
   const handleRemoveGrupo = async (idx: number) => {
+    const prevGrupos = grupos;
     const g = grupos.filter((_, i) => i !== idx);
     setGrupos(g);
-    await saveGrupos(g);
+    // Clear simulation when group structure changes
+    setSimulacaoResult(null);
+    setMatchManualPairs([]);
+    if (modoAtivo === "simulacao") setModoAtivo("none");
+    const ok = await saveGrupos(g);
+    if (!ok) {
+      // Revert local state on DB failure
+      setGrupos(prevGrupos);
+    }
   };
 
   const handleToggleFamiliaNoGrupo = async (grupoIdx: number, familiaId: number) => {
