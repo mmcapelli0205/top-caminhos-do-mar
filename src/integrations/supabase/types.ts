@@ -1831,6 +1831,48 @@ export type Database = {
           },
         ]
       }
+      kmz_localizacoes: {
+        Row: {
+          accuracy: number | null
+          cargo: string | null
+          cor_equipe: string | null
+          equipe: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          top_id: string | null
+          updated_at: string | null
+          usuario_id: string | null
+          usuario_nome: string | null
+        }
+        Insert: {
+          accuracy?: number | null
+          cargo?: string | null
+          cor_equipe?: string | null
+          equipe?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          top_id?: string | null
+          updated_at?: string | null
+          usuario_id?: string | null
+          usuario_nome?: string | null
+        }
+        Update: {
+          accuracy?: number | null
+          cargo?: string | null
+          cor_equipe?: string | null
+          equipe?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          top_id?: string | null
+          updated_at?: string | null
+          usuario_id?: string | null
+          usuario_nome?: string | null
+        }
+        Relationships: []
+      }
       mensagens_log: {
         Row: {
           canal: string | null
