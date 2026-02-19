@@ -7,8 +7,10 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { KMZ_PONTOS, KMZ_ROTAS, ICONE_TIPO, COR_DIA, type DiaTipo } from "@/data/kmzData";
+import { ICONE_TIPO, COR_DIA, type DiaTipo } from "@/data/kmzData";
 import { CORES_EQUIPES, getTextColor } from "@/lib/coresEquipes";
+import { useKmzParser } from "@/hooks/useKmzParser";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Fix Leaflet default icons in Vite
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -120,6 +122,9 @@ export default function KmzMapa() {
   const [centralize, setCentralize] = useState(false);
   const lastSendRef = useRef(0);
 
+  // Load KMZ data dynamically
+  const { pontos: kmzPontos, rotas: kmzRotas, loading: kmzLoading, error: kmzError } = useKmzParser("/CAMINHOS_DO_MAR.kmz");
+
   // Detect top_id from active TOP
   const [topId, setTopId] = useState<string | null>(null);
   useEffect(() => {
@@ -208,13 +213,13 @@ export default function KmzMapa() {
   const locList: KmzLocalizacao[] = localizacoes ?? [];
 
   const pontosFiltrados = useMemo(() =>
-    diaFiltro === "todos" ? KMZ_PONTOS : KMZ_PONTOS.filter((p) => p.dia === diaFiltro),
-    [diaFiltro]
+    diaFiltro === "todos" ? kmzPontos : kmzPontos.filter((p) => p.dia === diaFiltro),
+    [diaFiltro, kmzPontos]
   );
 
   const rotasFiltradas = useMemo(() =>
-    diaFiltro === "todos" ? KMZ_ROTAS : KMZ_ROTAS.filter((r) => r.dia === diaFiltro),
-    [diaFiltro]
+    diaFiltro === "todos" ? kmzRotas : kmzRotas.filter((r) => r.dia === diaFiltro),
+    [diaFiltro, kmzRotas]
   );
 
   return (
@@ -225,13 +230,31 @@ export default function KmzMapa() {
           isOnline ? "bg-green-600/90 text-white" : "bg-orange-500/90 text-white"
         }`}
       >
-        <span>{isOnline ? "📡 Online — posições ativas" : "📴 Offline — última posição conhecida"}</span>
+        <span>
+          {kmzLoading
+            ? "⏳ Carregando mapa..."
+            : kmzError
+            ? "⚠️ Erro ao carregar rotas"
+            : isOnline
+            ? `📡 Online — ${kmzRotas.length} rotas, ${kmzPontos.length} pontos`
+            : "📴 Offline — última posição conhecida"}
+        </span>
         {minhaPos && (
           <span className="opacity-80">
             📍 {minhaPos[0].toFixed(5)}, {minhaPos[1].toFixed(5)}
           </span>
         )}
       </div>
+
+      {/* KMZ Loading skeleton overlay */}
+      {kmzLoading && (
+        <div className="absolute inset-0 z-[999] flex flex-col items-center justify-center bg-black/80 gap-4">
+          <Skeleton className="w-64 h-4 rounded" />
+          <Skeleton className="w-48 h-4 rounded" />
+          <Skeleton className="w-56 h-4 rounded" />
+          <p className="text-white/60 text-sm mt-2">Carregando rotas do mapa…</p>
+        </div>
+      )}
 
       {/* Day filter */}
       <div className="absolute top-7 left-1/2 -translate-x-1/2 z-[1000] flex gap-1 bg-black/70 backdrop-blur-sm rounded-full px-2 py-1.5">
@@ -264,9 +287,7 @@ export default function KmzMapa() {
         />
 
         {centralize && minhaPos && (
-          <CentralizarMapa
-            pos={minhaPos}
-          />
+          <CentralizarMapa pos={minhaPos} />
         )}
 
         {/* Routes */}
@@ -385,7 +406,7 @@ export default function KmzMapa() {
               </div>
               <div className="mt-2 pt-2 border-t border-white/10">
                 <div className="text-xs font-bold mb-1 text-white/60 uppercase tracking-wide">Rotas</div>
-                {KMZ_ROTAS.map((r) => (
+                {kmzRotas.map((r) => (
                   <div key={r.id} className="flex items-center gap-1.5 mb-0.5">
                     <div className="w-4 h-1 rounded shrink-0" style={{ background: r.cor }} />
                     <span className="text-xs">{r.nome}</span>
