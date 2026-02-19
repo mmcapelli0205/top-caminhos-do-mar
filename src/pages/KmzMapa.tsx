@@ -75,6 +75,20 @@ function criarIconeMinhaPosicao(): L.DivIcon {
   });
 }
 
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => map.invalidateSize(), 100);
+    const handleResize = () => map.invalidateSize();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [map]);
+  return null;
+}
+
 function CentralizarMapa({ pos }: { pos: [number, number] }) {
   const map = useMap();
   useEffect(() => {
@@ -204,7 +218,7 @@ export default function KmzMapa() {
   );
 
   return (
-    <div className="relative w-full h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="relative w-full overflow-hidden" style={{ height: "calc(100vh - 56px)" }}>
       {/* Status bar */}
       <div
         className={`absolute top-0 left-0 right-0 z-[1000] flex items-center justify-between px-3 py-1 text-xs font-medium ${
@@ -240,9 +254,10 @@ export default function KmzMapa() {
       <MapContainer
         center={CENTER}
         zoom={15}
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "calc(100vh - 56px)" }}
         zoomControl={false}
       >
+        <MapResizer />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
