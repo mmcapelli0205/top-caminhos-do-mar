@@ -2524,9 +2524,38 @@ export type Database = {
         }
         Relationships: []
       }
+      tirolesa_config: {
+        Row: {
+          created_at: string | null
+          grupos: Json | null
+          id: string
+          texto_termo: string | null
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          grupos?: Json | null
+          id?: string
+          texto_termo?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          grupos?: Json | null
+          id?: string
+          texto_termo?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       tirolesa_duplas: {
         Row: {
           created_at: string | null
+          desceu: boolean | null
+          desceu_em: string | null
           familia_id: number | null
           id: string
           observacao: string | null
@@ -2541,6 +2570,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          desceu?: boolean | null
+          desceu_em?: string | null
           familia_id?: number | null
           id?: string
           observacao?: string | null
@@ -2555,6 +2586,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          desceu?: boolean | null
+          desceu_em?: string | null
           familia_id?: number | null
           id?: string
           observacao?: string | null
@@ -2585,6 +2618,50 @@ export type Database = {
           {
             foreignKeyName: "tirolesa_duplas_participante_2_id_fkey"
             columns: ["participante_2_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tirolesa_termo_aceite: {
+        Row: {
+          aceito_em: string | null
+          created_at: string | null
+          id: string
+          participante_id: string | null
+          registrado_por: string | null
+          registrado_por_nome: string | null
+          status: string
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          aceito_em?: string | null
+          created_at?: string | null
+          id?: string
+          participante_id?: string | null
+          registrado_por?: string | null
+          registrado_por_nome?: string | null
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          aceito_em?: string | null
+          created_at?: string | null
+          id?: string
+          participante_id?: string | null
+          registrado_por?: string | null
+          registrado_por_nome?: string | null
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tirolesa_termo_aceite_participante_id_fkey"
+            columns: ["participante_id"]
             isOneToOne: false
             referencedRelation: "participantes"
             referencedColumns: ["id"]
