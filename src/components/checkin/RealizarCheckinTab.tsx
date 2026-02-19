@@ -420,7 +420,7 @@ export function RealizarCheckinTab({ userId }: Props) {
 
           <Button
             onClick={handleConfirm}
-            disabled={confirming}
+            disabled={confirming || !pesoCheckin}
             className="w-full h-16 text-xl bg-green-600 hover:bg-green-700"
           >
             {confirming ? "Confirmando..." : "✅ CONFIRMAR CHECK-IN"}

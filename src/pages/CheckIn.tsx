@@ -84,7 +84,7 @@ const CheckIn = () => {
           )}
 
           <TabsContent value="consultar">
-            <ConsultaPulseiraTab />
+            <ConsultaPulseiraTab userId={userId} userEmail={userEmail} />
           </TabsContent>
 
           {isAdmin && (
