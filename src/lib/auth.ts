@@ -73,7 +73,7 @@ export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): 
     case "coord02":
     case "coord03":
       items = ALL_MENU_ITEMS.filter((item) =>
-        [1, 2, 4, 6, 8, 13].includes(item.id)
+        [1, 2, 4, 6, 8, 9, 13].includes(item.id)
       );
       break;
 
