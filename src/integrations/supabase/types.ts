@@ -515,6 +515,91 @@ export type Database = {
           },
         ]
       }
+      atendimentos_hakuna: {
+        Row: {
+          created_at: string | null
+          glicemia: number | null
+          glicemia_status: string | null
+          hakuna_servidor_id: string | null
+          id: string
+          medicamento_id: string | null
+          medicamento_nome: string | null
+          medicamento_origem: string | null
+          medicamento_quantidade: number | null
+          medicamento_via: string | null
+          observacoes: string | null
+          participante_id: string | null
+          pressao_diastolica: number | null
+          pressao_sistolica: number | null
+          pressao_status: string | null
+          temperatura: number | null
+          temperatura_status: string | null
+          top_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          glicemia?: number | null
+          glicemia_status?: string | null
+          hakuna_servidor_id?: string | null
+          id?: string
+          medicamento_id?: string | null
+          medicamento_nome?: string | null
+          medicamento_origem?: string | null
+          medicamento_quantidade?: number | null
+          medicamento_via?: string | null
+          observacoes?: string | null
+          participante_id?: string | null
+          pressao_diastolica?: number | null
+          pressao_sistolica?: number | null
+          pressao_status?: string | null
+          temperatura?: number | null
+          temperatura_status?: string | null
+          top_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          glicemia?: number | null
+          glicemia_status?: string | null
+          hakuna_servidor_id?: string | null
+          id?: string
+          medicamento_id?: string | null
+          medicamento_nome?: string | null
+          medicamento_origem?: string | null
+          medicamento_quantidade?: number | null
+          medicamento_via?: string | null
+          observacoes?: string | null
+          participante_id?: string | null
+          pressao_diastolica?: number | null
+          pressao_sistolica?: number | null
+          pressao_status?: string | null
+          temperatura?: number | null
+          temperatura_status?: string | null
+          top_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atendimentos_hakuna_hakuna_servidor_id_fkey"
+            columns: ["hakuna_servidor_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_hakuna_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_hakuna_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       autorizacoes_medicas: {
         Row: {
           autorizado_por: string | null
@@ -1509,6 +1594,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "hakuna_medicamentos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hakuna_necessaire: {
+        Row: {
+          hakuna_servidor_id: string | null
+          id: string
+          medicamento_id: string
+          medicamento_nome: string
+          quantidade: number | null
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          hakuna_servidor_id?: string | null
+          id?: string
+          medicamento_id: string
+          medicamento_nome: string
+          quantidade?: number | null
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          hakuna_servidor_id?: string | null
+          id?: string
+          medicamento_id?: string
+          medicamento_nome?: string
+          quantidade?: number | null
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hakuna_necessaire_hakuna_servidor_id_fkey"
+            columns: ["hakuna_servidor_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hakuna_necessaire_top_id_fkey"
             columns: ["top_id"]
             isOneToOne: false
             referencedRelation: "tops"

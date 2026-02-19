@@ -40,6 +40,7 @@ import ErgometricosTab from "@/components/hakunas/ErgometricosTab";
 import AutorizacoesTab from "@/components/hakunas/AutorizacoesTab";
 import MedicamentosEstoqueTab from "@/components/hakunas/MedicamentosEstoqueTab";
 import EquipamentosEstoqueTab from "@/components/hakunas/EquipamentosEstoqueTab";
+import NecessaireTab from "@/components/hakunas/NecessaireTab";
 import Familias from "@/pages/Familias";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
@@ -206,6 +207,7 @@ export default function AreaPortal() {
           {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("autorizacoes")) && <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>}
           {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("medicamentos")) && <TabsTrigger value="medicamentos">Medicamentos</TabsTrigger>}
           {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("equipamentos")) && <TabsTrigger value="equipamentos_hakuna">Equipamentos</TabsTrigger>}
+          {decodedNome === "Hakuna" && <TabsTrigger value="necessaire">Necessaire</TabsTrigger>}
         </TabsList>
 
         {/* Tab Painel */}
@@ -510,6 +512,12 @@ export default function AreaPortal() {
         {decodedNome === "Hakuna" && (
           <TabsContent value="equipamentos_hakuna">
             <EquipamentosEstoqueTab />
+          </TabsContent>
+        )}
+
+        {decodedNome === "Hakuna" && (
+          <TabsContent value="necessaire">
+            <NecessaireTab isCoord={cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP} />
           </TabsContent>
         )}
       </Tabs>
