@@ -24,6 +24,7 @@ import AreaPortal from "./pages/AreaPortal";
 import Aprovacoes from "./pages/Aprovacoes";
 import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import NotFound from "./pages/NotFound";
+import KmzMapa from "./pages/KmzMapa";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,7 @@ const App = () => {
               <Route path="/top-real-time" element={<TopRealTime />} />
               <Route path="/aprovacoes" element={<Aprovacoes />} />
               <Route path="/areas/:nome" element={<AreaPortal />} />
+              <Route path="/kmz" element={<KmzMapa />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
