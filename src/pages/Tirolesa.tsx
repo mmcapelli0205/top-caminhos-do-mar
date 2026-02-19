@@ -78,7 +78,7 @@ export default function Tirolesa() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { session } = useAuth();
-  const { participantes, familias, isLoading: loadingParts } = useParticipantes();
+  const { participantes, familias: allFamilias, isLoading: loadingParts } = useParticipantes();
 
   const [generating, setGenerating] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -86,7 +86,6 @@ export default function Tirolesa() {
   // Agrupamento
   const [grupos, setGrupos] = useState<number[][]>([]);
   const [showGrupoConfig, setShowGrupoConfig] = useState(false);
-  const [addingToGrupo, setAddingToGrupo] = useState<number | null>(null);
 
   // Simulação
   const [modoAtivo, setModoAtivo] = useState<"none" | "simulacao" | "oficial">("none");
@@ -99,18 +98,30 @@ export default function Tirolesa() {
   );
   const [savingTermo, setSavingTermo] = useState(false);
 
+  // Derivar topId dos participantes
   const topId = useMemo(() => {
     if (participantes.length > 0 && participantes[0].top_id) return participantes[0].top_id;
     return null;
   }, [participantes]);
 
+  // BUG 1 FIX: Filtrar famílias pelo TOP atual (evita mostrar famílias de outros TOPs)
+  const familias = useMemo(() => {
+    if (!topId) return allFamilias;
+    // Incluir famílias que pertencem ao top atual. Se familia_top_id for null, incluir também
+    // (compatibilidade com dados legados), mas preferir filtrar quando topId existe.
+    return allFamilias.filter((f) => f.familia_top_id === topId);
+  }, [allFamilias, topId]);
+
   // --- Queries ---
+  // BUG 2 FIX: Filtrar duplas por top_id corretamente (query só executa quando topId existe)
   const duplasQuery = useQuery({
     queryKey: ["tirolesa_duplas", topId],
+    enabled: topId != null,
     queryFn: async () => {
-      const q = supabase.from("tirolesa_duplas" as any).select("*");
-      if (topId) (q as any).eq("top_id", topId);
-      const { data, error } = await q;
+      if (!topId) return [] as DuplaRow[];
+      const { data, error } = await (supabase.from("tirolesa_duplas" as any) as any)
+        .select("*")
+        .eq("top_id", topId);
       if (error) throw error;
       return (data ?? []) as unknown as DuplaRow[];
     },
@@ -119,8 +130,8 @@ export default function Tirolesa() {
   const termosQuery = useQuery({
     queryKey: ["tirolesa_termo_aceite", topId],
     queryFn: async () => {
-      const q = (supabase.from("tirolesa_termo_aceite" as any) as any).select("*");
-      if (topId) q.eq("top_id", topId);
+      let q = (supabase.from("tirolesa_termo_aceite" as any) as any).select("*");
+      if (topId) q = q.eq("top_id", topId);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as any[];
@@ -130,8 +141,8 @@ export default function Tirolesa() {
   const configQuery = useQuery({
     queryKey: ["tirolesa_config", topId],
     queryFn: async () => {
-      const q = (supabase.from("tirolesa_config" as any) as any).select("*");
-      if (topId) q.eq("top_id", topId);
+      let q = (supabase.from("tirolesa_config" as any) as any).select("*");
+      if (topId) q = q.eq("top_id", topId);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as any[];
@@ -210,6 +221,7 @@ export default function Tirolesa() {
 
   const totalInaptos = algoStatsResult?.ineligible.length ?? 0;
 
+  // BUG 2 FIX: "Duplas Desceram" só conta duplas do top_id atual (já filtradas na query)
   const totalDesceu = duplas.filter((d) => d.desceu && d.participante_2_id).length;
   const totalDuplasOficiais = duplas.filter((d) => d.participante_2_id).length;
 
@@ -310,12 +322,9 @@ export default function Tirolesa() {
         termosAceitosSet
       );
 
+      // Deletar apenas duplas do topId atual
       if (topId) {
         await (supabase.from("tirolesa_duplas" as any) as any).delete().eq("top_id", topId);
-      } else {
-        await (supabase.from("tirolesa_duplas" as any) as any)
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
       }
 
       if (result.pairs.length > 0) {
@@ -398,7 +407,6 @@ export default function Tirolesa() {
     const sortedFamilias = [...familias].sort((a, b) => a.numero - b.numero);
 
     if (modoAtivo === "simulacao" && simulacaoResult) {
-      // Print por grupos
       const gruposEfetivos = simulacaoResult.grupos;
       gruposEfetivos.forEach((grupoFamIds, grupoIdx) => {
         const grupoPairs = simulacaoResult.pairs.filter((p) => p.grupoIdx === grupoIdx);
@@ -453,12 +461,11 @@ export default function Tirolesa() {
 
   const isLoading = loadingParts || duplasQuery.isLoading;
 
-  // Grupos efetivos para exibição (ao mostrar simulação ou oficial)
+  // Grupos efetivos para exibição
   const gruposEfetivosDisplay = useMemo(() => {
     if (modoAtivo === "simulacao" && simulacaoResult) {
       return simulacaoResult.grupos;
     }
-    // Para o modo oficial, calcular grupos a partir dos dados salvos
     if (grupos.length === 0) {
       return familias.map((f) => [f.id]);
     }
@@ -497,7 +504,8 @@ export default function Tirolesa() {
     return map;
   }, [algoStatsResult]);
 
-  const hasOfficialData = duplas.length > 0;
+  // BUG 2 FIX: Card "Duplas Desceram" só aparece no modo oficial com dados
+  const showDuplaDesceuCard = modoAtivo === "oficial" && duplas.length > 0;
 
   return (
     <div className="space-y-6">
@@ -529,7 +537,7 @@ export default function Tirolesa() {
             <Printer className="h-4 w-4 mr-1" /> Imprimir
           </Button>
           <Button
-          className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
             onClick={handleSimular}
             disabled={isLoading || generating}
           >
@@ -606,18 +614,21 @@ export default function Tirolesa() {
             <div className="text-2xl font-bold">{pesoMedio > 0 ? `${pesoMedio.toFixed(1)}kg` : "—"}</div>
           </CardContent>
         </Card>
-        {hasOfficialData && (
-          <Card>
-            <CardHeader className="pb-1 p-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Duplas Desceram</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
+        {/* BUG 2 FIX: Card só aparece no modo oficial, mostra "—" se ainda não há duplas oficiais */}
+        <Card>
+          <CardHeader className="pb-1 p-3">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Duplas Desceram</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            {showDuplaDesceuCard ? (
               <div className="text-2xl font-bold text-green-600">
                 {totalDesceu} <span className="text-sm text-muted-foreground">/ {totalDuplasOficiais}</span>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="text-2xl font-bold text-muted-foreground">—</div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Configuração de Agrupamento */}
@@ -629,6 +640,11 @@ export default function Tirolesa() {
           >
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Users className="h-4 w-4" /> Configurar Agrupamento de Famílias
+              {familias.length > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({familias.length} famílias disponíveis)
+                </span>
+              )}
             </CardTitle>
             {showGrupoConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
@@ -682,7 +698,7 @@ export default function Tirolesa() {
                         );
                       })}
                     </div>
-                    {/* Seletor de famílias disponíveis */}
+                    {/* Seletor de famílias — usa apenas famílias REAIS do banco filtradas por topId */}
                     <div className="flex flex-wrap gap-1">
                       {familias
                         .sort((a, b) => a.numero - b.numero)
