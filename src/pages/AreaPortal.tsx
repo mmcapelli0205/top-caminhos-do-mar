@@ -272,6 +272,21 @@ export default function AreaPortal() {
           {/* Hakuna-specific KPIs */}
           {decodedNome === "Hakuna" && (
             <div className="mt-4 space-y-4">
+              {/* Card Consultar Pulseira */}
+              <Card
+                className="border-l-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                style={{ borderLeftColor: "hsl(210, 80%, 55%)" }}
+                onClick={() => navigate("/check-in?tab=consultar")}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <QrCode className="h-6 w-6 text-blue-400" />
+                  <div>
+                    <p className="font-semibold">🔍 Consultar Pulseira</p>
+                    <p className="text-xs text-muted-foreground">Bipar pulseira do participante</p>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card className="border-l-4" style={{ borderLeftColor: dashData.ergometricosPendentes > 0 ? "hsl(0, 70%, 50%)" : "hsl(220, 10%, 55%)" }}>
                 <CardContent className="p-4">
                   <p className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Ergométricos Pendentes</p>

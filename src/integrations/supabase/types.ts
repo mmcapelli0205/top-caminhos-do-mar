@@ -1800,6 +1800,8 @@ export type Database = {
           alergia_alimentar: string | null
           altura: number | null
           amigo_parente: string | null
+          checkin_em: string | null
+          checkin_por: string | null
           checkin_realizado: boolean | null
           cidade: string | null
           condicionamento: number | null
@@ -1825,7 +1827,9 @@ export type Database = {
           medicamentos: string | null
           motivo_inscricao: string | null
           nome: string
+          numero_legendario: string | null
           peso: number | null
+          peso_checkin: number | null
           profissao: string | null
           qr_code: string | null
           status: string | null
@@ -1839,6 +1843,8 @@ export type Database = {
           alergia_alimentar?: string | null
           altura?: number | null
           amigo_parente?: string | null
+          checkin_em?: string | null
+          checkin_por?: string | null
           checkin_realizado?: boolean | null
           cidade?: string | null
           condicionamento?: number | null
@@ -1864,7 +1870,9 @@ export type Database = {
           medicamentos?: string | null
           motivo_inscricao?: string | null
           nome: string
+          numero_legendario?: string | null
           peso?: number | null
+          peso_checkin?: number | null
           profissao?: string | null
           qr_code?: string | null
           status?: string | null
@@ -1878,6 +1886,8 @@ export type Database = {
           alergia_alimentar?: string | null
           altura?: number | null
           amigo_parente?: string | null
+          checkin_em?: string | null
+          checkin_por?: string | null
           checkin_realizado?: boolean | null
           cidade?: string | null
           condicionamento?: number | null
@@ -1903,7 +1913,9 @@ export type Database = {
           medicamentos?: string | null
           motivo_inscricao?: string | null
           nome?: string
+          numero_legendario?: string | null
           peso?: number | null
+          peso_checkin?: number | null
           profissao?: string | null
           qr_code?: string | null
           status?: string | null
@@ -2118,6 +2130,60 @@ export type Database = {
           },
           {
             foreignKeyName: "predicas_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pulseiras: {
+        Row: {
+          codigo: string
+          created_at: string | null
+          desvinculada_em: string | null
+          desvinculada_por: string | null
+          id: string
+          participante_id: string | null
+          status: string | null
+          top_id: string | null
+          vinculada_em: string | null
+          vinculada_por: string | null
+        }
+        Insert: {
+          codigo: string
+          created_at?: string | null
+          desvinculada_em?: string | null
+          desvinculada_por?: string | null
+          id?: string
+          participante_id?: string | null
+          status?: string | null
+          top_id?: string | null
+          vinculada_em?: string | null
+          vinculada_por?: string | null
+        }
+        Update: {
+          codigo?: string
+          created_at?: string | null
+          desvinculada_em?: string | null
+          desvinculada_por?: string | null
+          id?: string
+          participante_id?: string | null
+          status?: string | null
+          top_id?: string | null
+          vinculada_em?: string | null
+          vinculada_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pulseiras_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "participantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pulseiras_top_id_fkey"
             columns: ["top_id"]
             isOneToOne: false
             referencedRelation: "tops"
