@@ -1,231 +1,218 @@
 
-## Melhorias na Aba Tirolesa
+## Correções + Nova Funcionalidade: Match Manual de Solos
 
-### Resumo
+### Diagnóstico do Bug 1 (Raiz do Problema — Definitivo)
 
-Cinco melhorias integradas: (1) agrupamento de famílias para cross-família; (2) modo Simulação vs. Oficial; (3) Termo de Responsabilidade no scan da pulseira; (4) cards de resumo atualizados; (5) arquitetura preparada para exportação futura.
+A investigação do banco revelou:
 
----
+- **Todas as 16 famílias têm `familia_top_id = NULL`** — o campo nunca foi populado.
+- **Todos os participantes também têm `top_id = NULL`** — o campo `top_id` em participantes também é nulo.
+- O código atual tenta filtrar com `allFamilias.filter(f => f.familia_top_id === topId)`. Como ambos são `null`, isso retorna array vazio quando `topId !== null`, e retorna tudo quando `topId === null`.
+- O `topId` é derivado de `participantes[0].top_id`, que também é `null`, então `topId = null` → a condição `if (!topId) return allFamilias` retorna TODAS as 16 famílias.
+- As famílias 1–10 são as únicas usadas (confirmado: participantes têm `familia_id` de 1 a 10). As famílias 11–16 existem no banco mas não têm participantes vinculados.
 
-### Migrations Necessárias (2 novas tabelas)
-
-**Tabela 1: `tirolesa_termo_aceite`**
-Registra o aceite (ou recusa) do Termo de Responsabilidade por participante.
-
-```sql
-CREATE TABLE tirolesa_termo_aceite (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  participante_id UUID REFERENCES participantes(id) ON DELETE CASCADE,
-  top_id UUID,
-  status TEXT NOT NULL DEFAULT 'pendente', -- 'aceito', 'recusado', 'pendente'
-  registrado_por UUID,        -- auth.uid() do servidor
-  registrado_por_nome TEXT,   -- nome do servidor (desnormalizado)
-  aceito_em TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(participante_id, top_id)
-);
-ALTER TABLE tirolesa_termo_aceite ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth_select_termo" ON tirolesa_termo_aceite FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth_all_termo" ON tirolesa_termo_aceite FOR ALL TO authenticated USING (true) WITH CHECK (true);
-```
-
-**Tabela 2: `tirolesa_config`**
-Guarda o texto configurável do Termo de Responsabilidade e os grupos de famílias.
-
-```sql
-CREATE TABLE tirolesa_config (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  top_id UUID,
-  texto_termo TEXT DEFAULT 'Eu, participante, declaro estar ciente dos riscos da atividade de tirolesa e autorizo minha participação mediante avaliação física prévia.',
-  grupos JSONB DEFAULT '[]', -- array de arrays de familia_id: [[1,4,7],[2,3]]
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE tirolesa_config ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth_select_config" ON tirolesa_config FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth_all_config" ON tirolesa_config FOR ALL TO authenticated USING (true) WITH CHECK (true);
-```
-
-> `grupos` é um JSONB array-of-arrays. Ex.: `[[1,4,7],[2,3],[5]]`. Quando vazio, cada família é tratada isoladamente (comportamento atual).
-
----
-
-### Alterações no Algoritmo — `src/lib/tiralesaAlgorithm.ts`
-
-Mudar a assinatura de `generateZiplinePairs` para aceitar **grupos** e um **modo**:
-
-```
-generateZiplinePairs(
-  familias: Familia[],
-  participantes: Participante[],
-  grupos: number[][],          // ex: [[1,4,7],[2,3]] — vazio = cada família isolada
-  modo: "simulacao" | "oficial",
-  termosAceitos: Set<string>   // Set de participante_id com termo aceito (usado só no modo "oficial")
-): ZiplineResult
-```
-
-**Lógica com grupos:**
-- Quando `grupos` não está vazio, o algoritmo itera sobre os grupos ao invés das famílias individualmente.
-- Dentro de cada grupo, todos os participantes aptos de todas as famílias do grupo são misturados em um único pool antes de formar duplas.
-- As duplas resultantes recebem `familia_id` da família do participante 1 (para exibição).
-- Quando `grupos` está vazio, comportamento atual é mantido (cada família isolada).
-
-**Filtro de modo:**
-- `"simulacao"`: inclui todos os participantes com peso ≤ 120kg, independente do termo.
-- `"oficial"`: inclui apenas participantes com peso ≤ 120kg **E** cujo `id` esteja em `termosAceitos`.
-
----
-
-### Arquivo Principal — `src/pages/Tirolesa.tsx` (Reescrever)
-
-**Estrutura de estado adicionada:**
+**Solução definitiva:** Em vez de filtrar por `familia_top_id`, filtrar pelo conjunto de `familia_id` que realmente aparecem nos participantes. Isso é agnóstico ao `top_id` e reflete a realidade atual dos dados.
 
 ```typescript
-// Grupos de famílias (editável pelo coordenador)
-const [grupos, setGrupos] = useState<number[][]>([]);
-const [editandoGrupos, setEditandoGrupos] = useState(false);
-
-// Modo de geração
-type GenMode = "simulacao" | "oficial";
-const [modoSimulacao, setModoSimulacao] = useState<"none" | "simulacao" | "oficial">("none");
-
-// Dados simulados (apenas em memória, não vai pro banco)
-const [simulacaoResult, setSimulacaoResult] = useState<ZiplineResult | null>(null);
-
-// Config (texto do termo)
-const [textoTermo, setTextoTermo] = useState<string>("");
-
-// Aceites de termos
-const termosAceitosQuery = useQuery(["tirolesa_termo_aceite", topId], ...)
+// Famílias que realmente possuem participantes vinculados
+const familias = useMemo(() => {
+  const familiasComParticipantes = new Set(
+    participantes.map(p => p.familia_id).filter(Boolean)
+  );
+  return allFamilias.filter(f => familiasComParticipantes.has(f.id));
+}, [allFamilias, participantes]);
 ```
 
-**Seção de Agrupamento de Famílias** (exibida ANTES dos botões de geração):
-
-- Card colapsável: "Configurar Agrupamento de Famílias"
-- Botão rápido: "Todas as Famílias Juntas" — cria 1 grupo com todas as familias
-- Botão: "Resetar" — grupos volta a `[]` (isolado por família)
-- Lista de grupos editáveis:
-  - Cada grupo mostra as famílias selecionadas com badges
-  - Botão "+ Adicionar Grupo" abre um popover/select com as famílias disponíveis (multi-select com checkboxes)
-  - Botão "× Remover" em cada grupo
-  - Famílias já em um grupo não aparecem disponíveis para outros grupos
-- Ao alterar grupos: UPSERT em `tirolesa_config` (coluna `grupos`)
-
-**Dois botões de geração:**
-
-```
-[🔵 Simular Duplas]   [🟠 Gerar Duplas Oficial]
-```
-
-- **Simular Duplas** (azul, `bg-blue-600`):
-  - Não salva no banco
-  - Roda `generateZiplinePairs(..., grupos, "simulacao", new Set())`
-  - Armazena resultado em `simulacaoResult`
-  - Exibe na UI com badge "SIMULAÇÃO" em destaque (border-2 border-blue-400, fundo azul translúcido no header)
-  - Sem `AlertDialog` de confirmação (é simulação, não destrói dados)
-
-- **Gerar Duplas Oficial** (laranja, atual):
-  - Usa `termosAceitos` (Set com IDs dos participantes com status = 'aceito')
-  - `AlertDialog` de confirmação se já houver duplas salvas
-  - Salva no banco (comportamento atual)
-  - Exibe indicador "OFICIAL" no header da lista
-
-**Cards de Resumo Atualizados** (de 4 para 7 cards):
-
-```
-[Aptos (Peso)] [Termo Aceito] [Termo Pendente] [Termo Recusado]
-[Total Duplas] [Inaptos >120kg] [Peso Médio Dupla]
-```
-
-Cada card exibe o número correspondente com cor temática (verde para aceito, amarelo para pendente, vermelho para recusado/inapto).
-
-**Lista de duplas:**
-- Se modo simulação ativo: exibe `simulacaoResult.pairs` com borda azul e badge "SIMULAÇÃO"
-- Se modo oficial: exibe `duplas` do banco (comportamento atual) com badge "OFICIAL"
-- Mantém Accordion por família (ou por grupo, indicando "Grupo X: Fam. 1 + Fam. 4 + Fam. 7")
+Isso garante que apenas as 10 famílias que possuem participantes sejam exibidas, independente do `top_id`.
 
 ---
 
-### Alterações no Check-in — `src/components/checkin/ConsultaPulseiraTab.tsx`
+### Migration Necessária
 
-Adicionar seção "Termo de Responsabilidade da Tirolesa" na ficha do participante, abaixo do alerta médico e acima do prontuário.
+Adicionar coluna `grupo_tipo` na tabela `tirolesa_duplas`:
 
-**Lógica:**
-
-1. Ao carregar o participante, buscar registro em `tirolesa_termo_aceite` WHERE `participante_id = found.id` e `top_id` atual.
-2. Exibir status atual com badge:
-   - Sem registro: badge cinza "Pendente"
-   - `aceito`: badge verde "✅ Aceito"
-   - `recusado`: badge vermelho "❌ Recusado"
-
-3. Botão "📜 Abrir Termo de Responsabilidade" abre um Dialog:
-   - Título: "Termo de Responsabilidade — Tirolesa"
-   - Corpo: `textoTermo` (buscado de `tirolesa_config` no mount da tab)
-   - Checkbox: "O participante leu e aceita o Termo de Responsabilidade da Tirolesa"
-   - Dois botões:
-     - "✅ Confirmar Aceite" (verde) — UPSERT em `tirolesa_termo_aceite` com `status='aceito'`, `aceito_em=NOW()`, `registrado_por=userId`, `registrado_por_nome=servidor.nome`
-     - "❌ Recusar Termo" (vermelho, outline) — UPSERT com `status='recusado'`
-   - Toast de confirmação após ação
-
-**Nota importante:** O checkbox deve estar marcado para habilitar "Confirmar Aceite". "Recusar Termo" não requer checkbox.
-
----
-
-### Configuração do Texto do Termo — `src/pages/Configuracoes.tsx` ou nova seção em Tirolesa
-
-Opção mais simples: adicionar um card "Configurar Termo da Tirolesa" ao final da página de Configurações existente (ou como seção dentro da própria aba Tirolesa).
-
-- Textarea com o texto atual do termo (buscado de `tirolesa_config`)
-- Botão "Salvar Texto do Termo"
-- UPSERT em `tirolesa_config`
-
-Para manter o escopo, será implementado como um dialog "⚙️ Config. Termo" no header da aba Tirolesa, visível apenas para diretoria/coordenadores.
-
----
-
-### Resumo de Arquivos
-
-| Arquivo | Tipo | Descrição |
-|---|---|---|
-| Migration SQL | Novo | Tabelas `tirolesa_termo_aceite` e `tirolesa_config` |
-| `src/lib/tiralesaAlgorithm.ts` | Alterar | Suporte a grupos multi-família e modo simulação/oficial |
-| `src/pages/Tirolesa.tsx` | Reescrever | Agrupamento, dois botões, cards atualizados |
-| `src/components/checkin/ConsultaPulseiraTab.tsx` | Alterar | Seção do Termo de Responsabilidade |
-| `src/App.tsx` | Alterar | Adicionar rota `/tirolesa` (se ainda não existir como rota separada) |
-
-> Nota: A aba Tirolesa está em `/tirolesa` mas não aparece na rota do `App.tsx` ainda — será necessário verificar se ela está integrada como sub-rota ou aba dentro de outra página (ex.: Área de Segurança). Se for aba dentro de `AreaPortal`, nenhuma alteração de rota é necessária.
-
----
-
-### Fluxo de Uso (Como vai funcionar na prática)
-
-```text
-COORDENADOR DE SEGURANÇA:
-1. Acessa aba Tirolesa
-2. Configura grupos de famílias (ou clica "Todas as Famílias Juntas")
-3. Clica "Simular Duplas" → vê resultado com badge SIMULAÇÃO
-4. Testa variações de agrupamento até achar o melhor cenário
-5. No dia do evento, quando os termos estiverem coletados:
-   Clica "Gerar Duplas Oficial" → só inclui quem aceitou o termo
-
-HAKUNA / SERVIDOR (durante o check-in):
-1. Escaneia a pulseira ou digita CPF do participante
-2. Vê ficha com alerta médico
-3. Clica "Abrir Termo de Responsabilidade"
-4. Lê o texto para o participante, marca o checkbox
-5. Clica "Confirmar Aceite" ou "Recusar Termo"
-6. Badge de status atualiza imediatamente
+```sql
+ALTER TABLE tirolesa_duplas
+  ADD COLUMN IF NOT EXISTS grupo_tipo TEXT DEFAULT 'auto';
 ```
+
+Valores: `'auto'` = gerada pelo algoritmo, `'manual'` = formada no match manual de solos.
+
+---
+
+### Alterações em `src/pages/Tirolesa.tsx` (arquivo principal)
+
+#### 1. Correção da filtragem de famílias
+
+Substituir o `useMemo` de `familias` (linha 108-113) pela abordagem baseada em participantes:
+
+```typescript
+const familias = useMemo(() => {
+  const familiasComPart = new Set(
+    participantes.map(p => p.familia_id).filter(Boolean)
+  );
+  return allFamilias.filter(f => familiasComPart.has(f.id));
+}, [allFamilias, participantes]);
+```
+
+#### 2. Correção dos cards — Card 1 e Card 2
+
+**Card 1 — "Aptos (Peso) / Termo Aceito"** (substitui o card "Aptos (Peso)" atual):
+
+```
+Label: "Aptos (Peso) / Termo"
+Valor: "120 / 0"  (totalAptoPeso / totalTermoAceito)
+Cor do número: verde para totalAptoPeso, cinza para "/ N"
+```
+
+**Card 2 — "Descida Individual"** (substitui o card "Termo Aceito"):
+
+```
+Label: "Descida Individual"
+Valor: X solos
+Comportamento: CLICÁVEL — abre o Dialog de Match Manual
+Mostrar: número de solos do resultado ativo (simulação ou oficial)
+```
+
+#### 3. Estado novo — Match Manual de Solos
+
+Adicionar estados:
+
+```typescript
+const [showMatchManual, setShowMatchManual] = useState(false);
+const [matchSelecionado, setMatchSelecionado] = useState<string | null>(null); // participante_id
+const [matchManualPairs, setMatchManualPairs] = useState<ZiplinePair[]>([]); // solos extras em memória (simulação)
+const [confirmMatchPair, setConfirmMatchPair] = useState<{p1: Participante, p2: Participante} | null>(null);
+const [savingMatchPair, setSavingMatchPair] = useState(false);
+```
+
+#### 4. Lógica de solos ativos
+
+Calcular a lista de solos disponíveis para o match manual:
+
+```typescript
+const solosAtivos = useMemo(() => {
+  // Solos = participantes em pares sem participante2
+  if (modoAtivo === "simulacao" && simulacaoResult) {
+    return simulacaoResult.pairs
+      .filter(p => !p.participante2)
+      .map(p => p.participante1)
+      .sort((a, b) => (a.peso ?? 0) - (b.peso ?? 0)); // mais leve ao mais pesado
+  }
+  if (modoAtivo === "oficial") {
+    return duplas
+      .filter(d => !d.participante_2_id)
+      .map(d => partMap.get(d.participante_1_id))
+      .filter(Boolean)
+      .sort((a, b) => (a!.peso ?? 0) - (b!.peso ?? 0)) as Participante[];
+  }
+  return [];
+}, [modoAtivo, simulacaoResult, duplas, partMap]);
+```
+
+#### 5. Dialog de Match Manual — Interface completa
+
+Um `Dialog` com:
+
+- **Header:** "Formação Manual de Duplas — Solos" + subtítulo "X participantes sem dupla"
+- **Indicador de seleção ativa:** quando um participante está selecionado, mostrar banner "Selecionado: [Nome] ([Xkg]) — Peso máximo do par: [170-X]kg"
+- **Tabela de solos:** colunas `Checkbox | Nome | Família | Peso`, ordenada do mais leve ao mais pesado
+
+**Lógica de seleção:**
+
+- **Nenhum selecionado:** todos os checkboxes habilitados
+- **Um selecionado (p1, pesoP1):** 
+  - Calcular `pesoMaxPar = 170 - pesoP1`
+  - Participantes com `peso > pesoMaxPar` → desabilitados (opacity, `cursor-not-allowed`)
+  - Participantes com `peso ≤ pesoMaxPar` → habilitados (exceto o próprio p1)
+  - Clique em habilitado → abre `confirmMatchPair` com os dois participantes
+- **Ao desmarcar p1:** volta ao estado inicial (todos habilitados)
+
+**Sub-dialog de confirmação:**
+
+```
+"Formar dupla?
+João Macedo (75kg, Fam. 1) + Maria Santos (82kg, Fam. 3) = 157kg"
+
+[✅ Confirmar Dupla]   [✖ Cancelar]
+```
+
+**Ao confirmar:**
+
+- Modo simulação: adiciona dupla manual a `matchManualPairs` (estado local, não salva no banco)
+- Modo oficial: UPSERT na tabela `tirolesa_duplas` com `grupo_tipo = 'manual'`
+- Remove os dois participantes da lista de solos
+- Atualiza `matchSelecionado = null`
+- Toast de confirmação
+
+**Mensagem quando sem mais combinações:**
+
+```
+Se nenhum par dos solos restantes tem pesoTotal ≤ 170:
+"Não há mais combinações possíveis dentro do limite de 170kg"
+```
+
+#### 6. GRUPO SOLO na lista de duplas
+
+Após o loop de `gruposEfetivosDisplay`, adicionar seção especial "GRUPO SOLO":
+
+```
+Condição de exibição: há duplas com grupo_tipo = 'manual' OU (simulação com matchManualPairs.length > 0)
+
+GRUPO SOLO — Duplas Manuais    [X duplas] [Y solo restante]
+├── Dupla 1: João (Fam.1) + Maria (Fam.3) = 157kg    ☐ Desceu
+├── Dupla 2: Pedro (Fam.7) + Ana (Fam.2) = 163kg     ☐ Desceu
+├── Solo: Carlos Mendes (Fam.4) — 98kg
+└── Solo: Bruno Silva (Fam.9) — 92kg
+```
+
+Implementação:
+- Filtrar `duplas.filter(d => d.grupo_tipo === 'manual')` para o modo oficial
+- Em simulação: usar `matchManualPairs`
+- Os solos restantes são `solosAtivos` sem os já emparelhados manualmente
+- Aparece sempre por último
+
+#### 7. Card "Total Duplas" — incluir manuais
+
+```typescript
+const totalDuplas = modoAtivo === "simulacao"
+  ? activePairs.filter(p => p.participante2).length + matchManualPairs.filter(p => p.participante2).length
+  : duplas.filter(d => d.participante_2_id).length; // já inclui manuais
+```
+
+#### 8. Card "Duplas Desceram" — mantém lógica atual (somente oficial)
+
+Permanece mostrando `—` em simulação e `X / Y` em oficial. As duplas manuais oficiais também entram na contagem (já têm `desceu` field).
+
+---
+
+### Resumo dos 8 Cards Atualizados
+
+```
+Linha 1:
+[Aptos (Peso) / Termo — "120 / 0"]  [Descida Individual — "34 solos" CLICÁVEL]  [Termo Pendente]  [Termo Recusado]
+
+Linha 2:
+[Total Duplas — "43+manuais"]  [Inaptos (>120kg)]  [Peso Médio Dupla]  [Duplas Desceram — "—" ou "X/Y"]
+```
+
+---
+
+### Arquivos a Modificar
+
+| Arquivo | Tipo de Alteração |
+|---|---|
+| `supabase/migrations/...sql` | Nova migration: ADD COLUMN `grupo_tipo` em `tirolesa_duplas` |
+| `src/pages/Tirolesa.tsx` | Reescrever: bugfix família, cards atualizados, Dialog match manual, GRUPO SOLO |
 
 ---
 
 ### Detalhes Técnicos
 
-- O campo `grupos` em `tirolesa_config` usa JSONB para flexibilidade — sem necessidade de tabela auxiliar de grupos
-- `tirolesa_termo_aceite` tem UNIQUE em `(participante_id, top_id)` para permitir UPSERT simples
-- A simulação NÃO persiste no banco — resultado fica em `useState` local
-- O algoritmo modificado é backwards-compatible: `grupos=[]` = comportamento atual
-- Ambas as novas tabelas têm RLS PERMISSIVE para authenticated users (padrão do projeto)
-- O texto do termo fica em `tirolesa_config.texto_termo`, editável pelo admin
-- Para exportação futura: `tirolesa_termo_aceite` já possui todos os campos necessários (participante_id, status, registrado_por, aceito_em, top_id)
+- **Família filter:** Agnóstico ao `top_id`/`familia_top_id` — usa apenas `familia_id` dos participantes
+- **`grupo_tipo`:** Campo `TEXT DEFAULT 'auto'` — duplas manuais recebem `'manual'`
+- **Simulação:** `matchManualPairs` em `useState` local — nunca persiste no banco
+- **Oficial:** duplas manuais persistem com `grupo_tipo = 'manual'`, aparecem na mesma query existente
+- **Limite:** O Dialog de match manual filtra em tempo real conforme seleção — não precisa de nenhuma query extra
+- **Anti-duplicação:** Os solos exibidos no match manual excluem participantes já emparelhados (tanto pelo algoritmo quanto manualmente)
+- **Checkbox "Desceu":** Funciona normalmente para duplas manuais no modo oficial (mesma lógica já existente)
