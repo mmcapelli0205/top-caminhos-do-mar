@@ -1,20 +1,21 @@
 
-## Correções + Nova Funcionalidade: Match Manual de Solos
+## O que travou e por quê
 
-### Diagnóstico do Bug 1 (Raiz do Problema — Definitivo)
+O plano anterior travou porque requereu uma migration de banco de dados (adicionar coluna `grupo_tipo` em `tirolesa_duplas`) que nunca foi aprovada pelo usuário. Sem a coluna no banco, a implementação completa do Match Manual não pôde ser finalizada.
 
-A investigação do banco revelou:
+---
 
-- **Todas as 16 famílias têm `familia_top_id = NULL`** — o campo nunca foi populado.
-- **Todos os participantes também têm `top_id = NULL`** — o campo `top_id` em participantes também é nulo.
-- O código atual tenta filtrar com `allFamilias.filter(f => f.familia_top_id === topId)`. Como ambos são `null`, isso retorna array vazio quando `topId !== null`, e retorna tudo quando `topId === null`.
-- O `topId` é derivado de `participantes[0].top_id`, que também é `null`, então `topId = null` → a condição `if (!topId) return allFamilias` retorna TODAS as 16 famílias.
-- As famílias 1–10 são as únicas usadas (confirmado: participantes têm `familia_id` de 1 a 10). As famílias 11–16 existem no banco mas não têm participantes vinculados.
+## Diagnóstico Definitivo — Bug das 16 Famílias
 
-**Solução definitiva:** Em vez de filtrar por `familia_top_id`, filtrar pelo conjunto de `familia_id` que realmente aparecem nos participantes. Isso é agnóstico ao `top_id` e reflete a realidade atual dos dados.
+Confirmado via banco:
+- Todas as 16 famílias têm `familia_top_id = NULL`
+- O campo `top_id` nos participantes também está `NULL`
+- `topId` derivado dos participantes resulta em `null`
+- A condição `if (!topId) return allFamilias` retorna todas as 16 famílias
+
+A solução é filtrar pelo conjunto de `familia_id` que aparecem nos participantes:
 
 ```typescript
-// Famílias que realmente possuem participantes vinculados
 const familias = useMemo(() => {
   const familiasComParticipantes = new Set(
     participantes.map(p => p.familia_id).filter(Boolean)
@@ -23,13 +24,13 @@ const familias = useMemo(() => {
 }, [allFamilias, participantes]);
 ```
 
-Isso garante que apenas as 10 famílias que possuem participantes sejam exibidas, independente do `top_id`.
+Isso retorna exatamente as famílias 1–10 (que têm participantes) e exclui as 11–16.
 
 ---
 
-### Migration Necessária
+## O que precisa ser feito
 
-Adicionar coluna `grupo_tipo` na tabela `tirolesa_duplas`:
+### Passo 1 — Migration: adicionar `grupo_tipo` na tabela `tirolesa_duplas`
 
 ```sql
 ALTER TABLE tirolesa_duplas
@@ -38,181 +39,175 @@ ALTER TABLE tirolesa_duplas
 
 Valores: `'auto'` = gerada pelo algoritmo, `'manual'` = formada no match manual de solos.
 
----
+### Passo 2 — Reescrever `src/pages/Tirolesa.tsx`
 
-### Alterações em `src/pages/Tirolesa.tsx` (arquivo principal)
+**2.1 — Correção da filtragem de famílias (Bug 1)**
+Substituir o `useMemo` de `familias` na linha 108–113 pelo filtro baseado em participantes.
 
-#### 1. Correção da filtragem de famílias
+**2.2 — Atualizar o tipo `DuplaRow`**
+Adicionar `grupo_tipo: string | null` ao tipo local.
 
-Substituir o `useMemo` de `familias` (linha 108-113) pela abordagem baseada em participantes:
+**2.3 — Atualizar os 8 cards**
 
-```typescript
-const familias = useMemo(() => {
-  const familiasComPart = new Set(
-    participantes.map(p => p.familia_id).filter(Boolean)
-  );
-  return allFamilias.filter(f => familiasComPart.has(f.id));
-}, [allFamilias, participantes]);
+```text
+Linha 1 (4 cards):
+[Aptos (Peso) / Termo — "120 / 0"]   [Descida Individual — "34 solos" CLICÁVEL]   [Termo Pendente — "120"]   [Termo Recusado — "0"]
+
+Linha 2 (4 cards):
+[Total Duplas — "43"]   [Inaptos (>120kg)]   [Peso Médio Dupla]   [Duplas Desceram — "—" ou "X/Y"]
 ```
 
-#### 2. Correção dos cards — Card 1 e Card 2
+Card 1 — "Aptos (Peso) / Termo":
+- Label: "Aptos (Peso) / Termo Aceito"
+- Valor: `120 / 0` (verde para aptos, cinza para o `/N`)
 
-**Card 1 — "Aptos (Peso) / Termo Aceito"** (substitui o card "Aptos (Peso)" atual):
+Card 2 — "Descida Individual" (NOVO, substitui "Termo Aceito"):
+- Mostra total de solos do resultado ativo (simulação ou oficial)
+- Clicável: abre o Dialog de Match Manual
+- Desabilitado quando `modoAtivo === "none"`
 
-```
-Label: "Aptos (Peso) / Termo"
-Valor: "120 / 0"  (totalAptoPeso / totalTermoAceito)
-Cor do número: verde para totalAptoPeso, cinza para "/ N"
-```
-
-**Card 2 — "Descida Individual"** (substitui o card "Termo Aceito"):
-
-```
-Label: "Descida Individual"
-Valor: X solos
-Comportamento: CLICÁVEL — abre o Dialog de Match Manual
-Mostrar: número de solos do resultado ativo (simulação ou oficial)
-```
-
-#### 3. Estado novo — Match Manual de Solos
-
-Adicionar estados:
+**2.4 — Novos estados para o Match Manual**
 
 ```typescript
 const [showMatchManual, setShowMatchManual] = useState(false);
-const [matchSelecionado, setMatchSelecionado] = useState<string | null>(null); // participante_id
-const [matchManualPairs, setMatchManualPairs] = useState<ZiplinePair[]>([]); // solos extras em memória (simulação)
+const [matchSelecionado, setMatchSelecionado] = useState<string | null>(null);
+const [matchManualPairs, setMatchManualPairs] = useState<ZiplinePair[]>([]);
 const [confirmMatchPair, setConfirmMatchPair] = useState<{p1: Participante, p2: Participante} | null>(null);
 const [savingMatchPair, setSavingMatchPair] = useState(false);
 ```
 
-#### 4. Lógica de solos ativos
+**2.5 — `solosAtivos` (useMemo)**
 
-Calcular a lista de solos disponíveis para o match manual:
+Lista de solos disponíveis para o match manual, excluindo os já emparelhados manualmente:
 
 ```typescript
 const solosAtivos = useMemo(() => {
-  // Solos = participantes em pares sem participante2
+  // IDs já emparelhados manualmente (em simulação)
+  const manualUsed = new Set<string>(
+    matchManualPairs.flatMap(p => [p.participante1.id, p.participante2?.id].filter(Boolean) as string[])
+  );
+
   if (modoAtivo === "simulacao" && simulacaoResult) {
     return simulacaoResult.pairs
-      .filter(p => !p.participante2)
+      .filter(p => !p.participante2 && !manualUsed.has(p.participante1.id))
       .map(p => p.participante1)
-      .sort((a, b) => (a.peso ?? 0) - (b.peso ?? 0)); // mais leve ao mais pesado
+      .sort((a, b) => (a.peso ?? 0) - (b.peso ?? 0));
   }
   if (modoAtivo === "oficial") {
+    // duplas com grupo_tipo != 'manual' e sem participante2
     return duplas
-      .filter(d => !d.participante_2_id)
+      .filter(d => !d.participante_2_id && d.grupo_tipo !== 'manual')
       .map(d => partMap.get(d.participante_1_id))
       .filter(Boolean)
       .sort((a, b) => (a!.peso ?? 0) - (b!.peso ?? 0)) as Participante[];
   }
   return [];
-}, [modoAtivo, simulacaoResult, duplas, partMap]);
+}, [modoAtivo, simulacaoResult, duplas, partMap, matchManualPairs]);
 ```
 
-#### 5. Dialog de Match Manual — Interface completa
+**2.6 — Atualizar `totalSolo` para excluir solos já emparelhados manualmente**
 
-Um `Dialog` com:
+```typescript
+const totalSolo = modoAtivo === "simulacao"
+  ? solosAtivos.length + matchManualPairs.filter(p => !p.participante2).length
+  : duplas.filter(d => !d.participante_2_id && d.grupo_tipo !== 'manual').length;
+```
 
-- **Header:** "Formação Manual de Duplas — Solos" + subtítulo "X participantes sem dupla"
-- **Indicador de seleção ativa:** quando um participante está selecionado, mostrar banner "Selecionado: [Nome] ([Xkg]) — Peso máximo do par: [170-X]kg"
-- **Tabela de solos:** colunas `Checkbox | Nome | Família | Peso`, ordenada do mais leve ao mais pesado
+**2.7 — Atualizar `totalDuplas` para incluir manuais**
 
-**Lógica de seleção:**
+```typescript
+const totalDuplas = modoAtivo === "simulacao"
+  ? activePairs.filter(p => p.participante2).length + matchManualPairs.filter(p => p.participante2).length
+  : duplas.filter(d => d.participante_2_id).length; // inclui 'manual'
+```
 
-- **Nenhum selecionado:** todos os checkboxes habilitados
-- **Um selecionado (p1, pesoP1):** 
-  - Calcular `pesoMaxPar = 170 - pesoP1`
-  - Participantes com `peso > pesoMaxPar` → desabilitados (opacity, `cursor-not-allowed`)
-  - Participantes com `peso ≤ pesoMaxPar` → habilitados (exceto o próprio p1)
-  - Clique em habilitado → abre `confirmMatchPair` com os dois participantes
-- **Ao desmarcar p1:** volta ao estado inicial (todos habilitados)
+**2.8 — Dialog de Match Manual (novo componente inline)**
 
-**Sub-dialog de confirmação:**
+Interface completa dentro de um `Dialog`:
 
+```
+Header: "Formação Manual de Duplas — Solos"
+Subtítulo: "X participantes sem dupla"
+
+[Quando matchSelecionado != null:]
+Banner amarelo: "Selecionado: João Macedo (75kg) — Peso máximo do par: 95kg"
+
+Tabela:
+☐  Nome                 Família    Peso
+☐  Ana Costa (habilitada)   Fam. 2    68kg
+☑  João Macedo (selecionado) Fam. 1    75kg   ← marcado, cor primária
+☐  Maria Santos (habilitada) Fam. 3    82kg
+☐  Pedro Lima (DESABILITADO) Fam. 7    95kg   ← cinza, não clicável (95 > 95kg max)
+```
+
+Lógica dos checkboxes:
+- Estado inicial: todos habilitados, `matchSelecionado = null`
+- Clique em participante A (sem seleção): `matchSelecionado = A.id`, calcular `pesoMax = 170 - A.peso`, desabilitar quem tem `peso > pesoMax`
+- Clique em participante A já selecionado: `matchSelecionado = null` (deselecionar)
+- Clique em participante B (habilitado, com A selecionado): abrir `confirmMatchPair` com A e B
+
+Sub-dialog de confirmação:
 ```
 "Formar dupla?
 João Macedo (75kg, Fam. 1) + Maria Santos (82kg, Fam. 3) = 157kg"
 
-[✅ Confirmar Dupla]   [✖ Cancelar]
+[✅ Confirmar Dupla]    [✖ Cancelar]
 ```
 
-**Ao confirmar:**
+Ao confirmar:
+- **Simulação:** adicionar ao `matchManualPairs` (in-memory), toast "Dupla formada!"
+- **Oficial:** INSERT em `tirolesa_duplas` com `grupo_tipo = 'manual'`, `top_id = topId`, etc., invalidar query, toast "Dupla salva!"
+- Limpar `matchSelecionado`, fechar confirmação
 
-- Modo simulação: adiciona dupla manual a `matchManualPairs` (estado local, não salva no banco)
-- Modo oficial: UPSERT na tabela `tirolesa_duplas` com `grupo_tipo = 'manual'`
-- Remove os dois participantes da lista de solos
-- Atualiza `matchSelecionado = null`
-- Toast de confirmação
-
-**Mensagem quando sem mais combinações:**
-
+Mensagem quando sem combinações:
 ```
-Se nenhum par dos solos restantes tem pesoTotal ≤ 170:
 "Não há mais combinações possíveis dentro do limite de 170kg"
+(exibida quando nenhum par dos solosAtivos tem pesoTotal ≤ 170)
 ```
 
-#### 6. GRUPO SOLO na lista de duplas
+**2.9 — Seção GRUPO SOLO na lista de duplas**
 
-Após o loop de `gruposEfetivosDisplay`, adicionar seção especial "GRUPO SOLO":
+Renderizada APÓS o loop `gruposEfetivosDisplay`, somente quando:
+- `matchManualPairs.length > 0` (simulação) OU
+- `duplas.filter(d => d.grupo_tipo === 'manual').length > 0` (oficial)
 
+Exibição:
 ```
-Condição de exibição: há duplas com grupo_tipo = 'manual' OU (simulação com matchManualPairs.length > 0)
-
-GRUPO SOLO — Duplas Manuais    [X duplas] [Y solo restante]
+GRUPO SOLO — Duplas Manuais    [X duplas] [Y solos restantes]
 ├── Dupla 1: João (Fam.1) + Maria (Fam.3) = 157kg    ☐ Desceu
 ├── Dupla 2: Pedro (Fam.7) + Ana (Fam.2) = 163kg     ☐ Desceu
 ├── Solo: Carlos Mendes (Fam.4) — 98kg
 └── Solo: Bruno Silva (Fam.9) — 92kg
 ```
 
-Implementação:
-- Filtrar `duplas.filter(d => d.grupo_tipo === 'manual')` para o modo oficial
-- Em simulação: usar `matchManualPairs`
-- Os solos restantes são `solosAtivos` sem os já emparelhados manualmente
-- Aparece sempre por último
-
-#### 7. Card "Total Duplas" — incluir manuais
-
-```typescript
-const totalDuplas = modoAtivo === "simulacao"
-  ? activePairs.filter(p => p.participante2).length + matchManualPairs.filter(p => p.participante2).length
-  : duplas.filter(d => d.participante_2_id).length; // já inclui manuais
-```
-
-#### 8. Card "Duplas Desceram" — mantém lógica atual (somente oficial)
-
-Permanece mostrando `—` em simulação e `X / Y` em oficial. As duplas manuais oficiais também entram na contagem (já têm `desceu` field).
+- Em simulação: usa `matchManualPairs` + `solosAtivos` restantes
+- Em oficial: filtra `duplas.filter(d => d.grupo_tipo === 'manual')` + solos `grupo_tipo !== 'manual'` e sem `participante_2_id`
+- Solos restantes aparecem ao final do grupo, sem checkbox "Desceu"
+- Checkbox "Desceu" só aparece no modo oficial (igual às duplas automáticas)
 
 ---
 
-### Resumo dos 8 Cards Atualizados
+## Arquivos a Modificar
 
-```
-Linha 1:
-[Aptos (Peso) / Termo — "120 / 0"]  [Descida Individual — "34 solos" CLICÁVEL]  [Termo Pendente]  [Termo Recusado]
-
-Linha 2:
-[Total Duplas — "43+manuais"]  [Inaptos (>120kg)]  [Peso Médio Dupla]  [Duplas Desceram — "—" ou "X/Y"]
-```
+| Arquivo | Tipo | Descrição |
+|---|---|---|
+| `supabase/migrations/*.sql` | Novo | ADD COLUMN `grupo_tipo` em `tirolesa_duplas` |
+| `src/pages/Tirolesa.tsx` | Reescrever | Bug família, cards, Dialog Match Manual, GRUPO SOLO |
 
 ---
 
-### Arquivos a Modificar
+## Sequência de Execução
 
-| Arquivo | Tipo de Alteração |
-|---|---|
-| `supabase/migrations/...sql` | Nova migration: ADD COLUMN `grupo_tipo` em `tirolesa_duplas` |
-| `src/pages/Tirolesa.tsx` | Reescrever: bugfix família, cards atualizados, Dialog match manual, GRUPO SOLO |
+1. Aprovar e executar a migration SQL
+2. Reescrever `src/pages/Tirolesa.tsx` com todas as correções e nova funcionalidade
 
 ---
 
-### Detalhes Técnicos
+## Detalhes Técnicos
 
-- **Família filter:** Agnóstico ao `top_id`/`familia_top_id` — usa apenas `familia_id` dos participantes
-- **`grupo_tipo`:** Campo `TEXT DEFAULT 'auto'` — duplas manuais recebem `'manual'`
-- **Simulação:** `matchManualPairs` em `useState` local — nunca persiste no banco
-- **Oficial:** duplas manuais persistem com `grupo_tipo = 'manual'`, aparecem na mesma query existente
-- **Limite:** O Dialog de match manual filtra em tempo real conforme seleção — não precisa de nenhuma query extra
-- **Anti-duplicação:** Os solos exibidos no match manual excluem participantes já emparelhados (tanto pelo algoritmo quanto manualmente)
-- **Checkbox "Desceu":** Funciona normalmente para duplas manuais no modo oficial (mesma lógica já existente)
+- Bug 1 resolvido: filtro de famílias por `familia_id` dos participantes (agnóstico ao `top_id`)
+- `grupo_tipo` = `'auto'` (padrão) ou `'manual'` (match manual)
+- Simulação não persiste no banco — `matchManualPairs` fica em `useState`
+- Oficial persiste com `grupo_tipo = 'manual'`
+- Sem query extra no Dialog — filtragem em tempo real via `useMemo`
+- Anti-duplicação: `solosAtivos` exclui participantes já emparelhados manualmente
