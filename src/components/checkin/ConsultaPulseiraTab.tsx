@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import SignaturePad from "signature_pad";
 import { Html5Qrcode } from "html5-qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -76,14 +77,74 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
   // Termo de Responsabilidade
   const [termoStatus, setTermoStatus] = useState<"pendente" | "aceito" | "recusado" | null>(null);
   const [termoDialogOpen, setTermoDialogOpen] = useState(false);
-  const [termoTexto, setTermoTexto] = useState("Eu, participante, declaro estar ciente dos riscos da atividade de tirolesa e autorizo minha participação mediante avaliação física prévia.");
+  const [termoTexto, setTermoTexto] = useState(`TERMO INFORMAÇÕES IMPORTANTES E CONHECIMENTO DE RISCOS E RESPONSABILIDADES - TIROLESA – VOO DA SERRA
+
+Este Termo está em conformidade com a Política de Segurança da MSV AVENTURA LTDA – Tirolesa Voo da Serra e com a ABNT NBR ISO 21101 – Turismo de Aventura (Requisito 6.1.3).
+
+LEIA ATENTAMENTE E REPASSE AS INFORMAÇÕES AOS ACOMPANHANTES:
+
+ORIENTAÇÕES GERAIS
+• Antes da atividade, todos os participantes receberão instruções técnicas e de segurança, que devem ser rigorosamente seguidas.
+• A atividade ocorre exclusivamente em locais autorizados, com uso obrigatório dos equipamentos de proteção individual e coletivo.
+• A MSV AVENTURA LTDA é responsável pela operação, contando com equipe treinada para gestão de riscos, auto resgate e primeiros socorros.
+• Os condutores devem ser respeitados e suas orientações seguidas para a segurança de todos.
+
+CIÊNCIA E RESPONSABILIDADES DO PARTICIPANTE
+• Comprometo-me a seguir todas as orientações da equipe operacional.
+• Estou ciente da disponibilização de seguro facultativo e equipamentos de proteção em condições adequadas de uso.
+• Declaro que minhas informações de saúde e condições físicas são verdadeiras, responsabilizando-me por dados omitidos ou incorretos.
+• Reconheço que a atividade pode ser adiada, alterada ou cancelada por motivos de segurança, sem direito a reembolso em caso de cancelamento ou desistência.
+• Estou ciente dos riscos inerentes a prática da atividade em ambiente natural, tais como: quedas, escorregões, picadas de animais, insolação, hipotermia, intempéries climáticas, mal súbito, entre outros.
+• Condições climáticas adversas podem ocasionar a suspensão ou encerramento imediato da atividade.
+• O não cumprimento das orientações implica responsabilidade integral do participante por eventuais danos a si ou a terceiros.
+
+CONDUTA E PREPARO
+• Atividades de aventura envolvem riscos controlados e exigem disposição, atenção e espírito colaborativo.
+• Utilizar roupas confortáveis e calçados fechados e adequados.
+• Manter conduta respeitosa com a equipe e demais participantes.
+
+MENORES DE IDADE
+• Autorizo, quando aplicável, a descida dupla de menores, estando ciente das regras e procedimentos de segurança.
+• Assumo total responsabilidade por condutas inadequadas do menor e por eventuais danos decorrentes.
+• Menores que recusarem a descida serão conduzidos com segurança pela equipe até seus responsáveis.
+
+COMUNICAÇÃO
+• Qualquer situação não prevista neste Termo deverá ser comunicada imediatamente à equipe da Tirolesa – Voo da Serra.
+
+CONDIÇÕES DA ATIVIDADE
+• Atividade: Tirolesa Voo da Serra
+• Peso Mínimo: 35 kg (voo exclusivo)
+• Peso Máximo: 120 kg (individual) e 170 kg (duplo)
+• Idade Mínima: a partir de 8 anos (voo exclusivo) a partir de 5 anos (voo duplo – acompanhado de um participante acima de 18 anos).
+• Obrigatório: uso de calçado fechado
+• Altura mínima: 1 metro
+
+DECLARAÇÃO
+Declaro que estou fisicamente e mentalmente apto, li e aceito todas as condições deste Termo, estando ciente dos riscos e responsabilidades inerentes à atividade. Reconheço que a MSV AVENTURA LTDA e seus colaboradores não se responsabilizam por eventos de caso fortuito, força maior ou pelo descumprimento das orientações de segurança.
+
+Declaro ainda estar ciente e de acordo com o uso e armazenamento dos meus dados pessoais, conforme a LGPD (Lei nº 13.709/2018) e demais normas legais aplicáveis.`);
   const [termoCheckbox, setTermoCheckbox] = useState(false);
   const [savingTermo, setSavingTermo] = useState(false);
+
+  // Assinatura digital
+  const [assinaturaPad, setAssinaturaPad] = useState<SignaturePad | null>(null);
+  const [assinaturaVazia, setAssinaturaVazia] = useState(true);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const cachedParticipantes = useRef<Participante[]>([]);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
   const containerId = "consulta-scanner";
+
+  // Inicializar SignaturePad quando o dialog de termo abrir
+  useEffect(() => {
+    if (!termoDialogOpen || !canvasRef.current) return;
+    const sp = new SignaturePad(canvasRef.current, { backgroundColor: "rgb(255,255,255)" });
+    sp.addEventListener("afterUpdateStroke", () => setAssinaturaVazia(sp.isEmpty()));
+    setAssinaturaPad(sp);
+    setAssinaturaVazia(true);
+    return () => { sp.off(); };
+  }, [termoDialogOpen]);
 
   useEffect(() => {
     supabase.from("participantes").select("*").then(({ data }) => {
@@ -325,6 +386,11 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
     if (!participante) return;
     setSavingTermo(true);
     try {
+      const assinaturaBase64 =
+        novoStatus === "aceito" && assinaturaPad && !assinaturaPad.isEmpty()
+          ? assinaturaPad.toDataURL("image/png")
+          : null;
+
       await (supabase.from("tirolesa_termo_aceite" as any) as any).upsert({
         participante_id: participante.id,
         top_id: participante.top_id ?? null,
@@ -333,10 +399,12 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
         registrado_por_nome: servidor?.nome ?? null,
         aceito_em: novoStatus === "aceito" ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
+        assinatura_base64: assinaturaBase64,
       }, { onConflict: "participante_id,top_id" });
       setTermoStatus(novoStatus);
       setTermoDialogOpen(false);
       setTermoCheckbox(false);
+      setAssinaturaVazia(true);
       toast({
         title: novoStatus === "aceito" ? "✅ Termo aceito registrado!" : "❌ Recusa do termo registrada.",
       });
@@ -655,28 +723,56 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
       )}
 
       {/* Dialog: Termo de Responsabilidade */}
-      <Dialog open={termoDialogOpen} onOpenChange={setTermoDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+      <Dialog open={termoDialogOpen} onOpenChange={(v) => { setTermoDialogOpen(v); if (!v) { setTermoCheckbox(false); setAssinaturaVazia(true); } }}>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" /> Termo de Responsabilidade — Tirolesa
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-4 py-2">
-            <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
               {termoTexto}
             </div>
             <div className="flex items-start gap-3 p-3 border rounded-lg">
               <Checkbox
                 id="termo-checkbox"
                 checked={termoCheckbox}
-                onCheckedChange={(v) => setTermoCheckbox(!!v)}
+                onCheckedChange={(v) => { setTermoCheckbox(!!v); if (!v) { assinaturaPad?.clear(); setAssinaturaVazia(true); } }}
                 className="mt-0.5"
               />
               <label htmlFor="termo-checkbox" className="text-sm cursor-pointer leading-snug">
                 O participante <strong>{participante?.nome}</strong> leu e aceita o Termo de Responsabilidade da Tirolesa.
               </label>
             </div>
+
+            {/* Canvas de Assinatura — aparece após marcar o checkbox */}
+            {termoCheckbox && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Assinatura do Participante <span className="text-destructive">*</span>
+                </label>
+                <div className="border rounded-lg overflow-hidden" style={{ background: "white" }}>
+                  <canvas
+                    ref={canvasRef}
+                    className="w-full touch-none"
+                    height={160}
+                    style={{ display: "block" }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                  onClick={() => { assinaturaPad?.clear(); setAssinaturaVazia(true); }}
+                >
+                  🔄 Limpar Assinatura
+                </Button>
+                {assinaturaVazia && (
+                  <p className="text-xs text-destructive">Assinatura obrigatória para confirmar aceite.</p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
             <Button
@@ -689,7 +785,7 @@ export function ConsultaPulseiraTab({ userId, userEmail }: Props) {
             </Button>
             <Button
               className="bg-green-600 hover:bg-green-700 text-white flex-1"
-              disabled={!termoCheckbox || savingTermo}
+              disabled={!termoCheckbox || assinaturaVazia || savingTermo}
               onClick={() => handleSalvarTermo("aceito")}
             >
               ✅ Confirmar Aceite
