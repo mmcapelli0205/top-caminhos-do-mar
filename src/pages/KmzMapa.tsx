@@ -292,7 +292,7 @@ export default function KmzMapa() {
 
         {/* Team positions */}
         {showEquipes &&
-          localizacoes.map((loc) => {
+          locList.map((loc) => {
             const cor = loc.cor_equipe || CORES_EQUIPES[loc.equipe] || "#6366F1";
             const now = Date.now();
             const updatedAt = new Date(loc.updated_at).getTime();
