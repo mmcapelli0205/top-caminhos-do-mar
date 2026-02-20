@@ -1,150 +1,248 @@
 
-# Parte 0 — Servidor Comum + Troca de Logo
+# Parte 1 — Permissões do Menu Principal por Área
 
-## O que será feito
+## Análise do Estado Atual
 
-Quatro mudanças independentes, todas apenas no frontend (sem migration SQL, sem novas dependências):
+O `src/lib/permissoes.ts` **já existe** com permissões para as abas do Portal de Área (Parte 2). Para não conflitar, as permissões do menu principal serão adicionadas neste mesmo arquivo como uma nova seção exportada — mantendo a separação de contextos mas o arquivo unificado.
 
-1. **Esconder sidebar para cargo "servidor"** — layout em tela cheia
-2. **Esconder card TOP Real-Time no Dashboard para cargo "servidor"**
-3. **Bloquear rotas para cargo "servidor"** — redireciona para `/dashboard`
-4. **Trocar logos** — sidebar e tela Servidores (Diretoria)
+A área do usuário vem de `servidores.area_servico` (consultado por email) — padrão já utilizado em `Financeiro.tsx`, `CheckIn.tsx` e `TopRealTime.tsx`. Criaremos um hook `useAreaServico` para reutilizar essa lógica.
 
 ---
 
-## Ponto importante sobre o campo de cargo
+## Estratégia de Implementação
 
-No banco, o cargo do user_profile usa valores lowercase (`servidor`, `coordenacao`, `sombra`), mas o campo `cargo` dentro da tabela `servidores` (cargo dentro da área) usa valores como `"Servidor"`, `"Coordenador 01"`, etc.
+### Fase 1 — Arquivo de Permissões do Menu (`src/lib/permissoes.ts` — adicionar ao existente)
 
-A verificação de "servidor comum" deve usar o campo `role` / `profile.cargo` do `useAuth()`, que contém os valores do `user_profiles` — especificamente `cargo === "servidor"` (lowercase). O `getVisibleMenuItems` já tem o caso `"servidor"` mapeado para apenas os itens `[1, 8, 14]` (Início, Artes & Docs, Mapa da Trilha).
+Adicionar ao arquivo existente:
 
-**Nova regra:** Para cargo `"servidor"`, não renderizamos a sidebar nem o trigger, e bloqueamos rotas além de `/dashboard` e `/areas/:nome` (somente a área do próprio usuário).
-
----
-
-## Arquivos a modificar
-
-| Arquivo | O que muda |
-|---|---|
-| `src/components/AppLayout.tsx` | Esconder sidebar + SidebarTrigger para servidor; guardar provider mas esconder sidebar |
-| `src/components/AppSidebar.tsx` | Trocar logo no rodapé |
-| `src/pages/Dashboard.tsx` | Esconder `TopRealTimeCard` para servidor |
-| `src/pages/Servidores.tsx` | Trocar logo da Diretoria (`Logo%20Legendarios.png` → `logo.png`) |
-| `src/lib/auth.ts` | Adicionar função utilitária `isServidorComum` |
-
----
-
-## Detalhes técnicos por arquivo
-
-### 1. `src/lib/auth.ts` — Utilitário
-Adicionar função exportada:
 ```typescript
-export function isServidorComum(cargo: string | null): boolean {
-  return cargo === "servidor";
+// ============================================
+// Permissões do Menu Principal por Área
+// ============================================
+
+export type NivelAcesso = "V" | "E" | "B" | null;
+
+export interface PermissoesMenu {
+  // Participantes
+  participantes_listar: NivelAcesso;
+  participantes_buscar: NivelAcesso;
+  participantes_filtros: NivelAcesso;
+  participantes_importar: NivelAcesso;
+  participantes_exportar: NivelAcesso;
+  participantes_novo: NivelAcesso;
+  participantes_visualizar: NivelAcesso;
+  participantes_editar: NivelAcesso;
+  // Servidores
+  servidores_cards: NivelAcesso;
+  servidores_listar: NivelAcesso;
+  servidores_filtros: NivelAcesso;
+  servidores_exportar: NivelAcesso;
+  servidores_importar: NivelAcesso;
+  servidores_novo: NivelAcesso;
+  servidores_visualizar: NivelAcesso;
+  servidores_editar: NivelAcesso;
+  servidores_excluir: NivelAcesso;
+  // Financeiro
+  financeiro_resumo: NivelAcesso;
+  // Check-in
+  checkin_pulseiras: NivelAcesso;
+  checkin_realizar: NivelAcesso;
+  checkin_consultar: NivelAcesso;
+  checkin_gestao: NivelAcesso;
+  // Equipamentos
+  equipamentos_listar: NivelAcesso;
+  equipamentos_novo: NivelAcesso;
+  equipamentos_filtros: NivelAcesso;
+  // Artes & Docs
+  artes_visualizar: NivelAcesso;
+  artes_upload: NivelAcesso;
+  artes_download: NivelAcesso;
+  artes_editar: NivelAcesso;
+  artes_excluir: NivelAcesso;
+  // TOPs
+  tops_edicoes: NivelAcesso;
+  tops_whatsapp: NivelAcesso;
+  tops_templates: NivelAcesso;
+  // Configurações
+  config_listar: NivelAcesso;
+  config_novo: NivelAcesso;
+  config_editar: NivelAcesso;
+  // TOP Real Time
+  realtime_visualizar: NivelAcesso;
+  realtime_iniciar: NivelAcesso;
+  realtime_pular: NivelAcesso;
+  // Mapa
+  mapa_visualizar: NivelAcesso;
+  mapa_compartilhar_gps: NivelAcesso;
+  // Aprovações
+  aprovacoes: NivelAcesso;
+  // Menu visibility (booleans)
+  menu_participantes: boolean;
+  menu_servidores: boolean;
+  menu_financeiro: boolean;
+  menu_checkin: boolean;
+  menu_equipamentos: boolean;
+  menu_artes: boolean;
+  menu_tops: boolean;
+  menu_config: boolean;
+  menu_realtime: boolean;
+  menu_mapa: boolean;
+  menu_aprovacoes: boolean;
+}
+
+export const PERMISSOES_MENU: Record<string, PermissoesMenu> = { /* mapa completo */ };
+
+export function getPermissoesMenu(area: string): PermissoesMenu;
+export function canAccessMenu(area: string, funcionalidade: keyof PermissoesMenu): boolean;
+export function canEditMenu(area: string, funcionalidade: keyof PermissoesMenu): boolean;
+export function isBlockedMenu(area: string, funcionalidade: keyof PermissoesMenu): boolean;
+```
+
+---
+
+### Fase 2 — Hook `useAreaServico` (`src/hooks/useAreaServico.ts` — criar)
+
+Centralizar a busca da área do servidor logado:
+
+```typescript
+export function useAreaServico() {
+  const { profile } = useAuth();
+  const { data, isLoading } = useQuery({
+    queryKey: ["area-servico", profile?.email],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servidores")
+        .select("area_servico, cargo_area")
+        .eq("email", profile!.email)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!profile?.email,
+  });
+  return { areaServico: data?.area_servico ?? null, cargoArea: data?.cargo_area ?? null, isLoading };
 }
 ```
-Isso centraliza a verificação e evita strings repetidas.
 
 ---
 
-### 2. `src/components/AppLayout.tsx` — Esconder sidebar + proteger rotas
+### Fase 3 — Sidebar dinâmica (`src/components/AppSidebar.tsx`)
 
-**Sidebar oculta:** Usar o `cargo` (do `useAuth`) para decidir se renderiza `<AppSidebar>` e o `<SidebarTrigger>`. Para `"servidor"`, o `SidebarProvider` ainda envolve o layout, mas a sidebar não é renderizada e o conteúdo principal ocupa 100% da largura (sem `<SidebarInset>`, que cria o gap lateral).
+Em vez de `getVisibleMenuItems(cargo, podeAprovar)`, o sidebar passará a usar `getPermissoesMenu(area)` para controlar a visibilidade de cada item com base na área. O cargo `"diretoria"` (role) mantém acesso total como hoje.
 
-**Proteção de rotas:** Adicionar um `useEffect` que observa `location.pathname`. Se o cargo for `"servidor"` e a rota atual não for `/dashboard` e não corresponder a `/areas/`, faz `navigate("/dashboard", { replace: true })`.
+**Lógica de prioridade:**
+1. Se `role === "diretoria"` → usa as permissões da área `"Diretoria"` 
+2. Se `areaServico` é conhecido → usa `PERMISSOES_MENU[areaServico]`
+3. Fallback → itens básicos (Início, Artes, Mapa)
 
-```typescript
-// Dentro do AppLayout, após o profile estar carregado:
-const isServidor = isServidorComum(role || profile?.cargo);
-
-useEffect(() => {
-  if (!isServidor) return;
-  const allowed = pathname === "/dashboard" || pathname.startsWith("/areas/");
-  if (!allowed) navigate("/dashboard", { replace: true });
-}, [isServidor, pathname, navigate]);
-```
-
-**Layout condicional:**
-```tsx
-// Para servidor: sem sidebar, sem trigger, main em 100% da largura
-if (isServidor) {
-  return (
-    <div className="min-h-svh w-full">
-      <header>...</header> {/* sem SidebarTrigger */}
-      <main className="flex-1 p-2 md:p-6"><Outlet /></main>
-    </div>
-  );
-}
-// Para os demais: layout normal com SidebarProvider + AppSidebar
-```
+O componente passará a receber a `area` como prop ou buscar via hook internamente.
 
 ---
 
-### 3. `src/components/AppSidebar.tsx` — Trocar logo
+### Fase 4 — Integração nas Páginas
 
-Rodapé da sidebar: trocar `Logo%20Legendarios.png` → `logo.png` e ajustar o tamanho para `h-20 w-20` (maior que o atual `h-16`):
+#### `Participantes.tsx`
+- Esconder botão "Importar da TicketAndGo" se `participantes_importar === "B"`
+- Esconder botão "CSV" se `participantes_exportar === "B"` 
+- Esconder botão "Novo Participante" se `participantes_novo === "B"` ou `null`
+- Esconder barra de busca se `participantes_buscar === null`
+- Botão editar em linha → escondido se `participantes_editar !== "E"`
+- Seleção em lote / exclusão → escondida se sem permissão
 
-```tsx
-// Antes
-src="https://.../Logo%20Legendarios.png"
-className="h-16 w-auto mx-auto opacity-60 ..."
+#### `Servidores.tsx`
+- Cards de área → escondidos se `servidores_cards === "B"`
+- Botões de importar/exportar → condicionais
+- Botão "Novo Servidor" → condicional
+- Botões editar/excluir por linha → condicionais
 
-// Depois
-src="https://.../logo.png"
-className="h-20 w-20 object-contain mx-auto opacity-70 ..."
-```
+#### `Financeiro.tsx`
+- Já tem guard `temAcesso` baseado em area/role. Expandir para incluir as áreas com permissão `"V"` (atualmente Hakuna acessa com `"E"` no novo mapa)
+- Hakuna: acesso com `financeiro_resumo === "E"` (apenas a aba Resumo das Taxas, conforme especificação)
 
----
+**Nota importante:** O Financeiro da Hakuna dá acesso apenas ao campo `financeiro_resumo` (taxas de saúde). A especificação diz `financeiro_resumo: E`, mas as demais sub-seções (`financeiro_taxas`, `financeiro_relatorio`, etc.) são `"B"`. O guard atual vai mudar para mostrar o menu financeiro para Hakuna mas restringir internamente as abas visíveis.
 
-### 4. `src/pages/Dashboard.tsx` — Esconder card TOP Real-Time
+#### `CheckIn.tsx`
+- Expandir a lógica `isAdmin` atual para incluir: Segurança, Eventos (para pulseiras/realizar/gestão)
+- Hakuna → já tem acesso a "consultar"
+- Diretoria → acesso a "gestao" apenas
+- Outros → sem acesso (redirect)
 
-Adicionar verificação no componente `Dashboard`:
+#### `Equipamentos.tsx`
+- Esconder botão "Novo" se `equipamentos_novo === "B"` 
+- Esconder filtros se `equipamentos_filtros === null`
+- Para Comunicação: `listar: V` (read-only, sem botão novo)
 
-```tsx
-const { profile, role } = useAuth();
-const isServidor = isServidorComum(role || profile?.cargo);
+#### `ArtesEDocs.tsx`
+- Botão "Novo" / upload → mostrar apenas se `artes_upload === "E"`
+- Botões editar/excluir → condicionais por `artes_editar` e `artes_excluir`
 
-// Grid de 3 colunas para os demais, 2 colunas para servidor
-<div className={`grid grid-cols-1 ${isServidor ? "md:grid-cols-2" : "md:grid-cols-3"} gap-4`}>
-  <CountdownSection />
-  <QuickActions userEmail={profile?.email ?? null} />
-  {!isServidor && <TopRealTimeCard />}
-</div>
-```
+#### `Tops.tsx`
+- Esconder aba "Edições" se `tops_edicoes === "B"`
+- Esconder aba "WhatsApp" se `tops_whatsapp === "B"`
+- Aba "Templates" → apenas DOC e Diretoria
 
----
+#### `Configuracoes.tsx`
+- Já restringe a `isDiretoria`. Expandir para DOC ter acesso parcial:
+  - DOC: pode listar e criar, mas não editar ou aprovar usuários
 
-### 5. `src/pages/Servidores.tsx` — Trocar logo da Diretoria
-
-No mapa `LOGOS_EQUIPES`, a Diretoria aponta para `"Logo%20Legendarios.png"`. Trocar para `"logo.png"`:
-
-```typescript
-// Antes
-"Diretoria": "Logo%20Legendarios.png",
-
-// Depois
-"Diretoria": "logo.png",
-```
-
-O tamanho do card da Diretoria já segue a mesma lógica dos outros cards (`h-24 w-24`), então a proporção ficará consistente automaticamente.
-
----
-
-## Comportamento esperado por cargo
-
-| Cargo | Sidebar | TOP Real-Time card | Rotas protegidas |
-|---|---|---|---|
-| `diretoria` | ✅ Visível | ✅ Visível | ❌ Sem bloqueio |
-| `coordenacao`, `coord02`, `coord03` | ✅ Visível | ✅ Visível | ❌ Sem bloqueio |
-| `sombra` | ✅ Visível | ✅ Visível | ❌ Sem bloqueio |
-| **`servidor`** | ❌ **Oculta** | ❌ **Oculto** | ✅ **Redireciona para /dashboard** |
+#### `TopRealTime.tsx`
+- Botões INICIAR e PULAR → condicional: `canControl = area === "ADM" && cargoArea inclui "Coord 01"` (lógica já parcialmente implementada)
+- Expandir `canView` para incluir todas as áreas (atualmente só coord01/diretoria/ADM)
 
 ---
 
-## Ordem de implementação
+## Arquivos a Criar/Modificar
 
-1. `src/lib/auth.ts` — adicionar `isServidorComum()`
-2. `src/components/AppLayout.tsx` — layout condicional + proteção de rota
-3. `src/components/AppSidebar.tsx` — trocar logo do rodapé
-4. `src/pages/Dashboard.tsx` — ocultar `TopRealTimeCard`
-5. `src/pages/Servidores.tsx` — trocar logo da Diretoria
+| Arquivo | Operação | O que muda |
+|---|---|---|
+| `src/lib/permissoes.ts` | Modificar | Adicionar `NivelAcesso`, `PermissoesMenu`, `PERMISSOES_MENU`, funções utilitárias de menu |
+| `src/hooks/useAreaServico.ts` | Criar | Hook centralizando busca de `area_servico` e `cargo_area` do servidor logado |
+| `src/components/AppSidebar.tsx` | Modificar | Usar `PERMISSOES_MENU[area].menu_*` para visibilidade dos itens |
+| `src/components/AppLayout.tsx` | Modificar | Passar `areaServico` para `AppSidebar` |
+| `src/pages/Participantes.tsx` | Modificar | Condicionar botões de ação (importar, exportar, novo, editar, excluir) |
+| `src/pages/Servidores.tsx` | Modificar | Condicionar cards, botões de importar/novo/editar/excluir |
+| `src/pages/Financeiro.tsx` | Modificar | Expandir guard para Hakuna (resumo de taxas); restringir abas internas |
+| `src/pages/CheckIn.tsx` | Modificar | Expandir lógica de acesso para Segurança/Eventos/Diretoria |
+| `src/pages/Equipamentos.tsx` | Modificar | Condicionar botão "Novo" e permissões de edição |
+| `src/pages/ArtesEDocs.tsx` | Modificar | Condicionar upload/edição/exclusão |
+| `src/pages/Tops.tsx` | Modificar | Condicionar abas por área (DOC vs outros) |
+| `src/pages/Configuracoes.tsx` | Modificar | Expandir acesso para DOC (listar/criar) |
+| `src/pages/TopRealTime.tsx` | Modificar | Expandir `canView` para todas as áreas; manter `canControl` restrito a ADM Coord 01 |
+
+---
+
+## Detalhes Críticos de Implementação
+
+### Como a área é identificada
+
+O `role` do `useAuth()` define o nível global (`"diretoria"`, `"coordenacao"`, `"servidor"`, etc.), mas **não** identifica a área. A área vem de `servidores.area_servico`, consultada pelo email do usuário logado.
+
+- `role === "diretoria"` → usa permissões de `"Diretoria"` no mapa
+- `role === "coordenacao"` ou `"sombra"` → usa `areaServico` para buscar no mapa
+- Fallback quando área não encontrada → permissões mínimas (apenas Início, Artes, Mapa)
+
+### Permissões especiais
+
+**Hakuna — Financeiro:** Apenas a aba de "Resumo" (taxas Hakuna) é acessível. As demais sub-seções ficam ocultas. O `menu_financeiro: true` aparece na sidebar, mas internamente o componente restringe ao resumo.
+
+**DOC — Configurações:** Pode listar e criar TOPs, mas não editar usuários nem configurações sensíveis. A aba de configurações aparece mas com escopo limitado.
+
+**ADM — TOP Real Time (Regra Especial):** 
+- Todos os cargos ADM: visualizar ✅
+- Apenas `cargo_area` contendo "Coord 01" na área ADM: pode INICIAR e PULAR
+- O check já existe parcialmente em `TopRealTime.tsx`:
+  ```typescript
+  const isAdmCoord = servidor?.area_servico === "ADM" && 
+    servidor?.cargo_area?.toLowerCase().includes("coordenador");
+  const canControl = isDiretoria || isAdmCoord;
+  ```
+  Ajustar para verificar especificamente "Coord 01" ou "Coordenador 01".
+
+**Voz e Intercessão — Mapa GPS:** Campo `mapa_compartilhar_gps: "E"` que habilita um botão de compartilhamento de localização GPS no `KmzMapa.tsx`.
+
+### Ordem de implementação
+1. Adicionar tipos e mapa `PERMISSOES_MENU` em `src/lib/permissoes.ts`
+2. Criar `src/hooks/useAreaServico.ts`
+3. Modificar `AppSidebar.tsx` + `AppLayout.tsx` 
+4. Modificar páginas na ordem: `Participantes` → `Servidores` → `Financeiro` → `CheckIn` → `Equipamentos` → `ArtesEDocs` → `Tops` → `Configuracoes` → `TopRealTime`
+
+Nenhuma migration SQL necessária. Nenhuma dependência nova.
