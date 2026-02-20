@@ -140,7 +140,7 @@ export default function AreaPortal() {
   const { cargoArea } = useAreaServico();
 
   const effectiveCargo = role === "diretoria" ? "Coord 01" : (cargoArea ?? "Servidor");
-  const effectiveArea  = role === "diretoria" ? "Diretoria" : decodedNome;
+  const effectiveArea = decodedNome;
   const perms = getPermissoesPortal(effectiveArea, effectiveCargo);
 
   console.log("[AreaPortal] perms debug:", { effectiveArea, effectiveCargo, cargoArea, role, permsNull: perms === null });
