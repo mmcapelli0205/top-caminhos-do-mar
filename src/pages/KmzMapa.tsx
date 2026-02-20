@@ -7,7 +7,7 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ICONE_TIPO, COR_DIA, type DiaTipo } from "@/data/kmzData";
+import { ICONE_TIPO, COR_DIA, type DiaTipo, type PontoTipo } from "@/data/kmzData";
 import { CORES_EQUIPES, getTextColor } from "@/lib/coresEquipes";
 import { useKmzParser } from "@/hooks/useKmzParser";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +29,28 @@ const DIAS: { key: DiaTipo; label: string }[] = [
   { key: "d4", label: "D4" },
   { key: "logistica", label: "Log" },
 ];
+
+const TIPOS_PONTO: { tipo: PontoTipo; emoji: string; label: string }[] = [
+  { tipo: "predica", emoji: "📖", label: "Prédica" },
+  { tipo: "acampamento", emoji: "⛺", label: "Acampamento" },
+  { tipo: "base", emoji: "🏠", label: "Base" },
+  { tipo: "extracao", emoji: "🚌", label: "Extração/Van" },
+  { tipo: "ponto", emoji: "📍", label: "Ponto geral" },
+];
+
+const EQUIPES_LEGENDA = [
+  "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
+  "Logística", "Voz", "ADM", "Intercessão", "Diretoria",
+];
+
+const DIA_LABEL: Record<string, string> = {
+  logistica: "Log",
+  d1: "D1",
+  d2: "D2",
+  d3: "D3",
+  d4: "D4",
+  todos: "",
+};
 
 function criarIconePonto(emoji: string, cor: string): L.DivIcon {
   return L.divIcon({
@@ -121,6 +143,12 @@ export default function KmzMapa() {
   const [showLegenda, setShowLegenda] = useState(false);
   const [centralize, setCentralize] = useState(false);
   const [rotasVisiveis, setRotasVisiveis] = useState<Record<string, boolean>>({});
+  const [tiposVisiveis, setTiposVisiveis] = useState<Record<PontoTipo, boolean>>({
+    predica: true, acampamento: true, base: true, extracao: true, ponto: true,
+  });
+  const [equipesVisiveis, setEquipesVisiveis] = useState<Record<string, boolean>>(
+    Object.fromEntries(EQUIPES_LEGENDA.map((e) => [e, true]))
+  );
   const lastSendRef = useRef(0);
 
   // Load KMZ data dynamically
@@ -232,17 +260,26 @@ export default function KmzMapa() {
     return porDia.filter((r) => rotasVisiveis[r.id] !== false);
   }, [diaFiltro, kmzRotas, rotasVisiveis]);
 
-  // IDs das rotas visíveis para ocultar pontos das rotas desligadas
-  const rotasVisivelIds = useMemo(() => new Set(rotasFiltradas.map((r) => r.id)), [rotasFiltradas]);
-
-  // Dias com pelo menos uma rota visível
-  const diasComRotaVisivel = useMemo(() => new Set(rotasFiltradas.map((r) => r.dia)), [rotasFiltradas]);
-
+  // Pontos filtrados por dia + tipo (independente das rotas)
   const pontosFiltrados = useMemo(() => {
     const porDia = diaFiltro === "todos" ? kmzPontos : kmzPontos.filter((p) => p.dia === diaFiltro);
-    // Oculta pontos do dia se nenhuma rota daquele dia estiver visível
-    return porDia.filter((p) => p.dia === "todos" || diasComRotaVisivel.has(p.dia) || diasComRotaVisivel.size === 0);
-  }, [diaFiltro, kmzPontos, diasComRotaVisivel]);
+    return porDia.filter((p) => tiposVisiveis[p.tipo]);
+  }, [diaFiltro, kmzPontos, tiposVisiveis]);
+
+  // Equipes filtradas por toggle individual
+  const locFiltradas = useMemo(() => {
+    return locList.filter((loc) => equipesVisiveis[loc.equipe] !== false);
+  }, [locList, equipesVisiveis]);
+
+  function toggleRota(id: string) {
+    setRotasVisiveis((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+  function toggleTipo(tipo: PontoTipo) {
+    setTiposVisiveis((prev) => ({ ...prev, [tipo]: !prev[tipo] }));
+  }
+  function toggleEquipe(equipe: string) {
+    setEquipesVisiveis((prev) => ({ ...prev, [equipe]: !prev[equipe] }));
+  }
 
   return (
     <div className="relative w-full overflow-hidden" style={{ height: "calc(100vh - 56px)" }}>
@@ -350,7 +387,7 @@ export default function KmzMapa() {
 
         {/* Team positions */}
         {showEquipes &&
-          locList.map((loc) => {
+          locFiltradas.map((loc) => {
             const cor = loc.cor_equipe || CORES_EQUIPES[loc.equipe] || "#6366F1";
             const now = Date.now();
             const updatedAt = new Date(loc.updated_at).getTime();
@@ -396,61 +433,123 @@ export default function KmzMapa() {
             Legenda {showLegenda ? "▲" : "▼"}
           </button>
           {showLegenda && (
-            <div className="absolute bottom-10 left-0 bg-black/90 backdrop-blur-sm text-white rounded-lg p-3 w-56 border border-white/10">
-              <div className="text-xs font-bold mb-2 text-white/60 uppercase tracking-wide">Equipes</div>
-              <div className="grid grid-cols-2 gap-1 mb-3">
-                {Object.entries(CORES_EQUIPES)
-                  .filter(([k]) => !["DOC", "Louvor", "Alimentação"].includes(k))
-                  .map(([nome, cor]) => (
-                    <div key={nome} className="flex items-center gap-1.5">
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0 border border-white/30"
-                        style={{ background: cor }}
-                      />
-                      <span className="text-xs truncate">{nome}</span>
-                    </div>
-                  ))}
-              </div>
-              <div className="text-xs font-bold mb-2 text-white/60 uppercase tracking-wide">Pontos</div>
-              <div className="space-y-1">
-                {[
-                  { emoji: "📖", label: "Prédica" },
-                  { emoji: "⛺", label: "Acampamento" },
-                  { emoji: "🏠", label: "Base" },
-                  { emoji: "🚌", label: "Extração/Van" },
-                  { emoji: "📍", label: "Ponto geral" },
-                ].map(({ emoji, label }) => (
-                  <div key={label} className="flex items-center gap-1.5 text-xs">
-                    <span>{emoji}</span>
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-2 pt-2 border-t border-white/10">
-                <div className="text-xs font-bold mb-1 text-white/60 uppercase tracking-wide">Rotas</div>
+            <div className="absolute bottom-10 left-0 bg-black/90 backdrop-blur-sm text-white rounded-lg border border-white/10 w-64 max-h-[70vh] overflow-y-auto">
+
+              {/* ROTAS */}
+              <div className="p-3 pb-2">
+                <div className="text-[10px] font-bold mb-2 text-white/50 uppercase tracking-wider flex items-center justify-between">
+                  <span>Rotas</span>
+                  <button
+                    onClick={() => {
+                      const allVisible = kmzRotas.every((r) => rotasVisiveis[r.id] !== false);
+                      setRotasVisiveis(Object.fromEntries(kmzRotas.map((r) => [r.id, !allVisible])));
+                    }}
+                    className="text-white/40 hover:text-white/70 text-[9px] transition-colors"
+                  >
+                    {kmzRotas.every((r) => rotasVisiveis[r.id] !== false) ? "ocultar todas" : "mostrar todas"}
+                  </button>
+                </div>
                 {kmzRotas.map((r) => {
                   const visivel = rotasVisiveis[r.id] !== false;
+                  const diaLabel = DIA_LABEL[r.dia] || "";
                   return (
                     <button
                       key={r.id}
-                      onClick={() =>
-                        setRotasVisiveis((prev) => ({ ...prev, [r.id]: !visivel }))
-                      }
-                      className={`flex items-center gap-1.5 mb-1 w-full text-left transition-opacity ${
-                        visivel ? "opacity-100" : "opacity-40"
+                      onClick={() => toggleRota(r.id)}
+                      className={`flex items-center gap-2 mb-1.5 w-full text-left rounded px-1 py-0.5 hover:bg-white/5 transition-opacity ${
+                        visivel ? "opacity-100" : "opacity-35"
                       }`}
                     >
                       <div
-                        className="w-4 h-1.5 rounded shrink-0 border border-white/20"
-                        style={{ background: r.cor }}
+                        className="w-5 h-2 rounded shrink-0"
+                        style={{ background: r.cor, border: `1px solid ${r.cor}66` }}
                       />
-                      <span className="text-xs flex-1 truncate">{r.nome}</span>
+                      <span className="text-xs flex-1 leading-tight line-clamp-1">{r.nome}</span>
+                      {diaLabel && (
+                        <span className="text-[9px] text-white/40 shrink-0 font-mono">({diaLabel})</span>
+                      )}
+                      <span className="text-[10px] shrink-0 ml-0.5" style={{ color: visivel ? r.cor : "rgba(255,255,255,0.25)" }}>
+                        {visivel ? "●" : "○"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="h-px bg-white/10 mx-3" />
+
+              {/* PONTOS */}
+              <div className="p-3 pb-2">
+                <div className="text-[10px] font-bold mb-2 text-white/50 uppercase tracking-wider flex items-center justify-between">
+                  <span>Pontos</span>
+                  <button
+                    onClick={() => {
+                      const allVisible = TIPOS_PONTO.every((t) => tiposVisiveis[t.tipo]);
+                      setTiposVisiveis(Object.fromEntries(TIPOS_PONTO.map((t) => [t.tipo, !allVisible])) as Record<PontoTipo, boolean>);
+                    }}
+                    className="text-white/40 hover:text-white/70 text-[9px] transition-colors"
+                  >
+                    {TIPOS_PONTO.every((t) => tiposVisiveis[t.tipo]) ? "ocultar todos" : "mostrar todos"}
+                  </button>
+                </div>
+                {TIPOS_PONTO.map(({ tipo, emoji, label }) => {
+                  const visivel = tiposVisiveis[tipo];
+                  return (
+                    <button
+                      key={tipo}
+                      onClick={() => toggleTipo(tipo)}
+                      className={`flex items-center gap-2 mb-1.5 w-full text-left rounded px-1 py-0.5 hover:bg-white/5 transition-opacity ${
+                        visivel ? "opacity-100" : "opacity-35"
+                      }`}
+                    >
+                      <span className="text-sm w-5 text-center shrink-0">{emoji}</span>
+                      <span className="text-xs flex-1">{label}</span>
                       <span className="text-[10px] text-white/50 shrink-0">
                         {visivel ? "●" : "○"}
                       </span>
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="h-px bg-white/10 mx-3" />
+
+              {/* EQUIPES */}
+              <div className="p-3">
+                <div className="text-[10px] font-bold mb-2 text-white/50 uppercase tracking-wider flex items-center justify-between">
+                  <span>Equipes</span>
+                  <button
+                    onClick={() => {
+                      const allVisible = EQUIPES_LEGENDA.every((e) => equipesVisiveis[e]);
+                      setEquipesVisiveis(Object.fromEntries(EQUIPES_LEGENDA.map((e) => [e, !allVisible])));
+                    }}
+                    className="text-white/40 hover:text-white/70 text-[9px] transition-colors"
+                  >
+                    {EQUIPES_LEGENDA.every((e) => equipesVisiveis[e]) ? "ocultar todas" : "mostrar todas"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                  {EQUIPES_LEGENDA.map((nome) => {
+                    const cor = CORES_EQUIPES[nome] ?? "#6366F1";
+                    const visivel = equipesVisiveis[nome];
+                    return (
+                      <button
+                        key={nome}
+                        onClick={() => toggleEquipe(nome)}
+                        className={`flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-white/5 text-left transition-opacity ${
+                          visivel ? "opacity-100" : "opacity-35"
+                        }`}
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0 border border-white/30"
+                          style={{ background: cor }}
+                        />
+                        <span className="text-xs truncate flex-1">{nome}</span>
+                        <span className="text-[9px] text-white/40 shrink-0">{visivel ? "●" : "○"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
