@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserCheck, Check, X, Search, Pencil, Loader2, Save, Key, Eye, EyeOff, Star } from "lucide-react";
+import { UserCheck, Check, X, Search, Pencil, Loader2, Save, Key, Eye, EyeOff, Star, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import CadastroRapidoDialog from "@/components/CadastroRapidoDialog";
+import RelatorioServidoresPDF from "@/components/RelatorioServidoresPDF";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 const Aprovacoes = () => {
   const { session, profile, role } = useAuth();
   const [showCadastroRapido, setShowCadastroRapido] = useState(false);
+  const [showRelatorio, setShowRelatorio] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -246,13 +248,19 @@ const Aprovacoes = () => {
           {counts.pendentes > 0 && <Badge className="bg-amber-500 text-white">{counts.pendentes} pendente{counts.pendentes > 1 ? "s" : ""}</Badge>}
         </div>
         {role === "diretoria" && (
-          <Button onClick={() => setShowCadastroRapido(true)} className="gap-2 bg-orange-600 hover:bg-orange-700 text-white">
-            <Star className="h-4 w-4" /> Cadastro Rápido Liderança
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowRelatorio(true)} variant="outline" className="gap-2">
+              <FileDown className="h-4 w-4" /> Relatório PDF
+            </Button>
+            <Button onClick={() => setShowCadastroRapido(true)} className="gap-2 bg-orange-600 hover:bg-orange-700 text-white">
+              <Star className="h-4 w-4" /> Cadastro Rápido Liderança
+            </Button>
+          </div>
         )}
       </div>
 
       <CadastroRapidoDialog open={showCadastroRapido} onOpenChange={setShowCadastroRapido} />
+      <RelatorioServidoresPDF open={showRelatorio} onOpenChange={setShowRelatorio} />
 
       <div className="grid gap-4 grid-cols-3">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Pendentes</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-amber-500">{counts.pendentes}</p></CardContent></Card>
