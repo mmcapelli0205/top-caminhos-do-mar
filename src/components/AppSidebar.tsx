@@ -1,26 +1,62 @@
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
-import { getVisibleMenuItems } from "@/lib/auth";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  Home, Users, Shield, DollarSign, Wrench, ImageIcon,
+  QrCode, Calendar, Settings, UserCheck, Radio, Map,
+} from "lucide-react";
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
+  SidebarGroupContent, SidebarGroupLabel, SidebarMenu,
+  SidebarMenuButton, SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { getPermissoesMenu } from "@/lib/permissoes";
+import type { PermissoesMenu } from "@/lib/permissoes";
+
+interface MenuItem {
+  id: string;
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  menuKey: keyof PermissoesMenu;
+}
+
+const ALL_ITEMS: MenuItem[] = [
+  { id: "inicio",       title: "Início",          url: "/dashboard",    icon: Home,      menuKey: "menu_mapa" },      // sempre visível — tratado especialmente
+  { id: "participantes",title: "Participantes",   url: "/participantes",icon: Users,     menuKey: "menu_participantes" },
+  { id: "servidores",   title: "Servidores",      url: "/servidores",   icon: Shield,    menuKey: "menu_servidores" },
+  { id: "financeiro",   title: "Financeiro",      url: "/financeiro",   icon: DollarSign,menuKey: "menu_financeiro" },
+  { id: "checkin",      title: "Check-in",        url: "/check-in",     icon: QrCode,    menuKey: "menu_checkin" },
+  { id: "equipamentos", title: "Equipamentos",    url: "/equipamentos", icon: Wrench,    menuKey: "menu_equipamentos" },
+  { id: "artes",        title: "Artes & Docs",    url: "/artes-docs",   icon: ImageIcon, menuKey: "menu_artes" },
+  { id: "tops",         title: "TOPs",            url: "/tops",         icon: Calendar,  menuKey: "menu_tops" },
+  { id: "config",       title: "Configurações",   url: "/configuracoes",icon: Settings,  menuKey: "menu_config" },
+  { id: "aprovacoes",   title: "Aprovações",      url: "/aprovacoes",   icon: UserCheck, menuKey: "menu_aprovacoes" },
+  { id: "realtime",     title: "TOP Real Time",   url: "/top-real-time",icon: Radio,     menuKey: "menu_realtime" },
+  { id: "mapa",         title: "Mapa da Trilha",  url: "/kmz",          icon: Map,       menuKey: "menu_mapa" },
+];
 
 interface Props {
   cargo: string | null;
+  areaServico: string | null;
   podeAprovar?: boolean;
 }
 
-export function AppSidebar({ cargo, podeAprovar = false }: Props) {
-  const items = getVisibleMenuItems(cargo, podeAprovar);
+export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
   const location = useLocation();
+
+  // Resolve effective area for permissions
+  const effectiveArea = cargo === "diretoria" ? "Diretoria" : (areaServico ?? null);
+  const perms = getPermissoesMenu(effectiveArea);
+
+  // Build visible items
+  const items = ALL_ITEMS.filter((item) => {
+    if (item.id === "inicio") return true; // Always show Início
+    if (item.id === "aprovacoes") {
+      // Use podeAprovar override OR area permission
+      return podeAprovar || perms.menu_aprovacoes;
+    }
+    return perms[item.menuKey] === true;
+  });
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">

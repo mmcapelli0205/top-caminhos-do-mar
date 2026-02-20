@@ -28,6 +28,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useAreaServico } from "@/hooks/useAreaServico";
+import { useAuth } from "@/hooks/useAuth";
+import { getPermissoesMenu } from "@/lib/permissoes";
 
 const PAGE_SIZE = 20;
 
@@ -56,7 +59,12 @@ export default function Participantes() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { role } = useAuth();
+  const { areaServico } = useAreaServico();
   const { participantes, familiaMap, familias, isLoading } = useParticipantes();
+
+  const effectiveArea = role === "diretoria" ? "Diretoria" : areaServico;
+  const perms = getPermissoesMenu(effectiveArea);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -218,28 +226,36 @@ export default function Participantes() {
           <span className="text-sm text-muted-foreground">({filtered.length})</span>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" /> Importar da TicketAndGo
-          </Button>
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
-            <Download className="h-4 w-4 mr-1" /> CSV
-          </Button>
-          <Button size="sm" className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white" onClick={() => navigate("/participantes/novo")}>
-            <Plus className="h-4 w-4 mr-1" /> Novo Participante
-          </Button>
+          {perms.participantes_importar === "E" && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-1" /> Importar da TicketAndGo
+            </Button>
+          )}
+          {perms.participantes_exportar === "E" && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
+              <Download className="h-4 w-4 mr-1" /> CSV
+            </Button>
+          )}
+          {(perms.participantes_novo === "E") && (
+            <Button size="sm" className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white" onClick={() => navigate("/participantes/novo")}>
+              <Plus className="h-4 w-4 mr-1" /> Novo Participante
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome, CPF ou telefone..."
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
+      {/* Search — hidden if buscar is null */}
+      {perms.participantes_buscar !== null && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, CPF ou telefone..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -293,7 +309,7 @@ export default function Participantes() {
       </div>
 
       {/* Batch action bar */}
-      {someSelected && (
+      {someSelected && perms.participantes_editar === "E" && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-md bg-muted/50 border border-border">
           <span className="text-sm font-medium text-foreground">{selectedIds.size} selecionado(s)</span>
           <div className="flex gap-2 sm:ml-auto">

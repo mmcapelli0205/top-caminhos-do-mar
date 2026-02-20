@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { LogOut, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
+import { useAreaServico } from "@/hooks/useAreaServico";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ export default function AppLayout() {
 
   const cargo = role || profile?.cargo || null;
   const isServidor = isServidorComum(cargo);
+  const { areaServico } = useAreaServico();
 
   // Effect 1: Redirect unauthenticated users
   useEffect(() => {
@@ -166,7 +168,7 @@ export default function AppLayout() {
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full">
-        <AppSidebar cargo={cargo} podeAprovar={!!profile.pode_aprovar} />
+        <AppSidebar cargo={cargo} areaServico={areaServico} podeAprovar={!!profile.pode_aprovar} />
         <SidebarInset>
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
             <div className="flex items-center gap-3">
