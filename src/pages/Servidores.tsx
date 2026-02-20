@@ -54,7 +54,7 @@ const LOGOS_EQUIPES: Record<string, string> = {
   "Comunicação": "midia.png",
   "Segurança": "seguranca.png",
   "Voz": "voz.png",
-  "Diretoria": "Logo%20Legendarios.png",
+  "Diretoria": "logo.png",
 };
 
 const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
