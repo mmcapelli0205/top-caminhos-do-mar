@@ -18,8 +18,6 @@ import {
   getPermissoesPortal,
   canAccessPortal,
   canEditPortal,
-  PERMISSOES_DIRETOR_ESPIRITUAL,
-  isAbaVisivel,
 } from "@/lib/permissoes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -137,13 +135,16 @@ export default function AreaPortal() {
     enabled: !!area?.id,
   });
 
-  // Granular permissions via hook
-  const { cargo, getPermissao, isDiretoria: isDiretoriaP } = usePermissoes(decodedNome);
+  // Granular permissions via new portal system
+  const { role } = useAuth();
+  const { cargoArea } = useAreaServico();
 
-  // Derived permission helpers
-  const headerCanEdit =
-    cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP;
-  const canComment = cargo !== "servidor";
+  const effectiveCargo = role === "diretoria" ? "Coord 01" : (cargoArea ?? "Servidor");
+  const effectiveArea  = role === "diretoria" ? "Diretoria" : decodedNome;
+  const perms = getPermissoesPortal(effectiveArea, effectiveCargo);
+
+  const headerCanEdit = canEditPortal(perms, "painel_editar_area") || canEditPortal(perms, "painel_definir_coords");
+  const canComment    = canAccessPortal(perms, "mural_visualizar");
 
   const defaultTab = "painel";
 
@@ -181,34 +182,34 @@ export default function AreaPortal() {
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full overflow-x-auto justify-start">
           <TabsTrigger value="painel">Painel</TabsTrigger>
-          {isAbaVisivel(getPermissao("mural")) && <TabsTrigger value="mural">Mural</TabsTrigger>}
-          {isAbaVisivel(getPermissao("calendario")) && <TabsTrigger value="calendario">Calendário</TabsTrigger>}
-          {isAbaVisivel(getPermissao("participantes")) && <TabsTrigger value="participantes">Participantes</TabsTrigger>}
-          {isAbaVisivel(getPermissao("documentos")) && <TabsTrigger value="documentos">Documentos</TabsTrigger>}
-          {(decodedNome === "Segurança" || decodedNome === "Eventos") && isAbaVisivel(getPermissao("familias")) && (
+          {canAccessPortal(perms, "mural_visualizar") && <TabsTrigger value="mural">Mural</TabsTrigger>}
+          {canAccessPortal(perms, "calendario_visualizar") && <TabsTrigger value="calendario">Calendário</TabsTrigger>}
+          {canAccessPortal(perms, "participantes_area") && <TabsTrigger value="participantes">Participantes</TabsTrigger>}
+          {canAccessPortal(perms, "documentos_visualizar") && <TabsTrigger value="documentos">Documentos</TabsTrigger>}
+          {(decodedNome === "Segurança" || decodedNome === "Eventos") && canAccessPortal(perms, "familias_visualizar") && (
             <TabsTrigger value="familias">Famílias</TabsTrigger>
           )}
-          {(decodedNome === "Segurança" || decodedNome === "Eventos") && isAbaVisivel(getPermissao("tirolesa")) && (
+          {(decodedNome === "Segurança" || decodedNome === "Eventos") && canAccessPortal(perms, "tirolesa_cards") && (
             <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>
           )}
-          {decodedNome === "Mídia" && isAbaVisivel(getPermissao("radar")) && (
+          {decodedNome === "Mídia" && canAccessPortal(perms, "radar_visualizar") && (
             <TabsTrigger value="radar">Radar</TabsTrigger>
           )}
-          {decodedNome === "Mídia" && isAbaVisivel(getPermissao("ia_criativa")) && (
+          {decodedNome === "Mídia" && canAccessPortal(perms, "ia_criativa") && (
             <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>
           )}
-          {decodedNome === "ADM" && isAbaVisivel(getPermissao("homologacao")) && (
+          {decodedNome === "ADM" && canAccessPortal(perms, "homologacao_ver") && (
             <TabsTrigger value="homologacao">Homologação</TabsTrigger>
           )}
-          {isAbaVisivel(getPermissao("cronograma")) && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
-          {isAbaVisivel(getPermissao("predicas")) && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
-          {isAbaVisivel(getPermissao("pedidos")) && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
-          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("equipe")) && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
-          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("ergometricos")) && <TabsTrigger value="ergometricos">Ergométricos</TabsTrigger>}
-          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("autorizacoes")) && <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>}
-          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("medicamentos")) && <TabsTrigger value="medicamentos">Medicamentos</TabsTrigger>}
-          {decodedNome === "Hakuna" && isAbaVisivel(getPermissao("equipamentos")) && <TabsTrigger value="equipamentos_hakuna">Equipamentos</TabsTrigger>}
-          {decodedNome === "Hakuna" && <TabsTrigger value="necessaire">Necessaire</TabsTrigger>}
+          {canAccessPortal(perms, "cronograma") && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
+          {canAccessPortal(perms, "predicas_visualizar") && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
+          {canAccessPortal(perms, "pedidos_ver") && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
+          {decodedNome === "Hakuna" && canAccessPortal(perms, "equipe_ver") && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
+          {decodedNome === "Hakuna" && canAccessPortal(perms, "ergo_lista") && <TabsTrigger value="ergometricos">Ergométricos</TabsTrigger>}
+          {decodedNome === "Hakuna" && canAccessPortal(perms, "autorizacoes_ver") && <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>}
+          {decodedNome === "Hakuna" && canAccessPortal(perms, "medicamentos_ver") && <TabsTrigger value="medicamentos">Medicamentos</TabsTrigger>}
+          {decodedNome === "Hakuna" && canAccessPortal(perms, "equip_area_ver") && <TabsTrigger value="equipamentos_hakuna">Equipamentos</TabsTrigger>}
+          {decodedNome === "Hakuna" && canAccessPortal(perms, "necessaire_ver") && <TabsTrigger value="necessaire">Necessaire</TabsTrigger>}
         </TabsList>
 
         {/* Tab Painel */}
@@ -398,19 +399,19 @@ export default function AreaPortal() {
         </TabsContent>
 
         <TabsContent value="mural">
-          <AreaMural area={area} canEdit={canEditPerm(getPermissao("mural"))} canComment={canComment} currentUser={currentUser} />
+          <AreaMural area={area} canEdit={canEditPortal(perms, "mural_novo_aviso")} canComment={canComment} currentUser={currentUser} />
         </TabsContent>
 
         <TabsContent value="calendario">
-          <AreaCalendario area={area} canEdit={canEditPerm(getPermissao("calendario"))} currentUser={currentUser} />
+          <AreaCalendario area={area} canEdit={canEditPortal(perms, "calendario_novo_evento")} currentUser={currentUser} />
         </TabsContent>
 
         <TabsContent value="participantes">
-          <AreaDesignacoes area={area} canEdit={canEditPerm(getPermissao("participantes"))} currentUser={currentUser} />
+          <AreaDesignacoes area={area} canEdit={canEditPortal(perms, "participantes_area")} currentUser={currentUser} />
         </TabsContent>
 
         <TabsContent value="documentos">
-          <AreaDocumentos area={area} canEdit={canEditPerm(getPermissao("documentos"))} currentUser={currentUser} />
+          <AreaDocumentos area={area} canEdit={canEditPortal(perms, "documentos_upload")} currentUser={currentUser} />
         </TabsContent>
 
         {(decodedNome === "Segurança" || decodedNome === "Eventos") && (
@@ -443,7 +444,7 @@ export default function AreaPortal() {
           </TabsContent>
         )}
 
-        {isAbaVisivel(getPermissao("cronograma")) && (
+        {canAccessPortal(perms, "cronograma") && (
           <TabsContent value="cronograma">
             {decodedNome === "Logística" ? (
               <Tabs defaultValue="oficial" className="w-full">
@@ -455,12 +456,12 @@ export default function AreaPortal() {
                   <CronogramaTop canEdit={false} cronogramaTipo="adm" />
                 </TabsContent>
                 <TabsContent value="logistica">
-                  <CronogramaTop canEdit={cargo === "coord_01" || isDiretoriaP} cronogramaTipo="logistica" />
+                  <CronogramaTop canEdit={canEditPortal(perms, "crono_logistica_nova")} cronogramaTipo="logistica" />
                 </TabsContent>
               </Tabs>
             ) : (
               <CronogramaTop
-                canEdit={canEditPerm(getPermissao("cronograma"))}
+                canEdit={canEditPortal(perms, "cronograma")}
                 cronogramaTipo="adm"
               />
             )}
@@ -468,20 +469,20 @@ export default function AreaPortal() {
         )}
 
         <TabsContent value="predicas">
-          <PredicasTab canEdit={canEditPerm(getPermissao("predicas"))} />
+          <PredicasTab canEdit={canEditPortal(perms, "predicas_nova")} />
         </TabsContent>
 
         <TabsContent value="pedidos">
           <AreaPedidos
             areaNome={decodedNome}
-            canEdit={canCreatePerm(getPermissao("pedidos"))}
-            canDelete={canDeletePerm(getPermissao("pedidos"))}
+            canEdit={canEditPortal(perms, "pedidos_novo")}
+            canDelete={canEditPortal(perms, "pedidos_novo")}
           />
         </TabsContent>
 
         {decodedNome === "Hakuna" && (
           <TabsContent value="equipe">
-            {canEditPerm(getPermissao("equipe")) && (
+            {canEditPortal(perms, "equipe_ver") && (
               <div className="flex gap-2 mb-4">
                 <Button size="sm" onClick={() => navigate("/servidores/novo?area=Hakuna")}>
                   <Plus className="h-4 w-4 mr-1" /> Novo Hakuna
@@ -518,7 +519,7 @@ export default function AreaPortal() {
 
         {decodedNome === "Hakuna" && (
           <TabsContent value="necessaire">
-            <NecessaireTab isCoord={cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP} />
+            <NecessaireTab isCoord={canEditPortal(perms, "necessaire_salvar")} />
           </TabsContent>
         )}
       </Tabs>
