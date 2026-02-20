@@ -803,6 +803,84 @@ export type Database = {
           },
         ]
       }
+      checkin_config: {
+        Row: {
+          created_at: string | null
+          horario_checkin_participantes: string | null
+          horario_checkin_servidores: string | null
+          id: string
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          horario_checkin_participantes?: string | null
+          horario_checkin_servidores?: string | null
+          id?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          horario_checkin_participantes?: string | null
+          horario_checkin_servidores?: string | null
+          id?: string
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      checkin_servidores: {
+        Row: {
+          area_servico: string | null
+          cargo: string | null
+          checkin_em: string | null
+          cpf: string | null
+          created_at: string | null
+          desistencia_em: string | null
+          desistencia_por: string | null
+          desistencia_por_nome: string | null
+          id: string
+          servidor_id: string | null
+          servidor_nome: string | null
+          status: string | null
+          top_id: string | null
+          transporte: string | null
+        }
+        Insert: {
+          area_servico?: string | null
+          cargo?: string | null
+          checkin_em?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          desistencia_em?: string | null
+          desistencia_por?: string | null
+          desistencia_por_nome?: string | null
+          id?: string
+          servidor_id?: string | null
+          servidor_nome?: string | null
+          status?: string | null
+          top_id?: string | null
+          transporte?: string | null
+        }
+        Update: {
+          area_servico?: string | null
+          cargo?: string | null
+          checkin_em?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          desistencia_em?: string | null
+          desistencia_por?: string | null
+          desistencia_por_nome?: string | null
+          id?: string
+          servidor_id?: string | null
+          servidor_nome?: string | null
+          status?: string | null
+          top_id?: string | null
+          transporte?: string | null
+        }
+        Relationships: []
+      }
       cronograma_atividades: {
         Row: {
           cenario_recursos: string | null
