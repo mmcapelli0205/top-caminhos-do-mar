@@ -9,6 +9,7 @@ import DespesasSection from "@/components/financeiro/DespesasSection";
 import MreSection from "@/components/financeiro/MreSection";
 import CeiaSection from "@/components/financeiro/CeiaSection";
 import BebidasSection from "@/components/financeiro/BebidasSection";
+import { getPermissoesMenu } from "@/lib/permissoes";
 
 const Financeiro = () => {
   const { profile, role, loading: authLoading } = useAuth();
@@ -28,10 +29,17 @@ const Financeiro = () => {
 
   const loading = authLoading || loadingServidor;
 
+  const areaServico = role === "diretoria" ? "Diretoria" : (servidor?.area_servico ?? null);
+  const perms = getPermissoesMenu(areaServico);
+
   const temAcesso =
     role === "diretoria" ||
     servidor?.area_servico === "ADM" ||
+    servidor?.area_servico === "Hakuna" ||
     profile?.acesso_financeiro === true;
+
+  // Hakuna só vê o resumo
+  const hakunaOnly = servidor?.area_servico === "Hakuna" && role !== "diretoria";
 
   if (loading) {
     return (
@@ -63,18 +71,18 @@ const Financeiro = () => {
       <Tabs defaultValue="resumo">
         <TabsList className="w-full overflow-x-auto justify-start">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
-          <TabsTrigger value="receita">Receita</TabsTrigger>
-          <TabsTrigger value="despesas">Despesas</TabsTrigger>
-          <TabsTrigger value="mre">MRE</TabsTrigger>
-          <TabsTrigger value="ceia">Ceia do Rei</TabsTrigger>
-          <TabsTrigger value="bebidas">Bebidas</TabsTrigger>
+          {!hakunaOnly && <TabsTrigger value="receita">Receita</TabsTrigger>}
+          {!hakunaOnly && <TabsTrigger value="despesas">Despesas</TabsTrigger>}
+          {!hakunaOnly && <TabsTrigger value="mre">MRE</TabsTrigger>}
+          {!hakunaOnly && <TabsTrigger value="ceia">Ceia do Rei</TabsTrigger>}
+          {!hakunaOnly && <TabsTrigger value="bebidas">Bebidas</TabsTrigger>}
         </TabsList>
         <TabsContent value="resumo"><ResumoSection /></TabsContent>
-        <TabsContent value="receita"><ReceitaSection /></TabsContent>
-        <TabsContent value="despesas"><DespesasSection /></TabsContent>
-        <TabsContent value="mre"><MreSection /></TabsContent>
-        <TabsContent value="ceia"><CeiaSection /></TabsContent>
-        <TabsContent value="bebidas"><BebidasSection /></TabsContent>
+        {!hakunaOnly && <TabsContent value="receita"><ReceitaSection /></TabsContent>}
+        {!hakunaOnly && <TabsContent value="despesas"><DespesasSection /></TabsContent>}
+        {!hakunaOnly && <TabsContent value="mre"><MreSection /></TabsContent>}
+        {!hakunaOnly && <TabsContent value="ceia"><CeiaSection /></TabsContent>}
+        {!hakunaOnly && <TabsContent value="bebidas"><BebidasSection /></TabsContent>}
       </Tabs>
     </div>
   );

@@ -33,6 +33,8 @@ import { useAuth } from "@/hooks/useAuth";
 import ServidorSheet from "@/components/ServidorSheet";
 import ImportServidoresCSVDialog from "@/components/ImportServidoresCSVDialog";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAreaServico } from "@/hooks/useAreaServico";
+import { getPermissoesMenu } from "@/lib/permissoes";
 
 type Servidor = Tables<"servidores">;
 
@@ -87,7 +89,11 @@ export default function Servidores() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { role, profile } = useAuth();
-  const canDelete = role === "diretoria" || profile?.cargo === "coordenacao";
+  const { areaServico } = useAreaServico();
+
+  const effectiveArea = role === "diretoria" ? "Diretoria" : areaServico;
+  const perms = getPermissoesMenu(effectiveArea);
+  const canDeleteServidor = perms.servidores_excluir === "E";
 
   const { data: servidores = [], isLoading } = useQuery({
     queryKey: ["servidores"],
@@ -255,15 +261,21 @@ export default function Servidores() {
           <span className="text-sm text-muted-foreground">({servidores.length} total)</span>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
-            <Download className="h-4 w-4 mr-1" /> CSV
-          </Button>
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
-          </Button>
-          <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
-            <Plus className="h-4 w-4 mr-1" /> Novo Servidor
-          </Button>
+          {perms.servidores_exportar === "E" && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
+              <Download className="h-4 w-4 mr-1" /> CSV
+            </Button>
+          )}
+          {perms.servidores_importar === "E" && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
+            </Button>
+          )}
+          {perms.servidores_novo === "E" && (
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
+              <Plus className="h-4 w-4 mr-1" /> Novo Servidor
+            </Button>
+          )}
         </div>
       </div>
 
@@ -425,7 +437,7 @@ export default function Servidores() {
                        </Button>
                       </>
                     )}
-                    {canDelete && (
+                    {canDeleteServidor && (
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteTarget(s)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -508,7 +520,7 @@ export default function Servidores() {
                           <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
-                        {canDelete && (
+                        {canDeleteServidor && (
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteTarget(s)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>

@@ -50,17 +50,18 @@ const CheckIn = () => {
     return <p className="text-muted-foreground p-4">Carregando...</p>;
   }
 
-  const isAdmin = cargo === "diretoria" || servidorArea === "ADM";
+  const isAdmin = cargo === "diretoria" || servidorArea === "ADM" || servidorArea === "Segurança" || servidorArea === "Eventos";
   const isHakuna = servidorArea === "Hakuna";
+  const isDiretoria = cargo === "diretoria";
 
-  // If not admin and not hakuna, redirect
-  if (!isAdmin && !isHakuna) {
+  // If not admin and not hakuna and not diretoria, redirect
+  if (!isAdmin && !isHakuna && !isDiretoria) {
     navigate("/dashboard", { replace: true });
     return null;
   }
 
   const tabParam = searchParams.get("tab");
-  const defaultTab = isHakuna && !isAdmin ? "consultar" : (tabParam === "consultar" ? "consultar" : "pulseiras");
+  const defaultTab = (isHakuna && !isAdmin) ? "consultar" : (isDiretoria && !isAdmin) ? "gestao" : (tabParam === "consultar" ? "consultar" : "pulseiras");
 
   return (
     <div className="space-y-4">
@@ -76,8 +77,8 @@ const CheckIn = () => {
           <TabsList className="w-full overflow-x-auto justify-start">
             {isAdmin && <TabsTrigger value="pulseiras">Pulseiras</TabsTrigger>}
             {isAdmin && <TabsTrigger value="checkin">Realizar Check-in</TabsTrigger>}
-            <TabsTrigger value="consultar">Consultar Pulseira</TabsTrigger>
-            {isAdmin && <TabsTrigger value="gestao">Gestão</TabsTrigger>}
+            {(isAdmin || isHakuna) && <TabsTrigger value="consultar">Consultar Pulseira</TabsTrigger>}
+            {(isAdmin || isDiretoria) && <TabsTrigger value="gestao">Gestão</TabsTrigger>}
             {isAdmin && <TabsTrigger value="servidores">Check-in Servidores</TabsTrigger>}
           </TabsList>
 
@@ -86,23 +87,21 @@ const CheckIn = () => {
               <PulseirasTab />
             </TabsContent>
           )}
-
           {isAdmin && (
             <TabsContent value="checkin">
               <RealizarCheckinTab userId={userId} />
             </TabsContent>
           )}
-
-          <TabsContent value="consultar">
-            <ConsultaPulseiraTab userId={userId} userEmail={userEmail} />
-          </TabsContent>
-
-          {isAdmin && (
+          {(isAdmin || isHakuna) && (
+            <TabsContent value="consultar">
+              <ConsultaPulseiraTab userId={userId} userEmail={userEmail} />
+            </TabsContent>
+          )}
+          {(isAdmin || isDiretoria) && (
             <TabsContent value="gestao">
               <GestaoCheckinTab participantes={participantes} familiaMap={familiaMap} userId={userId} />
             </TabsContent>
           )}
-
           {isAdmin && (
             <TabsContent value="servidores">
               <CheckinServidoresDashboard
