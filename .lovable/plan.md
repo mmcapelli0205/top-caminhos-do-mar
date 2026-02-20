@@ -1,104 +1,235 @@
 
-# Correção — WeatherCard (7 dias + vento + dias corretos)
+# Relatório de Servidores em PDF — Aprovações
 
-## Arquivo a Modificar
-`src/components/dashboard/WeatherCard.tsx` — único arquivo alterado.
+## Análise do Estado Atual
 
-## Mudanças Técnicas
+### Arquivo Principal
+`src/pages/Aprovacoes.tsx` (461 linhas) — a tela de Aprovações já possui:
+- Botão "Cadastro Rápido Liderança" no header (linha 249), ao lado do qual o novo botão "Relatório PDF" será inserido
+- Guarda de acesso por `profile.pode_aprovar` e `role === "diretoria"`
 
-### 1. Nova URL da API
+### Biblioteca jsPDF
+`jsPDF` **já está instalado** no projeto (versão 4.x, conforme `package.json`) e em uso em 4 componentes:
+- `src/components/cronograma/RelatorioTop.tsx`
+- `src/components/financeiro/RelatorioConsolidado.tsx`
+- `src/components/financeiro/ResumoSection.tsx`
+- `src/pages/Tirolesa.tsx`
+
+**Não é necessário instalar nenhuma dependência nova.**
+
+### Tabela `servidores`
+Os campos necessários para o relatório são:
+- `nome` — nome completo do servidor
+- `area_servico` — área de atuação (ex: "Hakuna", "Segurança")
+- `cargo_area` — cargo dentro da área (ex: "Coord 01", "Sombra 02", "Servidor")
+- `status` — usado para filtrar apenas servidores ativos/aprovados
+
+Query base:
+```typescript
+supabase
+  .from("servidores")
+  .select("nome, area_servico, cargo_area, status")
+  .order("area_servico")
+  .order("nome")
 ```
-https://api.open-meteo.com/v1/forecast
-  ?latitude=-23.78
-  &longitude=-46.01
-  &daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max
-  &timezone=America/Sao_Paulo
-  &forecast_days=7
-```
-- Coordenadas ajustadas para `-23.78 / -46.01` (SP-148 Km 42, Serra do Mar)
-- Adicionado `windspeed_10m_max` ao parâmetro `daily`
-- `forecast_days` alterado de `4` para `7`
 
-### 2. Nome do dia da semana (correção principal)
-O bug atual ocorre porque `new Date("2026-02-20")` sem horário é interpretado como **UTC midnight**, e ao chamar `.getDay()` em fuso America/São_Paulo (UTC-3) o resultado retrocede um dia.
+---
 
-Solução: usar `toLocaleDateString` com locale `pt-BR` diretamente na string de data retornada pela API, que vem no formato `YYYY-MM-DD`:
+## Arquivos a Criar/Modificar
 
-```ts
-function getDayLabel(dateStr: string, isToday: boolean): string {
-  if (isToday) return "HOJE";
-  // Append T12:00 para evitar problema de timezone com UTC midnight
-  const date = new Date(dateStr + "T12:00:00");
-  return date
-    .toLocaleDateString("pt-BR", { weekday: "short" })
-    .replace(".", "")
-    .toUpperCase();
+| Arquivo | Operação |
+|---|---|
+| `src/components/RelatorioServidoresPDF.tsx` | **Criar** — modal completo + geração de PDF |
+| `src/pages/Aprovacoes.tsx` | **Modificar** — adicionar import + botão + estado |
+
+---
+
+## Plano Técnico Detalhado
+
+### 1. Novo componente: `RelatorioServidoresPDF.tsx`
+
+#### Props
+```typescript
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
 }
 ```
-Resultado: `"sex."` → `"SEX"`, `"sáb."` → `"SÁB"`, etc.
 
-### 3. Estrutura de dados dos 7 dias
-```ts
-const columns = [0,1,2,3,4,5,6].map((i) => ({
-  day: getDayLabel(daily.time[i], i === 0),
-  isToday: i === 0,
-  weather: getWeather(daily.weathercode[i]),
-  max: Math.round(daily.temperature_2m_max[i]),
-  min: Math.round(daily.temperature_2m_min[i]),
-  wind: Math.round(daily.windspeed_10m_max[i]),
-}));
+#### Estado interno
+```typescript
+const [areaFiltro, setAreaFiltro] = useState("Todas");
+const [gerando, setGerando] = useState(false);
 ```
 
-### 4. Layout responsivo para 7 cards
+#### Ordenação de cargos (dentro de cada área)
+```typescript
+const ORDEM_CARGO = ["Coord 01", "Coord 02", "Coord 03", "Sombra 01", "Sombra 02", "Sombra 03"];
 
-**Desktop:** `grid-cols-7` — 7 colunas em linha.
+function ordenarCargo(cargo: string | null): number {
+  const idx = ORDEM_CARGO.indexOf(cargo ?? "");
+  return idx === -1 ? 999 : idx; // "Servidor" e outros vão ao final
+}
+```
 
-**Mobile:** `overflow-x-auto` com `flex` e `min-w-[52px]` em cada card — scroll horizontal suave.
+#### Ordenação das áreas
+```typescript
+const ORDEM_AREAS = [
+  "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
+  "Logística", "Voz", "ADM", "Intercessão", "DOC", "Diretoria",
+];
+```
 
-Estrutura:
+#### Cores das áreas (barras de seção)
+```typescript
+const CORES_AREAS: Record<string, string> = {
+  "Hakuna": "#2196F3",
+  "Segurança": "#4CAF50",
+  "Eventos": "#FF9800",
+  "Mídia": "#9C27B0",
+  "Comunicação": "#F44336",
+  "Logística": "#795548",
+  "Voz": "#00BCD4",
+  "ADM": "#607D8B",
+  "Intercessão": "#E91E63",
+  "DOC": "#3F51B5",
+  "Diretoria": "#B8860B",
+};
+```
+
+#### Função `gerarPDF()`
+
+**Estrutura lógica:**
+
+1. Buscar servidores no Supabase com filtro opcional de área
+2. Agrupar por `area_servico`, ordenar pelo índice em `ORDEM_AREAS`
+3. Ordenar servidores de cada área por cargo (coord → sombra → servidor) e depois por nome
+4. Criar `jsPDF({ format: "a4", orientation: "portrait", unit: "mm" })`
+5. Para cada página, desenhar cabeçalho e rodapé usando funções auxiliares
+6. Para cada grupo de área:
+   - Verificar se há espaço suficiente na página atual (estimativa: 14mm por linha + 20mm de cabeçalho de seção); se não, `doc.addPage()`
+   - Desenhar barra colorida com `doc.setFillColor(hex)` + `doc.rect(..., "F")`
+   - Nome da área + contagem à direita em branco sobre a barra
+   - Tabela da área: linhas alternadas (zebra) com `doc.rect`
+   - Formatação especial por cargo: "Coord" em negrito, "Sombra" em itálico, "Servidor" normal
+7. Adicionar numeração de páginas no final iterando com `doc.setPage(i)`
+
+**Cabeçalho (primeira página e demais):**
+```
+Logo (40x40px) | TOP 1575 — Caminhos do Mar (bold 16pt)
+               | Relatório de Servidores (12pt)
+               | Gerado em: DD/MM/YYYY às HH:MM (9pt cinza)
+               | Filtro: Todas as Áreas / [Nome] (9pt cinza)
+```
+- Logo carregada via `fetch` convertida para base64 (já feito em outros relatórios do projeto)
+- Linha separadora horizontal após o cabeçalho
+
+**Cards de resumo (apenas na primeira página, logo após o cabeçalho):**
+```
+[  Total Geral: 87  |  Áreas: 11  |  Média/Área: 7.9  ]
+```
+Desenhados com bordas arredondadas usando `doc.roundedRect` e texto centralizado.
+
+**Rodapé (todas as páginas):**
+```
+TOP Manager — top-caminhos-do-mar.lovable.app       Página X de Y
+```
+
+#### UI do Modal (Dialog)
+
+```
+┌─────────────────────────────────────────────┐
+│  📄 Relatório de Servidores                 │
+├─────────────────────────────────────────────┤
+│  Filtrar por Área                           │
+│  [Select: Todas as Áreas ▼]                 │
+│                                             │
+│  • Inclui servidores de todas as áreas      │
+│  • Ordenado por cargo e nome               │
+├─────────────────────────────────────────────┤
+│  [Cancelar]           [⬇ Gerar PDF]        │
+└─────────────────────────────────────────────┘
+```
+
+### 2. Modificação: `Aprovacoes.tsx`
+
+**Adicionar import:**
+```typescript
+import RelatorioServidoresPDF from "@/components/RelatorioServidoresPDF";
+import { FileDown } from "lucide-react";
+```
+
+**Adicionar estado:**
+```typescript
+const [showRelatorio, setShowRelatorio] = useState(false);
+```
+
+**Adicionar botão** ao lado do "Cadastro Rápido Liderança" (linha ~249):
 ```tsx
-{/* Mobile: scroll horizontal */}
-<div className="flex overflow-x-auto gap-1 sm:hidden pb-1">
-  {columns.map(col => <DayCard key={col.day} {...col} />)}
-</div>
-
-{/* Desktop: grid 7 colunas */}
-<div className="hidden sm:grid grid-cols-7 gap-1">
-  {columns.map(col => <DayCard key={col.day} {...col} />)}
-</div>
+{role === "diretoria" && (
+  <div className="flex gap-2">
+    <Button onClick={() => setShowRelatorio(true)} variant="outline" className="gap-2">
+      <FileDown className="h-4 w-4" /> Relatório PDF
+    </Button>
+    <Button onClick={() => setShowCadastroRapido(true)} className="gap-2 bg-orange-600 hover:bg-orange-700 text-white">
+      <Star className="h-4 w-4" /> Cadastro Rápido Liderança
+    </Button>
+  </div>
+)}
 ```
 
-### 5. Card individual — nova linha do vento
+**Adicionar componente** antes do fechamento do `</div>` raiz:
 ```tsx
-{/* Vento */}
-<span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-  <Wind className="h-3 w-3" />
-  {col.wind}
-</span>
-```
-- Ícone `Wind` do `lucide-react` (já instalado)
-- Fonte menor que a temperatura mínima
-- Cor `text-muted-foreground` (mais claro)
-- Sem unidade "km/h" para caber no card estreito
-
-### 6. Ajuste de tamanhos dos cards
-Para caber 7 colunas, reduzir ligeiramente os tamanhos:
-- Badge do dia: `text-[10px]` (era `text-[11px]`)
-- Temperatura máxima: `text-base font-bold` (era `text-lg`)
-- Emoji do clima: `text-2xl` (era `text-3xl`)
-- Temperatura mínima: `text-sm` (era `text-lg`)
-- `CardContent p-2` (era `p-3`)
-
-### Resultado visual esperado
-```
-Clima — SP-148 Km 42
-┌──────┬──────┬──────┬──────┬──────┬──────┬──────┐
-│ HOJE │ SÁB  │ DOM  │ SEG  │ TER  │ QUA  │ QUI  │
-│ 31°  │ 27°  │ 26°  │ 25°  │ 28°  │ 29°  │ 27°  │
-│  ⛅  │  🌧  │  🌧  │  ☁️  │  ⛅  │  ⛅  │  🌧  │
-│ 18°  │ 20°  │ 19°  │ 20°  │ 19°  │ 18°  │ 20°  │
-│ 💨12 │ 💨15 │ 💨8  │ 💨10 │ 💨12 │ 💨14 │ 💨9  │
-└──────┴──────┴──────┴──────┴──────┴──────┴──────┘
+<RelatorioServidoresPDF open={showRelatorio} onOpenChange={setShowRelatorio} />
 ```
 
-Nenhuma dependência nova. Nenhuma migration SQL. Apenas `src/components/dashboard/WeatherCard.tsx`.
+---
+
+## Detalhes Visuais do PDF
+
+### Paleta de cores
+| Elemento | Cor |
+|---|---|
+| Fundo geral | Branco `#FFFFFF` |
+| Texto principal | Cinza escuro `#1B2838` |
+| Subtítulos / meta | Cinza médio `#6B7280` |
+| Linha separadora | Cinza claro `#E5E7EB` |
+| Linha zebra par | `#F9FAFB` (levíssimo cinza) |
+| Texto em barra de área | Branco `#FFFFFF` |
+
+### Tipografia (usando Helvetica, já disponível no jsPDF)
+| Elemento | Tamanho | Estilo |
+|---|---|---|
+| Título TOP | 16pt | bold |
+| "Relatório de Servidores" | 12pt | normal |
+| Data/Filtro | 9pt | normal, cinza |
+| Card resumo — label | 8pt | normal, cinza |
+| Card resumo — valor | 14pt | bold |
+| Cabeçalho de área | 11pt | bold, branco |
+| Contador à direita | 9pt | normal, branco |
+| Nomes — Coord | 10pt | bold |
+| Nomes — Sombra | 10pt | italic |
+| Nomes — Servidor | 10pt | normal |
+| Cargo | 9pt | normal, cinza médio |
+| Rodapé | 8pt | normal, cinza claro |
+
+### Geração de PDF — abordagem sem autotable
+Como `jspdf-autotable` **não está instalado** (apenas `jsPDF` puro está), o PDF será gerado com as APIs nativas do jsPDF, seguindo o mesmo padrão já usado em `RelatorioTop.tsx` e `RelatorioConsolidado.tsx`:
+- `doc.rect()` para células e barras coloridas
+- `doc.text()` posicionado manualmente com `x, y`
+- Controle manual de `y` (cursor vertical) com quebra de página por `if (y > pageH - margin) { doc.addPage(); resetY(); }`
+
+---
+
+## Nenhuma Migration SQL Necessária
+
+O relatório usa apenas leitura da tabela `servidores` que já existe, com RLS `auth_only` que permite leitura para usuários autenticados.
+
+---
+
+## Resultado Final
+
+- Um botão "Relatório PDF" aparece no header da tela de Aprovações, visível apenas para Diretoria
+- Ao clicar, um modal pergunta qual área filtrar (ou todas)
+- Clicar em "Gerar PDF" busca os servidores, gera o PDF in-browser e dispara o download automático
+- O arquivo baixado se chama `Relatorio_Servidores_TOP1575_DD-MM-YYYY.pdf` ou `Relatorio_Servidores_[Area]_TOP1575_DD-MM-YYYY.pdf`
