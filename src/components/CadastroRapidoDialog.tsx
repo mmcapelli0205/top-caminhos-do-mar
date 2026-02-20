@@ -16,7 +16,7 @@ const EQUIPES = [
 const CARGOS_DIRETORIA = ["Diretor", "Sub-Diretor", "Diretor Espiritual"];
 const CARGOS_EQUIPE = [
   "Coordenador 01", "Coordenador 02", "Coordenador 03",
-  "Sombra 01", "Sombra 02", "Sombra 03",
+  "Sombra 01", "Sombra 02", "Sombra 03", "Servidor",
 ];
 
 interface Props {
@@ -108,7 +108,7 @@ export default function CadastroRapidoDialog({ open, onOpenChange }: Props) {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Star className="h-5 w-5 text-orange-500" />
-                Cadastro Rápido de Liderança
+                Cadastro Rápido
               </DialogTitle>
             </DialogHeader>
 
