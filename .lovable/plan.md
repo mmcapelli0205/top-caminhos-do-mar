@@ -1,154 +1,199 @@
 
-# Situação Atual e Solução
+# Web Check-in dos Servidores — Plano de Implementação
 
-## Diagnóstico
+## Estado Atual
 
-O arquivo `CAMINHOS_DO_MAR_OFICIAL-2.kmz` enviado é um arquivo ZIP binário contendo `doc.kml` internamente. As ferramentas de leitura de texto do Lovable não conseguem descompactar o ZIP para extrair o XML — o arquivo aparece como dados binários corrompidos.
+Ambas as tabelas já existem no banco de dados:
+- `checkin_servidores` — com as colunas corretas (id, servidor_id, servidor_nome, area_servico, cargo, cpf, transporte, status, checkin_em, desistencia_em, desistencia_por, desistencia_por_nome, top_id, created_at)
+- `checkin_config` — com horario_checkin_servidores e horario_checkin_participantes
 
-O `src/data/kmzData.ts` atual contém rotas **simplificadas/interpoladas** (não extraídas do KML original):
-- Rota D1: ~97 pontos (gerados programaticamente com incrementos uniformes)
-- Rota D2: ~55 pontos
-- Rota D3: ~60 pontos
-- Rota D4: ~83 pontos (estes são os mais próximos do real, pois são incrementos lineares)
+A lib `qrcode` já está instalada no projeto. Não é necessária migration SQL adicional.
 
-O resultado visual são **linhas retas** porque os pontos foram gerados com interpolação linear, não extraídos das curvas reais da trilha.
-
-## O Que Precisa Acontecer
-
-Para ter as 364 coordenadas reais da rota D1 (e equivalentes para D2-D4), precisamos do conteúdo XML do `doc.kml`. Existem duas formas de obter isso:
+O sistema usa `top_id` para filtrar dados por evento. O TOP ativo tem id `c8109d6c-aafe-4b1d-b2f6-f0e3eede2915` (TOP 1575).
 
 ---
 
-## Opção 1 — Você extrai e cola as coordenadas (mais rápido)
+## O Que Será Construído
 
-Abra o arquivo `.kmz` no seu computador:
-1. Renomeie `CAMINHOS_DO_MAR_OFICIAL-2.kmz` para `CAMINHOS_DO_MAR_OFICIAL-2.zip`
-2. Extraia o ZIP — dentro haverá um arquivo `doc.kml`
-3. Abra o `doc.kml` em qualquer editor de texto (VSCode, Notepad++)
-4. Procure pelas tags `<LineString>` de cada rota (ex: "Rota D1 6,13km")
-5. Copie o conteúdo da tag `<coordinates>` de cada rota
-6. Cole aqui no chat
+### Parte 1 — Formulário Público `/checkin-servidor`
 
-O formato das coordenadas no KML é: `lng,lat,altitude` (ordem diferente do Leaflet que usa `lat,lng`).
+Página completamente pública (sem login), mobile-first, tema escuro, com 3 etapas:
+
+**Etapa 1 — Selecionar Área**
+- Dropdown com todas as áreas: Hakuna, Segurança, Eventos, Mídia, Comunicação, Logística, Voz, ADM, Intercessão, DOC, Louvor, Diretoria
+- Busca o horário de abertura em `checkin_config` via anon key (RLS já permite SELECT para anon)
+- Se ainda não é hora: tela de bloqueio "Check-in abre às HH:MM"
+
+**Etapa 2 — Selecionar Nome**
+- Query em `servidores` filtrada pela área selecionada
+- Exclui servidores que já têm registro em `checkin_servidores` com status = 'checkin'
+- Lista em ordem alfabética
+
+**Etapa 3 — Confirmar CPF + Transporte**
+- Campo CPF com máscara (usando a função `maskCPF` já existente em `src/lib/cpf.ts`)
+- Valida CPF contra o campo `cpf` do servidor selecionado
+- Radio: "Ônibus dos Legendários" / "Transporte Próprio"
+- Insert em `checkin_servidores` com anon key (RLS pública permite INSERT)
+
+**Tela de sucesso** com nome, área, horário e botão "Novo Check-in" que reinicia o fluxo.
 
 ---
 
-## Opção 2 — Usar o KMZ diretamente no browser (implementar parser)
+### Parte 2 — Dashboard de Acompanhamento
 
-Adicionar a lib `jszip` (já instalada no projeto!) para ler o KMZ no browser e parsear o XML automaticamente em runtime — sem precisar hardcodar nada.
+Nova aba "Check-in Servidores" dentro da página `/check-in` existente, visível para `diretoria` e `coordenacao`.
 
-### Como funcionaria:
+**Cards de resumo no topo:**
+- Total / Check-in Realizado / Aguardando / Desistências / Ônibus / Transporte Próprio
 
+**Lista por área** — cada área tem uma seção colapsável:
 ```
-KMZ (ZIP) → JSZip → doc.kml (XML) → DOMParser → coordenadas → Leaflet
+SEGURANÇA (3 de 5 chegaram)
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Raphael Lopes    13:42    Ônibus        ← nome branco, brilhante
+✅ Herikeson        13:45    Prop.
+⬜ João Silva       —        —             ← nome cinza claro
+⬜ Maria Santos     —        —             ← [piscando em vermelho se alerta ativo]
+                                           [botão "Desistiu" visível para coord]
 ```
 
-A página `/kmz` carregaria o arquivo KMZ, extrairia as coordenadas reais e renderizaria as rotas completas com todos os pontos.
+**Lógica de alerta:** 30 min antes do horário de check-in dos participantes → nomes pendentes começam a piscar (animação CSS `pulse` em vermelho).
 
-### Implementação:
+**Botão de Desistência:** com AlertDialog de confirmação, atualiza `status = 'desistencia'` e registra `desistencia_por` e `desistencia_em`.
 
-1. Copiar o KMZ para `public/CAMINHOS_DO_MAR.kmz`
-2. Criar hook `useKmzData()` que:
-   - Faz `fetch('/CAMINHOS_DO_MAR.kmz')`
-   - Usa `JSZip.loadAsync(blob)` para abrir o ZIP
-   - Lê `doc.kml` como texto
-   - Usa `DOMParser` para parsear o XML
-   - Extrai todos os `<Placemark>` com `<Point>` (pontos) e `<LineString>` (rotas)
-   - Retorna pontos e rotas no formato correto para o Leaflet
-3. Substituir os arrays hardcoded em `KmzMapa.tsx` pelo hook dinâmico
-4. Mostrar `<Skeleton>` enquanto o KMZ carrega
-
-### Vantagens da Opção 2:
-- Coordenadas 100% fiéis ao arquivo KMZ original (364 pontos na D1, etc.)
-- Se o KMZ for atualizado, basta substituir o arquivo em `public/` — sem tocar no código
-- Reutilizável para versões futuras do evento
-
-### Desvantagens:
-- Adiciona ~200ms de loading inicial para parsear o KMZ
-- Requer que o arquivo KMZ fique em `public/` (acessível publicamente)
+**Ordenação:** pendentes primeiro (incluindo desistências), depois realizados por horário.
 
 ---
 
-## Recomendação
+### Parte 3 — Configuração de Horários
 
-**Opção 2** é a mais robusta. O `jszip` já está instalado no projeto. O KMZ já foi enviado e pode ser copiado para `public/`. O parser leria exatamente o que o Google Earth mostra — sem simplificações.
+Seção dentro do dashboard do coordenador para editar `checkin_config`. Dois campos de tempo configuráveis.
 
-## Plano Técnico (Opção 2)
+---
 
-### Arquivos a modificar/criar:
+### Parte 4 — Gerador de QR Code para Cartaz
+
+Dentro do dashboard, botão "🔲 Gerar QR Code do Check-in" que:
+- Gera QR Code apontando para `https://top-caminhos-do-mar.lovable.app/checkin-servidor`
+- Mostra o QR grande na tela
+- Botão "Imprimir" abre janela de impressão com QR grande + texto "Escaneie para fazer Check-in"
+
+---
+
+## Arquivos a Criar/Modificar
 
 | Arquivo | Operação | Descrição |
 |---|---|---|
-| `public/CAMINHOS_DO_MAR.kmz` | Criar (copiar do upload) | KMZ copiado para servir estaticamente |
-| `src/hooks/useKmzParser.ts` | Criar | Hook que faz fetch + parse do KMZ com JSZip + DOMParser |
-| `src/pages/KmzMapa.tsx` | Modificar | Usar `useKmzParser` em vez dos dados hardcoded; adicionar loading state |
-| `src/data/kmzData.ts` | Manter | Manter apenas os tipos e constantes de estilo (cores, ícones) |
+| `src/pages/CheckinServidor.tsx` | Criar | Formulário público — 3 etapas, sem login |
+| `src/components/checkin/CheckinServidoresDashboard.tsx` | Criar | Dashboard de acompanhamento por área |
+| `src/components/checkin/CheckinConfigSection.tsx` | Criar | Configuração de horários |
+| `src/components/checkin/CheckinQrCodeCartaz.tsx` | Criar | Gerador de QR Code para impressão |
+| `src/App.tsx` | Modificar | Adicionar rota pública `/checkin-servidor` |
+| `src/pages/CheckIn.tsx` | Modificar | Adicionar nova aba "Servidores" para coordenadores/diretoria |
+| `src/lib/auth.ts` | Modificar | Não necessário — o acesso ao dashboard é dentro da aba Check-in já existente |
 
-### Hook `useKmzParser`:
+---
 
+## Detalhes Técnicos
+
+### Rota pública no App.tsx
+A rota `/checkin-servidor` será adicionada **fora** do `<Route element={<AppLayout />}>`, assim não exige autenticação — igual às rotas `/cadastro` e `/primeiro-acesso`.
+
+### Query de servidores disponíveis (Etapa 2)
 ```typescript
-export function useKmzParser(kmzUrl: string) {
-  const [pontos, setPontos] = useState<KMZPonto[]>([]);
-  const [rotas, setRotas] = useState<KMZRota[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Busca servidores da área que ainda não fizeram check-in
+const { data: servidores } = supabase
+  .from("servidores")
+  .select("id, nome, cpf, cargo")
+  .eq("area_servico", areaSelecionada)
+  .eq("status", "ativo")
+  .order("nome");
 
-  useEffect(() => {
-    async function parseKmz() {
-      try {
-        const res = await fetch(kmzUrl);
-        const blob = await res.blob();
-        const zip = await JSZip.loadAsync(blob);
-        
-        // Encontrar o .kml dentro do ZIP
-        const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'));
-        const kmlText = await kmlFile.async('text');
-        
-        // Parsear o XML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(kmlText, 'text/xml');
-        
-        // Extrair pontos (Placemark com Point)
-        const pontosExtraidos = extrairPontos(doc);
-        
-        // Extrair rotas (Placemark com LineString)
-        const rotasExtraidas = extrairRotas(doc);
-        
-        setPontos(pontosExtraidos);
-        setRotas(rotasExtraidas);
-      } catch (e) {
-        setError('Erro ao carregar mapa');
-      } finally {
-        setLoading(false);
-      }
-    }
-    parseKmz();
-  }, [kmzUrl]);
+// Busca quem já fez check-in nessa área
+const { data: jaFeitos } = supabase
+  .from("checkin_servidores")
+  .select("servidor_id")
+  .eq("area_servico", areaSelecionada)
+  .eq("status", "checkin");
 
-  return { pontos, rotas, loading, error };
-}
+// Filtra na UI: servidores.filter(s => !jaFeitos.map(j => j.servidor_id).includes(s.id))
 ```
 
-### Mapeamento de pastas KML → dias:
+### Verificação de horário
+```typescript
+const agora = new Date();
+const [h, m] = config.horario_checkin_servidores.split(":");
+const abertura = new Date();
+abertura.setHours(parseInt(h), parseInt(m), 0);
+const liberado = agora >= abertura;
+```
 
-O KML tem pastas nomeadas como "Logistica", "Homologação D1", "Homologação D2", etc. O parser mapeará:
-- Pasta "Logistic*" → `dia: "logistica"`
-- Pasta "*D1*" → `dia: "d1"`
-- Pasta "*D2*" → `dia: "d2"`
-- Pasta "*D3*" → `dia: "d3"`
-- Pasta "*D4*" → `dia: "d4"`
+### Alerta de 30 minutos
+```typescript
+const agora = new Date();
+const [h, m] = config.horario_checkin_participantes.split(":");
+const alertaEm = new Date();
+alertaEm.setHours(parseInt(h) - 0, parseInt(m) - 30, 0);
+const alertaAtivo = agora >= alertaEm;
+```
 
-### Mapeamento de nomes → tipos de ponto:
+### Animação pulsante em CSS (nomes faltantes)
+```css
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; color: white; }
+  50% { opacity: 0.5; color: #ef4444; }
+}
+.pisca { animation: pulse-red 1.5s ease-in-out infinite; }
+```
+Implementado via classe condicional com `cn()` do `clsx`.
 
-- Nome contém "Predica" ou "Prédica" → `tipo: "predica"`
-- Nome contém "Acampamento" → `tipo: "acampamento"`
-- Nome contém "Base" → `tipo: "base"`
-- Nome contém "Extração" ou "Extracao" → `tipo: "extracao"`
-- Demais → `tipo: "ponto"`
+### top_id nos inserts
+Será buscado via query `SELECT id FROM tops ORDER BY created_at DESC LIMIT 1` no formulário público (anon pode ler tops via RLS — precisaremos verificar se essa query é permitida, e se não for, hardcodar o top_id atual ou buscá-lo de outra forma).
 
-### Cores das rotas por dia (mantidas):
-- logistica: `#D2B48C`
-- d1: `#3B82F6`
-- d2: `#A855F7`
-- d3: `#F97316`
-- d4: `#EF4444`
+### RLS do formulário público
+A policy existente `public_insert_checkin` já permite INSERT para `anon`. A policy `auth_select_checkin` permite SELECT para `authenticated`. O formulário público vai precisar de SELECT nos servidores (que tem RLS `auth_only`) — isso é um ponto crítico:
+
+**Solução:** Criar uma policy de SELECT em `servidores` para `anon` somente nos campos necessários (nome, area_servico, id, cpf) OU usar uma Edge Function intermediária.
+
+A abordagem mais segura e simples é adicionar uma **policy de SELECT** na tabela `servidores` para usuários anônimos, limitada aos campos necessários para o check-in. O CPF exposto é aceitável pois o formulário precisa validá-lo — e o CPF já é de domínio da equipe organizadora.
+
+### Migration necessária
+
+```sql
+-- Permitir leitura anônima de servidores (apenas para o formulário de check-in)
+CREATE POLICY "anon_select_servidores_checkin"
+ON public.servidores
+FOR SELECT
+TO anon
+USING (true);
+
+-- Permitir leitura anônima de checkin_servidores (para verificar duplicatas)
+-- Já existe policy auth_select_checkin que permite para authenticated
+-- Precisamos adicionar para anon também
+CREATE POLICY "anon_select_checkin_servidores"
+ON public.checkin_servidores
+FOR SELECT
+TO anon
+USING (true);
+
+-- Permitir leitura anônima de checkin_config (para o horário)
+-- A policy existente auth_all_checkin_config já usa USING (true) para authenticated
+-- Adicionar para anon
+CREATE POLICY "anon_select_checkin_config"
+ON public.checkin_config
+FOR SELECT
+TO anon
+USING (true);
+
+-- Permitir leitura anônima de tops (para buscar o top_id ativo)
+-- Verificar se já existe
+```
+
+### Ordem de implementação
+1. Rodar migration SQL (policies anon)
+2. Criar `CheckinServidor.tsx` (formulário público completo — 3 etapas)
+3. Criar `CheckinServidoresDashboard.tsx` (dashboard por área com alertas)
+4. Criar `CheckinConfigSection.tsx` (config de horários)
+5. Criar `CheckinQrCodeCartaz.tsx` (gerador de QR Code)
+6. Modificar `App.tsx` (rota pública)
+7. Modificar `CheckIn.tsx` (nova aba para diretoria/coordenação)
