@@ -1,284 +1,119 @@
 
-# Parte 2 — Permissões dos Portais por Cargo
+# Correção dos Erros de Build — AreaPortal.tsx
 
-## Contexto Atual
+## Diagnóstico
 
-O `src/lib/permissoes.ts` já contém dois sistemas de permissão:
-1. **Sistema legado** (`PERMISSOES` + `getPermissaoAba`) — por área+cargo enum (`coord_01`, etc.), usado pelo `usePermissoes` que compara IDs de servidor com os campos da tabela `areas` (coordenador_id, sombra_id, etc.). Retorna `NivelPermissao` (E/V/EP/A/X).
-2. **Sistema novo** (`PERMISSOES_MENU` + `getPermissoesMenu`) — por área (string), retorna `NivelAcesso` (E/V/B/null).
+O arquivo `AreaPortal.tsx` tem 10 erros de build concentrados em dois grupos:
 
-O `AreaPortal.tsx` ainda usa o sistema legado via `usePermissoes(areaNome)`. A Parte 2 adicionará um **terceiro sistema** ao mesmo arquivo — `PERMISSOES_PORTAL` — mais granular, com permissões por ação (não só por aba), chaveado por `"Área_Cargo"` onde cargo é o texto exato de `servidores.cargo_area`.
+**Grupo 1 — Linha 141:** A chamada `usePermissoes(decodedNome)` ainda existe, mas o import foi removido na iteração anterior. Também persistem variáveis derivadas `cargo`, `isDiretoriaP`, `headerCanEdit`, `canComment` que dependem desse hook.
 
-## Estratégia: Compatibilidade Retroativa
+**Grupo 2 — Linhas 401-522:** Funções auxiliares `canEditPerm`, `canCreatePerm`, `canDeletePerm` são chamadas no JSX, mas nunca foram definidas nem importadas.
 
-O sistema legado `PERMISSOES` e o `usePermissoes` **não serão removidos** — continuam funcionando para sub-componentes que já recebem `canEdit` como prop simples. Apenas o `AreaPortal.tsx` será atualizado para usar o novo sistema para controlar visibilidade de abas e flags de edição passadas para os filhos.
+**Grupo 3 — Linhas 184-211 (TabsList) e 446 (cronograma):** Condicionais ainda usam o sistema legado `isAbaVisivel(getPermissao(...))` e variáveis `cargo`/`isDiretoriaP`.
 
-## Mapeamento de Cargo
+## Solução
 
-O hook `useAreaServico` já retorna `cargoArea` (texto de `servidores.cargo_area`). Os valores possíveis são: `"Coord 01"`, `"Coord 02"`, `"Coord 03"`, `"Sombra 01"`, `"Sombra 02"`, `"Sombra 03"`, `"Servidor"`, além de `"Diretor Espiritual"` (tratado separadamente).
+### Seção 1 — Substituir o bloco de permissões (linhas 140-147)
 
-A chave do mapa será: `"Hakuna_Coord 01"`, `"Segurança_Servidor"`, etc.
-
-Para `role === "diretoria"`, usa-se `"Diretoria_Coord 01"` como chave (acesso máximo).
-
-## Arquivos a Modificar
-
-| Arquivo | Operação |
-|---|---|
-| `src/lib/permissoes.ts` | Adicionar `PermissoesPortal`, `PERMISSOES_PORTAL` (77 entradas), `getPermissoesPortal`, `canAccessPortal`, `canEditPortal` |
-| `src/pages/AreaPortal.tsx` | Substituir `usePermissoes` por `useAreaServico` + `getPermissoesPortal` para controle de abas e permissões |
-
-## Detalhes Técnicos
-
-### 1. Adição ao `src/lib/permissoes.ts`
-
-Adicionar ao final do arquivo:
-
+Remover:
 ```typescript
-// ============================================
-// Permissões dos Portais por Cargo
-// ============================================
-
-export interface PermissoesPortal {
-  // Painel
-  painel_cards: NivelAcesso;
-  painel_definir_coords: NivelAcesso;
-  painel_editar_area: NivelAcesso;
-  // Mural
-  mural_visualizar: NivelAcesso;
-  mural_novo_aviso: NivelAcesso;
-  // Calendário
-  calendario_visualizar: NivelAcesso;
-  calendario_novo_evento: NivelAcesso;
-  // Participantes da área
-  participantes_area: NivelAcesso;
-  // Documentos
-  documentos_visualizar: NivelAcesso;
-  documentos_upload: NivelAcesso;
-  // Cronograma
-  cronograma: NivelAcesso;
-  // Prédicas
-  predicas_visualizar: NivelAcesso;
-  predicas_nova: NivelAcesso;
-  // Pedidos
-  pedidos_ver: NivelAcesso;
-  pedidos_novo: NivelAcesso;
-  // Hakuna-exclusivos (opcionais)
-  consultar_pulseira?: NivelAcesso;
-  equipe_ver?: NivelAcesso;
-  equipe_match?: NivelAcesso;
-  ergo_configurar?: NivelAcesso;
-  ergo_lista?: NivelAcesso;
-  autorizacoes_ver?: NivelAcesso;
-  autorizacoes_aprovar?: NivelAcesso;
-  medicamentos_ver?: NivelAcesso;
-  medicamentos_novo?: NivelAcesso;
-  medicamentos_baixa?: NivelAcesso;
-  medicamentos_estoque?: NivelAcesso;
-  medicamentos_historico?: NivelAcesso;
-  equip_area_ver?: NivelAcesso;
-  equip_area_novo?: NivelAcesso;
-  equip_area_editar?: NivelAcesso;
-  necessaire_ver?: NivelAcesso;
-  necessaire_salvar?: NivelAcesso;
-  // Segurança + Eventos
-  familias_visualizar?: NivelAcesso;
-  familias_gerar?: NivelAcesso;
-  familias_salvar?: NivelAcesso;
-  familias_etiquetas?: NivelAcesso;
-  tirolesa_cards?: NivelAcesso;
-  tirolesa_simular?: NivelAcesso;
-  tirolesa_gerar_oficial?: NivelAcesso;
-  tirolesa_briefing?: NivelAcesso;
-  tirolesa_config?: NivelAcesso;
-  tirolesa_imprimir?: NivelAcesso;
-  tirolesa_exportar?: NivelAcesso;
-  // Mídia
-  radar_visualizar?: NivelAcesso;
-  radar_rastrear?: NivelAcesso;
-  radar_bases?: NivelAcesso;
-  ia_criativa?: NivelAcesso;
-  // Logística
-  crono_logistica_ver?: NivelAcesso;
-  crono_logistica_nova?: NivelAcesso;
-  crono_logistica_relatorio?: NivelAcesso;
-  // ADM
-  homologacao_ver?: NivelAcesso;
-  homologacao_marcar?: NivelAcesso;
-  homologacao_editar?: NivelAcesso;
-  painel_pedidos_cards?: NivelAcesso;
-  painel_pedidos_listar?: NivelAcesso;
-  painel_pedidos_alterar_status?: NivelAcesso;
-}
-
-// Chave: "Area_Cargo" (ex: "Hakuna_Coord 01", "Segurança_Servidor")
-export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
-  // 77 entradas cobrindo 11 áreas × 7 cargos
-  // ... (mapa completo conforme especificação)
-};
-
-export function getPermissoesPortal(area: string | null, cargo: string | null): PermissoesPortal | null {
-  if (!area || !cargo) return null;
-  const key = `${area}_${cargo}`;
-  return PERMISSOES_PORTAL[key] ?? null;
-}
-
-export function canAccessPortal(perms: PermissoesPortal | null, func: keyof PermissoesPortal): boolean {
-  if (!perms) return false;
-  const val = perms[func];
-  return val === "V" || val === "E";
-}
-
-export function canEditPortal(perms: PermissoesPortal | null, func: keyof PermissoesPortal): boolean {
-  if (!perms) return false;
-  return perms[func] === "E";
-}
+const { cargo, getPermissao, isDiretoria: isDiretoriaP } = usePermissoes(decodedNome);
+const headerCanEdit = cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP;
+const canComment = cargo !== "servidor";
 ```
 
-### 2. Modificação do `src/pages/AreaPortal.tsx`
-
-Substituir o `usePermissoes` (sistema legado) pelo `useAreaServico` + `getPermissoesPortal`:
-
+Adicionar:
 ```typescript
-// Remover:
-const { cargo, getPermissao, isDiretoria: isDiretoriaP } = usePermissoes(decodedNome);
-
-// Adicionar:
-import { useAreaServico } from "@/hooks/useAreaServico";
-import { getPermissoesPortal, canAccessPortal, canEditPortal } from "@/lib/permissoes";
-
 const { role } = useAuth();
 const { areaServico, cargoArea } = useAreaServico();
 
-// Para diretoria: usar cargo "Coord 01" da área Diretoria (acesso máximo)
+// Para diretoria: usa permissões máximas; caso contrário, usa a área+cargo do servidor
 const effectiveCargo = role === "diretoria" ? "Coord 01" : (cargoArea ?? "Servidor");
-const effectiveArea = role === "diretoria" ? "Diretoria" : decodedNome;
+const effectiveArea  = role === "diretoria" ? "Diretoria" : decodedNome;
 const perms = getPermissoesPortal(effectiveArea, effectiveCargo);
+
+// Helpers derivados
+const headerCanEdit = canEditPortal(perms, "painel_editar_area") || canEditPortal(perms, "painel_definir_coords");
+const canComment    = canAccessPortal(perms, "mural_visualizar");
 ```
 
-**Controle de abas (TabsTrigger):**
+### Seção 2 — TabsList (linhas 183-212)
+
+Substituir todas as condicionais `isAbaVisivel(getPermissao(...))` pelo novo sistema:
 
 ```tsx
-// Antes:
-{isAbaVisivel(getPermissao("mural")) && <TabsTrigger value="mural">Mural</TabsTrigger>}
-
-// Depois:
-{canAccessPortal(perms, "mural_visualizar") && <TabsTrigger value="mural">Mural</TabsTrigger>}
-{canAccessPortal(perms, "calendario_visualizar") && <TabsTrigger value="calendario">Calendário</TabsTrigger>}
-{canAccessPortal(perms, "participantes_area") && <TabsTrigger value="participantes">Participantes</TabsTrigger>}
-{canAccessPortal(perms, "documentos_visualizar") && <TabsTrigger value="documentos">Documentos</TabsTrigger>}
-{canAccessPortal(perms, "cronograma") && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
-{canAccessPortal(perms, "predicas_visualizar") && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
-{canAccessPortal(perms, "pedidos_ver") && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
-// Hakuna-exclusivos:
-{decodedNome === "Hakuna" && canAccessPortal(perms, "equipe_ver") && ...}
-{decodedNome === "Hakuna" && canAccessPortal(perms, "ergo_lista") && ...}
-{decodedNome === "Hakuna" && canAccessPortal(perms, "autorizacoes_ver") && ...}
-{decodedNome === "Hakuna" && canAccessPortal(perms, "medicamentos_ver") && ...}
-{decodedNome === "Hakuna" && canAccessPortal(perms, "equip_area_ver") && ...}
-{decodedNome === "Hakuna" && canAccessPortal(perms, "necessaire_ver") && ...}
-// Segurança/Eventos:
-{(decodedNome === "Segurança" || decodedNome === "Eventos") && canAccessPortal(perms, "familias_visualizar") && ...}
-{(decodedNome === "Segurança" || decodedNome === "Eventos") && canAccessPortal(perms, "tirolesa_cards") && ...}
-// Mídia:
-{decodedNome === "Mídia" && canAccessPortal(perms, "radar_visualizar") && ...}
-{decodedNome === "Mídia" && canAccessPortal(perms, "ia_criativa") && ...}
-// ADM:
-{decodedNome === "ADM" && canAccessPortal(perms, "homologacao_ver") && ...}
+<TabsTrigger value="painel">Painel</TabsTrigger>
+{canAccessPortal(perms, "mural_visualizar")        && <TabsTrigger value="mural">Mural</TabsTrigger>}
+{canAccessPortal(perms, "calendario_visualizar")   && <TabsTrigger value="calendario">Calendário</TabsTrigger>}
+{canAccessPortal(perms, "participantes_area")      && <TabsTrigger value="participantes">Participantes</TabsTrigger>}
+{canAccessPortal(perms, "documentos_visualizar")   && <TabsTrigger value="documentos">Documentos</TabsTrigger>}
+{(decodedNome==="Segurança"||decodedNome==="Eventos") && canAccessPortal(perms,"familias_visualizar") && <TabsTrigger value="familias">Famílias</TabsTrigger>}
+{(decodedNome==="Segurança"||decodedNome==="Eventos") && canAccessPortal(perms,"tirolesa_cards")      && <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>}
+{decodedNome==="Mídia"  && canAccessPortal(perms,"radar_visualizar") && <TabsTrigger value="radar">Radar</TabsTrigger>}
+{decodedNome==="Mídia"  && canAccessPortal(perms,"ia_criativa")      && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
+{decodedNome==="ADM"    && canAccessPortal(perms,"homologacao_ver")  && <TabsTrigger value="homologacao">Homologação</TabsTrigger>}
+{canAccessPortal(perms, "cronograma")              && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
+{canAccessPortal(perms, "predicas_visualizar")     && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
+{canAccessPortal(perms, "pedidos_ver")             && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
+{decodedNome==="Hakuna" && canAccessPortal(perms,"equipe_ver")       && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
+{decodedNome==="Hakuna" && canAccessPortal(perms,"ergo_lista")       && <TabsTrigger value="ergometricos">Ergométricos</TabsTrigger>}
+{decodedNome==="Hakuna" && canAccessPortal(perms,"autorizacoes_ver") && <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>}
+{decodedNome==="Hakuna" && canAccessPortal(perms,"medicamentos_ver") && <TabsTrigger value="medicamentos">Medicamentos</TabsTrigger>}
+{decodedNome==="Hakuna" && canAccessPortal(perms,"equip_area_ver")   && <TabsTrigger value="equipamentos_hakuna">Equipamentos</TabsTrigger>}
+{decodedNome==="Hakuna" && canAccessPortal(perms,"necessaire_ver")   && <TabsTrigger value="necessaire">Necessaire</TabsTrigger>}
 ```
 
-**Flags de edição passadas para sub-componentes:**
+### Seção 3 — TabsContent com `canEditPerm` (linhas 401-522)
 
+Substituir todas as chamadas problemáticas:
+
+| Linha | Antes | Depois |
+|---|---|---|
+| 401 | `canEditPerm(getPermissao("mural"))` | `canEditPortal(perms, "mural_novo_aviso")` |
+| 401 | `canComment` | `canAccessPortal(perms, "mural_visualizar")` |
+| 405 | `canEditPerm(getPermissao("calendario"))` | `canEditPortal(perms, "calendario_novo_evento")` |
+| 409 | `canEditPerm(getPermissao("participantes"))` | `canEditPortal(perms, "participantes_area")` |
+| 413 | `canEditPerm(getPermissao("documentos"))` | `canEditPortal(perms, "documentos_upload")` |
+| 446 | `isAbaVisivel(getPermissao("cronograma"))` | `canAccessPortal(perms, "cronograma")` |
+| 458 | `cargo === "coord_01" \|\| isDiretoriaP` | `canEditPortal(perms, "crono_logistica_nova")` |
+| 463 | `canEditPerm(getPermissao("cronograma"))` | `canEditPortal(perms, "cronograma")` |
+| 471 | `canEditPerm(getPermissao("predicas"))` | `canEditPortal(perms, "predicas_nova")` |
+| 477 | `canCreatePerm(getPermissao("pedidos"))` | `canEditPortal(perms, "pedidos_novo")` |
+| 478 | `canDeletePerm(getPermissao("pedidos"))` | `canEditPortal(perms, "pedidos_novo")` |
+| 484 | `canEditPerm(getPermissao("equipe"))` | `canEditPortal(perms, "equipe_ver")` |
+| 521 | `cargo === "coord_01" \|\| cargo === "coord_02" \|\| ...` | `canEditPortal(perms, "necessaire_salvar")` |
+
+### Seção 4 — Painel ADM condicionado (linha 216-220)
+
+O bloco `AdmPedidosDashboard + AdmFinanceiroDashboard` passa a ser condicional:
 ```tsx
-// Mural: dois níveis — visualizar aviso vs criar novo aviso
-<AreaMural
-  area={area}
-  canEdit={canEditPortal(perms, "mural_novo_aviso")}
-  canComment={canAccessPortal(perms, "mural_visualizar")}
-  currentUser={currentUser}
-/>
-
-// Calendário:
-<AreaCalendario
-  area={area}
-  canEdit={canEditPortal(perms, "calendario_novo_evento")}
-  currentUser={currentUser}
-/>
-
-// Designações (Participantes da área):
-<AreaDesignacoes
-  area={area}
-  canEdit={canEditPortal(perms, "participantes_area")}
-  currentUser={currentUser}
-/>
-
-// Documentos:
-<AreaDocumentos
-  area={area}
-  canEdit={canEditPortal(perms, "documentos_upload")}
-  currentUser={currentUser}
-/>
-
-// Prédicas:
-<PredicasTab canEdit={canEditPortal(perms, "predicas_nova")} />
-
-// Pedidos:
-<AreaPedidos
-  areaNome={decodedNome}
-  canEdit={canEditPortal(perms, "pedidos_novo")}
-  canDelete={canEditPortal(perms, "pedidos_novo")}
-/>
-
-// Painel (cards de área): condicionado por painel_cards
-// Botão "Definir Coordenadores": condicionado por painel_definir_coords
-// Botão "Editar Área": condicionado por painel_editar_area
-
-// Hakuna — Equipe:
-<EquipeTab /> // botão "Novo Hakuna" condicionado por equipe_ver === "E"
-
-// Hakuna — Necessaire:
-<NecessaireTab isCoord={canEditPortal(perms, "necessaire_salvar")} />
-
-// Logística — Cronograma:
-<CronogramaTop
-  canEdit={canEditPortal(perms, "crono_logistica_nova")}
-  cronogramaTipo="logistica"
-/>
+{decodedNome === "ADM" && canAccessPortal(perms, "painel_pedidos_cards") && (
+  <div className="mb-6 space-y-6">
+    <AdmPedidosDashboard />
+    <AdmFinanceiroDashboard />
+  </div>
+)}
 ```
 
-**Painel ADM:** O `AdmPedidosDashboard` e `AdmFinanceiroDashboard` aparecem condicionados a `canAccessPortal(perms, "painel_pedidos_cards")`.
+### Seção 5 — Limpar imports não utilizados
 
-### 3. Casos especiais a manter
+Remover do import de `@/lib/permissoes`:
+- `PERMISSOES_DIRETOR_ESPIRITUAL` (não usado mais)
+- `isAbaVisivel` (não usado mais)
 
-- **Diretor Espiritual** (`cargo_area === "Diretor Espiritual"`): continuará sendo tratado separadamente dentro de `AreaPortal.tsx` como um fallback — se `getPermissoesPortal` retornar `null` e o usuário for Diretor Espiritual, usar permissões existentes.
-- **DOC**: O portal DOC fica praticamente vazio — apenas a aba Prédicas aparece para Coord 01/02 (com `predicas_visualizar: "E"` e `predicas_nova: "E"`). Coord 03 vê Prédicas mas não pode criar. Todos os demais campos são `"B"`.
-
-## Mapa PERMISSOES_PORTAL — Estrutura de 77 Entradas
-
-As 77 chaves são: `{11 áreas} × {7 cargos}`:
-
-```
-Hakuna_Coord 01, Hakuna_Coord 02, ..., Hakuna_Servidor
-Segurança_Coord 01, ..., Segurança_Servidor
-Eventos_Coord 01, ..., Eventos_Servidor
-Mídia_Coord 01, ..., Mídia_Servidor
-Comunicação_Coord 01, ..., Comunicação_Servidor
-Logística_Coord 01, ..., Logística_Servidor
-Voz_Coord 01, ..., Voz_Servidor
-ADM_Coord 01, ..., ADM_Servidor
-Intercessão_Coord 01, ..., Intercessão_Servidor
-DOC_Coord 01, ..., DOC_Servidor
-Diretoria_Coord 01, ..., Diretoria_Servidor
+O import final ficará:
+```typescript
+import {
+  getPermissoesPortal,
+  canAccessPortal,
+  canEditPortal,
+} from "@/lib/permissoes";
 ```
 
-Todos os valores exatamente conforme a especificação fornecida na mensagem do usuário.
+## Arquivos a Modificar
 
-## Ordem de Implementação
+| Arquivo | Escopo |
+|---|---|
+| `src/pages/AreaPortal.tsx` | Apenas: imports, bloco de permissões (l.140-147), TabsList (l.183-212), 10 chamadas em TabsContent (l.401-522) |
 
-1. Adicionar `PermissoesPortal`, `PERMISSOES_PORTAL` e funções ao `src/lib/permissoes.ts`
-2. Atualizar `src/pages/AreaPortal.tsx`:
-   - Trocar `usePermissoes` por `useAreaServico` + `getPermissoesPortal`
-   - Atualizar todas as condicionais de `TabsTrigger`
-   - Atualizar todos os `canEdit`/`canDelete` passados para sub-componentes
-
-Nenhuma migration SQL. Nenhuma dependência nova. Nenhum sub-componente filho precisa ser alterado — apenas as props que `AreaPortal.tsx` já passa para eles.
+Nenhum sub-componente filho precisa ser alterado.
