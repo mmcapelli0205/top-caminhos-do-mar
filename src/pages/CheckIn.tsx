@@ -9,6 +9,7 @@ import { PulseirasTab } from "@/components/checkin/PulseirasTab";
 import { RealizarCheckinTab } from "@/components/checkin/RealizarCheckinTab";
 import { ConsultaPulseiraTab } from "@/components/checkin/ConsultaPulseiraTab";
 import { GestaoCheckinTab } from "@/components/checkin/GestaoCheckinTab";
+import { CheckinServidoresDashboard } from "@/components/checkin/CheckinServidoresDashboard";
 
 const CheckIn = () => {
   const { profile, session, loading } = useAuth();
@@ -17,12 +18,13 @@ const CheckIn = () => {
   const [searchParams] = useSearchParams();
   const [servidorArea, setServidorArea] = useState<string | null>(null);
   const [areaLoading, setAreaLoading] = useState(true);
+  const [topId, setTopId] = useState<string | null>(null);
 
   const cargo = profile?.cargo ?? null;
   const userId = session?.user?.id ?? "";
   const userEmail = session?.user?.email ?? "";
 
-  // Fetch servidor area_servico for the logged-in user via email
+  // Fetch servidor area_servico and top_id
   useEffect(() => {
     if (!userEmail) { setAreaLoading(false); return; }
     supabase
@@ -35,6 +37,13 @@ const CheckIn = () => {
         setServidorArea(data?.area_servico ?? null);
         setAreaLoading(false);
       });
+    supabase
+      .from("tops")
+      .select("id")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setTopId(data?.id ?? null));
   }, [userEmail]);
 
   if (loading || areaLoading) {
@@ -69,6 +78,7 @@ const CheckIn = () => {
             {isAdmin && <TabsTrigger value="checkin">Realizar Check-in</TabsTrigger>}
             <TabsTrigger value="consultar">Consultar Pulseira</TabsTrigger>
             {isAdmin && <TabsTrigger value="gestao">Gestão</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="servidores">Check-in Servidores</TabsTrigger>}
           </TabsList>
 
           {isAdmin && (
@@ -90,6 +100,17 @@ const CheckIn = () => {
           {isAdmin && (
             <TabsContent value="gestao">
               <GestaoCheckinTab participantes={participantes} familiaMap={familiaMap} userId={userId} />
+            </TabsContent>
+          )}
+
+          {isAdmin && (
+            <TabsContent value="servidores">
+              <CheckinServidoresDashboard
+                topId={topId}
+                userId={userId}
+                userEmail={userEmail}
+                isAdmin={isAdmin}
+              />
             </TabsContent>
           )}
         </Tabs>

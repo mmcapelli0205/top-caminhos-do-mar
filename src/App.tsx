@@ -25,6 +25,7 @@ import Aprovacoes from "./pages/Aprovacoes";
 import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import NotFound from "./pages/NotFound";
 import KmzMapa from "./pages/KmzMapa";
+import CheckinServidor from "./pages/CheckinServidor";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,7 @@ const App = () => {
             <Route path="/" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
+            <Route path="/checkin-servidor" element={<CheckinServidor />} />
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/participantes" element={<Participantes />} />
