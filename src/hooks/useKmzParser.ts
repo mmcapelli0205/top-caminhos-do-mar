@@ -42,11 +42,29 @@ function inferirDiaPorRota(nome: string): DiaTipo {
 
 function inferirTipo(nome: string): PontoTipo {
   const n = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  if (n.includes("predica") || n.includes("pregacao")) return "predica";
-  if (n.includes("acampamento")) return "acampamento";
+
+  // ACAMPAMENTO
+  if (n.includes("acampamento") || n.includes("camp")) return "acampamento";
+
+  // BASE
   if (n.includes("base")) return "base";
-  if (n.includes("extracao") || n.includes("extr") || n.includes("van")) return "extracao";
-  return "ponto";
+
+  // HIDRATAÇÃO
+  if (n.includes("hidratacao") || n.includes("hidratação")) return "hidratacao";
+
+  // EXTRAÇÃO/VAN
+  if (n.includes("extracao") || n.includes("extração") || n.includes("embarque") || n.includes("desembarque")) return "extracao";
+
+  // PONTO GERAL (apenas estes 3 casos específicos)
+  const nOriginal = nome.toLowerCase();
+  if (
+    nOriginal.includes("blocao") || nOriginal.includes("blocão") ||
+    nOriginal.includes("entrega madeiro") ||
+    nOriginal.includes("opcao de segunda revista") || nOriginal.includes("opção de segunda revista")
+  ) return "ponto";
+
+  // Todo o resto é PRÉDICA (inclui: Peleja, Pão Nosso, Ceia Do Rei, Lázaro, etc.)
+  return "predica";
 }
 
 function parseCoordinates(coordStr: string): [number, number][] {

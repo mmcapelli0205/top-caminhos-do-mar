@@ -35,6 +35,7 @@ const TIPOS_PONTO: { tipo: PontoTipo; emoji: string; label: string }[] = [
   { tipo: "acampamento", emoji: "⛺", label: "Acampamento" },
   { tipo: "base", emoji: "🏠", label: "Base" },
   { tipo: "extracao", emoji: "🚌", label: "Extração/Van" },
+  { tipo: "hidratacao", emoji: "💧", label: "Hidratação" },
   { tipo: "ponto", emoji: "📍", label: "Ponto geral" },
 ];
 
@@ -144,7 +145,7 @@ export default function KmzMapa() {
   const [centralize, setCentralize] = useState(false);
   const [rotasVisiveis, setRotasVisiveis] = useState<Record<string, boolean>>({});
   const [tiposVisiveis, setTiposVisiveis] = useState<Record<PontoTipo, boolean>>({
-    predica: true, acampamento: true, base: true, extracao: true, ponto: true,
+    predica: true, acampamento: true, base: true, extracao: true, hidratacao: true, ponto: true,
   });
   const [equipesVisiveis, setEquipesVisiveis] = useState<Record<string, boolean>>(
     Object.fromEntries(EQUIPES_LEGENDA.map((e) => [e, true]))
