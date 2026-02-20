@@ -130,12 +130,18 @@ const TopRealTime = () => {
     enabled: !!servidor?.id,
   });
 
-  const isAdmCoord = servidor?.area_servico === "ADM" &&
+  const isAdmCoord01 = servidor?.area_servico === "ADM" &&
+    (servidor?.cargo_area?.toLowerCase().includes("coord 01") ||
+     servidor?.cargo_area?.toLowerCase().includes("coordenador 01") ||
+     servidor?.cargo_area?.toLowerCase().includes("coord01"));
+  const isAdmCoordAny = servidor?.area_servico === "ADM" &&
     (servidor?.cargo_area?.toLowerCase().includes("coordenador") || servidor?.cargo_area?.toLowerCase().includes("coord"));
   const isCoord01 = (coordAreas?.length ?? 0) > 0;
-  const canControl = isDiretoria || isAdmCoord;
-  const canView = canControl || isCoord01 ||
-    userCargo === "coordenacao" || userCargo === "coord02" || userCargo === "coord03";
+  // canControl: only ADM Coord 01 or Diretoria
+  const canControl = isDiretoria || isAdmCoord01;
+  // canView: all coordination roles, all areas
+  const canView = canControl || isCoord01 || isAdmCoordAny ||
+    userCargo === "coordenacao" || userCargo === "coord02" || userCargo === "coord03" || userCargo === "sombra";
 
   // Redirect if no access
   useEffect(() => {
