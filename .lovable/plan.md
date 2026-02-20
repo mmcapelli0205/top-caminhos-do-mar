@@ -1,248 +1,284 @@
 
-# Parte 1 — Permissões do Menu Principal por Área
+# Parte 2 — Permissões dos Portais por Cargo
 
-## Análise do Estado Atual
+## Contexto Atual
 
-O `src/lib/permissoes.ts` **já existe** com permissões para as abas do Portal de Área (Parte 2). Para não conflitar, as permissões do menu principal serão adicionadas neste mesmo arquivo como uma nova seção exportada — mantendo a separação de contextos mas o arquivo unificado.
+O `src/lib/permissoes.ts` já contém dois sistemas de permissão:
+1. **Sistema legado** (`PERMISSOES` + `getPermissaoAba`) — por área+cargo enum (`coord_01`, etc.), usado pelo `usePermissoes` que compara IDs de servidor com os campos da tabela `areas` (coordenador_id, sombra_id, etc.). Retorna `NivelPermissao` (E/V/EP/A/X).
+2. **Sistema novo** (`PERMISSOES_MENU` + `getPermissoesMenu`) — por área (string), retorna `NivelAcesso` (E/V/B/null).
 
-A área do usuário vem de `servidores.area_servico` (consultado por email) — padrão já utilizado em `Financeiro.tsx`, `CheckIn.tsx` e `TopRealTime.tsx`. Criaremos um hook `useAreaServico` para reutilizar essa lógica.
+O `AreaPortal.tsx` ainda usa o sistema legado via `usePermissoes(areaNome)`. A Parte 2 adicionará um **terceiro sistema** ao mesmo arquivo — `PERMISSOES_PORTAL` — mais granular, com permissões por ação (não só por aba), chaveado por `"Área_Cargo"` onde cargo é o texto exato de `servidores.cargo_area`.
 
----
+## Estratégia: Compatibilidade Retroativa
 
-## Estratégia de Implementação
+O sistema legado `PERMISSOES` e o `usePermissoes` **não serão removidos** — continuam funcionando para sub-componentes que já recebem `canEdit` como prop simples. Apenas o `AreaPortal.tsx` será atualizado para usar o novo sistema para controlar visibilidade de abas e flags de edição passadas para os filhos.
 
-### Fase 1 — Arquivo de Permissões do Menu (`src/lib/permissoes.ts` — adicionar ao existente)
+## Mapeamento de Cargo
 
-Adicionar ao arquivo existente:
+O hook `useAreaServico` já retorna `cargoArea` (texto de `servidores.cargo_area`). Os valores possíveis são: `"Coord 01"`, `"Coord 02"`, `"Coord 03"`, `"Sombra 01"`, `"Sombra 02"`, `"Sombra 03"`, `"Servidor"`, além de `"Diretor Espiritual"` (tratado separadamente).
+
+A chave do mapa será: `"Hakuna_Coord 01"`, `"Segurança_Servidor"`, etc.
+
+Para `role === "diretoria"`, usa-se `"Diretoria_Coord 01"` como chave (acesso máximo).
+
+## Arquivos a Modificar
+
+| Arquivo | Operação |
+|---|---|
+| `src/lib/permissoes.ts` | Adicionar `PermissoesPortal`, `PERMISSOES_PORTAL` (77 entradas), `getPermissoesPortal`, `canAccessPortal`, `canEditPortal` |
+| `src/pages/AreaPortal.tsx` | Substituir `usePermissoes` por `useAreaServico` + `getPermissoesPortal` para controle de abas e permissões |
+
+## Detalhes Técnicos
+
+### 1. Adição ao `src/lib/permissoes.ts`
+
+Adicionar ao final do arquivo:
 
 ```typescript
 // ============================================
-// Permissões do Menu Principal por Área
+// Permissões dos Portais por Cargo
 // ============================================
 
-export type NivelAcesso = "V" | "E" | "B" | null;
-
-export interface PermissoesMenu {
-  // Participantes
-  participantes_listar: NivelAcesso;
-  participantes_buscar: NivelAcesso;
-  participantes_filtros: NivelAcesso;
-  participantes_importar: NivelAcesso;
-  participantes_exportar: NivelAcesso;
-  participantes_novo: NivelAcesso;
-  participantes_visualizar: NivelAcesso;
-  participantes_editar: NivelAcesso;
-  // Servidores
-  servidores_cards: NivelAcesso;
-  servidores_listar: NivelAcesso;
-  servidores_filtros: NivelAcesso;
-  servidores_exportar: NivelAcesso;
-  servidores_importar: NivelAcesso;
-  servidores_novo: NivelAcesso;
-  servidores_visualizar: NivelAcesso;
-  servidores_editar: NivelAcesso;
-  servidores_excluir: NivelAcesso;
-  // Financeiro
-  financeiro_resumo: NivelAcesso;
-  // Check-in
-  checkin_pulseiras: NivelAcesso;
-  checkin_realizar: NivelAcesso;
-  checkin_consultar: NivelAcesso;
-  checkin_gestao: NivelAcesso;
-  // Equipamentos
-  equipamentos_listar: NivelAcesso;
-  equipamentos_novo: NivelAcesso;
-  equipamentos_filtros: NivelAcesso;
-  // Artes & Docs
-  artes_visualizar: NivelAcesso;
-  artes_upload: NivelAcesso;
-  artes_download: NivelAcesso;
-  artes_editar: NivelAcesso;
-  artes_excluir: NivelAcesso;
-  // TOPs
-  tops_edicoes: NivelAcesso;
-  tops_whatsapp: NivelAcesso;
-  tops_templates: NivelAcesso;
-  // Configurações
-  config_listar: NivelAcesso;
-  config_novo: NivelAcesso;
-  config_editar: NivelAcesso;
-  // TOP Real Time
-  realtime_visualizar: NivelAcesso;
-  realtime_iniciar: NivelAcesso;
-  realtime_pular: NivelAcesso;
-  // Mapa
-  mapa_visualizar: NivelAcesso;
-  mapa_compartilhar_gps: NivelAcesso;
-  // Aprovações
-  aprovacoes: NivelAcesso;
-  // Menu visibility (booleans)
-  menu_participantes: boolean;
-  menu_servidores: boolean;
-  menu_financeiro: boolean;
-  menu_checkin: boolean;
-  menu_equipamentos: boolean;
-  menu_artes: boolean;
-  menu_tops: boolean;
-  menu_config: boolean;
-  menu_realtime: boolean;
-  menu_mapa: boolean;
-  menu_aprovacoes: boolean;
+export interface PermissoesPortal {
+  // Painel
+  painel_cards: NivelAcesso;
+  painel_definir_coords: NivelAcesso;
+  painel_editar_area: NivelAcesso;
+  // Mural
+  mural_visualizar: NivelAcesso;
+  mural_novo_aviso: NivelAcesso;
+  // Calendário
+  calendario_visualizar: NivelAcesso;
+  calendario_novo_evento: NivelAcesso;
+  // Participantes da área
+  participantes_area: NivelAcesso;
+  // Documentos
+  documentos_visualizar: NivelAcesso;
+  documentos_upload: NivelAcesso;
+  // Cronograma
+  cronograma: NivelAcesso;
+  // Prédicas
+  predicas_visualizar: NivelAcesso;
+  predicas_nova: NivelAcesso;
+  // Pedidos
+  pedidos_ver: NivelAcesso;
+  pedidos_novo: NivelAcesso;
+  // Hakuna-exclusivos (opcionais)
+  consultar_pulseira?: NivelAcesso;
+  equipe_ver?: NivelAcesso;
+  equipe_match?: NivelAcesso;
+  ergo_configurar?: NivelAcesso;
+  ergo_lista?: NivelAcesso;
+  autorizacoes_ver?: NivelAcesso;
+  autorizacoes_aprovar?: NivelAcesso;
+  medicamentos_ver?: NivelAcesso;
+  medicamentos_novo?: NivelAcesso;
+  medicamentos_baixa?: NivelAcesso;
+  medicamentos_estoque?: NivelAcesso;
+  medicamentos_historico?: NivelAcesso;
+  equip_area_ver?: NivelAcesso;
+  equip_area_novo?: NivelAcesso;
+  equip_area_editar?: NivelAcesso;
+  necessaire_ver?: NivelAcesso;
+  necessaire_salvar?: NivelAcesso;
+  // Segurança + Eventos
+  familias_visualizar?: NivelAcesso;
+  familias_gerar?: NivelAcesso;
+  familias_salvar?: NivelAcesso;
+  familias_etiquetas?: NivelAcesso;
+  tirolesa_cards?: NivelAcesso;
+  tirolesa_simular?: NivelAcesso;
+  tirolesa_gerar_oficial?: NivelAcesso;
+  tirolesa_briefing?: NivelAcesso;
+  tirolesa_config?: NivelAcesso;
+  tirolesa_imprimir?: NivelAcesso;
+  tirolesa_exportar?: NivelAcesso;
+  // Mídia
+  radar_visualizar?: NivelAcesso;
+  radar_rastrear?: NivelAcesso;
+  radar_bases?: NivelAcesso;
+  ia_criativa?: NivelAcesso;
+  // Logística
+  crono_logistica_ver?: NivelAcesso;
+  crono_logistica_nova?: NivelAcesso;
+  crono_logistica_relatorio?: NivelAcesso;
+  // ADM
+  homologacao_ver?: NivelAcesso;
+  homologacao_marcar?: NivelAcesso;
+  homologacao_editar?: NivelAcesso;
+  painel_pedidos_cards?: NivelAcesso;
+  painel_pedidos_listar?: NivelAcesso;
+  painel_pedidos_alterar_status?: NivelAcesso;
 }
 
-export const PERMISSOES_MENU: Record<string, PermissoesMenu> = { /* mapa completo */ };
+// Chave: "Area_Cargo" (ex: "Hakuna_Coord 01", "Segurança_Servidor")
+export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
+  // 77 entradas cobrindo 11 áreas × 7 cargos
+  // ... (mapa completo conforme especificação)
+};
 
-export function getPermissoesMenu(area: string): PermissoesMenu;
-export function canAccessMenu(area: string, funcionalidade: keyof PermissoesMenu): boolean;
-export function canEditMenu(area: string, funcionalidade: keyof PermissoesMenu): boolean;
-export function isBlockedMenu(area: string, funcionalidade: keyof PermissoesMenu): boolean;
+export function getPermissoesPortal(area: string | null, cargo: string | null): PermissoesPortal | null {
+  if (!area || !cargo) return null;
+  const key = `${area}_${cargo}`;
+  return PERMISSOES_PORTAL[key] ?? null;
+}
+
+export function canAccessPortal(perms: PermissoesPortal | null, func: keyof PermissoesPortal): boolean {
+  if (!perms) return false;
+  const val = perms[func];
+  return val === "V" || val === "E";
+}
+
+export function canEditPortal(perms: PermissoesPortal | null, func: keyof PermissoesPortal): boolean {
+  if (!perms) return false;
+  return perms[func] === "E";
+}
 ```
 
----
+### 2. Modificação do `src/pages/AreaPortal.tsx`
 
-### Fase 2 — Hook `useAreaServico` (`src/hooks/useAreaServico.ts` — criar)
-
-Centralizar a busca da área do servidor logado:
+Substituir o `usePermissoes` (sistema legado) pelo `useAreaServico` + `getPermissoesPortal`:
 
 ```typescript
-export function useAreaServico() {
-  const { profile } = useAuth();
-  const { data, isLoading } = useQuery({
-    queryKey: ["area-servico", profile?.email],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("servidores")
-        .select("area_servico, cargo_area")
-        .eq("email", profile!.email)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!profile?.email,
-  });
-  return { areaServico: data?.area_servico ?? null, cargoArea: data?.cargo_area ?? null, isLoading };
-}
+// Remover:
+const { cargo, getPermissao, isDiretoria: isDiretoriaP } = usePermissoes(decodedNome);
+
+// Adicionar:
+import { useAreaServico } from "@/hooks/useAreaServico";
+import { getPermissoesPortal, canAccessPortal, canEditPortal } from "@/lib/permissoes";
+
+const { role } = useAuth();
+const { areaServico, cargoArea } = useAreaServico();
+
+// Para diretoria: usar cargo "Coord 01" da área Diretoria (acesso máximo)
+const effectiveCargo = role === "diretoria" ? "Coord 01" : (cargoArea ?? "Servidor");
+const effectiveArea = role === "diretoria" ? "Diretoria" : decodedNome;
+const perms = getPermissoesPortal(effectiveArea, effectiveCargo);
 ```
 
----
+**Controle de abas (TabsTrigger):**
 
-### Fase 3 — Sidebar dinâmica (`src/components/AppSidebar.tsx`)
+```tsx
+// Antes:
+{isAbaVisivel(getPermissao("mural")) && <TabsTrigger value="mural">Mural</TabsTrigger>}
 
-Em vez de `getVisibleMenuItems(cargo, podeAprovar)`, o sidebar passará a usar `getPermissoesMenu(area)` para controlar a visibilidade de cada item com base na área. O cargo `"diretoria"` (role) mantém acesso total como hoje.
+// Depois:
+{canAccessPortal(perms, "mural_visualizar") && <TabsTrigger value="mural">Mural</TabsTrigger>}
+{canAccessPortal(perms, "calendario_visualizar") && <TabsTrigger value="calendario">Calendário</TabsTrigger>}
+{canAccessPortal(perms, "participantes_area") && <TabsTrigger value="participantes">Participantes</TabsTrigger>}
+{canAccessPortal(perms, "documentos_visualizar") && <TabsTrigger value="documentos">Documentos</TabsTrigger>}
+{canAccessPortal(perms, "cronograma") && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
+{canAccessPortal(perms, "predicas_visualizar") && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
+{canAccessPortal(perms, "pedidos_ver") && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
+// Hakuna-exclusivos:
+{decodedNome === "Hakuna" && canAccessPortal(perms, "equipe_ver") && ...}
+{decodedNome === "Hakuna" && canAccessPortal(perms, "ergo_lista") && ...}
+{decodedNome === "Hakuna" && canAccessPortal(perms, "autorizacoes_ver") && ...}
+{decodedNome === "Hakuna" && canAccessPortal(perms, "medicamentos_ver") && ...}
+{decodedNome === "Hakuna" && canAccessPortal(perms, "equip_area_ver") && ...}
+{decodedNome === "Hakuna" && canAccessPortal(perms, "necessaire_ver") && ...}
+// Segurança/Eventos:
+{(decodedNome === "Segurança" || decodedNome === "Eventos") && canAccessPortal(perms, "familias_visualizar") && ...}
+{(decodedNome === "Segurança" || decodedNome === "Eventos") && canAccessPortal(perms, "tirolesa_cards") && ...}
+// Mídia:
+{decodedNome === "Mídia" && canAccessPortal(perms, "radar_visualizar") && ...}
+{decodedNome === "Mídia" && canAccessPortal(perms, "ia_criativa") && ...}
+// ADM:
+{decodedNome === "ADM" && canAccessPortal(perms, "homologacao_ver") && ...}
+```
 
-**Lógica de prioridade:**
-1. Se `role === "diretoria"` → usa as permissões da área `"Diretoria"` 
-2. Se `areaServico` é conhecido → usa `PERMISSOES_MENU[areaServico]`
-3. Fallback → itens básicos (Início, Artes, Mapa)
+**Flags de edição passadas para sub-componentes:**
 
-O componente passará a receber a `area` como prop ou buscar via hook internamente.
+```tsx
+// Mural: dois níveis — visualizar aviso vs criar novo aviso
+<AreaMural
+  area={area}
+  canEdit={canEditPortal(perms, "mural_novo_aviso")}
+  canComment={canAccessPortal(perms, "mural_visualizar")}
+  currentUser={currentUser}
+/>
 
----
+// Calendário:
+<AreaCalendario
+  area={area}
+  canEdit={canEditPortal(perms, "calendario_novo_evento")}
+  currentUser={currentUser}
+/>
 
-### Fase 4 — Integração nas Páginas
+// Designações (Participantes da área):
+<AreaDesignacoes
+  area={area}
+  canEdit={canEditPortal(perms, "participantes_area")}
+  currentUser={currentUser}
+/>
 
-#### `Participantes.tsx`
-- Esconder botão "Importar da TicketAndGo" se `participantes_importar === "B"`
-- Esconder botão "CSV" se `participantes_exportar === "B"` 
-- Esconder botão "Novo Participante" se `participantes_novo === "B"` ou `null`
-- Esconder barra de busca se `participantes_buscar === null`
-- Botão editar em linha → escondido se `participantes_editar !== "E"`
-- Seleção em lote / exclusão → escondida se sem permissão
+// Documentos:
+<AreaDocumentos
+  area={area}
+  canEdit={canEditPortal(perms, "documentos_upload")}
+  currentUser={currentUser}
+/>
 
-#### `Servidores.tsx`
-- Cards de área → escondidos se `servidores_cards === "B"`
-- Botões de importar/exportar → condicionais
-- Botão "Novo Servidor" → condicional
-- Botões editar/excluir por linha → condicionais
+// Prédicas:
+<PredicasTab canEdit={canEditPortal(perms, "predicas_nova")} />
 
-#### `Financeiro.tsx`
-- Já tem guard `temAcesso` baseado em area/role. Expandir para incluir as áreas com permissão `"V"` (atualmente Hakuna acessa com `"E"` no novo mapa)
-- Hakuna: acesso com `financeiro_resumo === "E"` (apenas a aba Resumo das Taxas, conforme especificação)
+// Pedidos:
+<AreaPedidos
+  areaNome={decodedNome}
+  canEdit={canEditPortal(perms, "pedidos_novo")}
+  canDelete={canEditPortal(perms, "pedidos_novo")}
+/>
 
-**Nota importante:** O Financeiro da Hakuna dá acesso apenas ao campo `financeiro_resumo` (taxas de saúde). A especificação diz `financeiro_resumo: E`, mas as demais sub-seções (`financeiro_taxas`, `financeiro_relatorio`, etc.) são `"B"`. O guard atual vai mudar para mostrar o menu financeiro para Hakuna mas restringir internamente as abas visíveis.
+// Painel (cards de área): condicionado por painel_cards
+// Botão "Definir Coordenadores": condicionado por painel_definir_coords
+// Botão "Editar Área": condicionado por painel_editar_area
 
-#### `CheckIn.tsx`
-- Expandir a lógica `isAdmin` atual para incluir: Segurança, Eventos (para pulseiras/realizar/gestão)
-- Hakuna → já tem acesso a "consultar"
-- Diretoria → acesso a "gestao" apenas
-- Outros → sem acesso (redirect)
+// Hakuna — Equipe:
+<EquipeTab /> // botão "Novo Hakuna" condicionado por equipe_ver === "E"
 
-#### `Equipamentos.tsx`
-- Esconder botão "Novo" se `equipamentos_novo === "B"` 
-- Esconder filtros se `equipamentos_filtros === null`
-- Para Comunicação: `listar: V` (read-only, sem botão novo)
+// Hakuna — Necessaire:
+<NecessaireTab isCoord={canEditPortal(perms, "necessaire_salvar")} />
 
-#### `ArtesEDocs.tsx`
-- Botão "Novo" / upload → mostrar apenas se `artes_upload === "E"`
-- Botões editar/excluir → condicionais por `artes_editar` e `artes_excluir`
+// Logística — Cronograma:
+<CronogramaTop
+  canEdit={canEditPortal(perms, "crono_logistica_nova")}
+  cronogramaTipo="logistica"
+/>
+```
 
-#### `Tops.tsx`
-- Esconder aba "Edições" se `tops_edicoes === "B"`
-- Esconder aba "WhatsApp" se `tops_whatsapp === "B"`
-- Aba "Templates" → apenas DOC e Diretoria
+**Painel ADM:** O `AdmPedidosDashboard` e `AdmFinanceiroDashboard` aparecem condicionados a `canAccessPortal(perms, "painel_pedidos_cards")`.
 
-#### `Configuracoes.tsx`
-- Já restringe a `isDiretoria`. Expandir para DOC ter acesso parcial:
-  - DOC: pode listar e criar, mas não editar ou aprovar usuários
+### 3. Casos especiais a manter
 
-#### `TopRealTime.tsx`
-- Botões INICIAR e PULAR → condicional: `canControl = area === "ADM" && cargoArea inclui "Coord 01"` (lógica já parcialmente implementada)
-- Expandir `canView` para incluir todas as áreas (atualmente só coord01/diretoria/ADM)
+- **Diretor Espiritual** (`cargo_area === "Diretor Espiritual"`): continuará sendo tratado separadamente dentro de `AreaPortal.tsx` como um fallback — se `getPermissoesPortal` retornar `null` e o usuário for Diretor Espiritual, usar permissões existentes.
+- **DOC**: O portal DOC fica praticamente vazio — apenas a aba Prédicas aparece para Coord 01/02 (com `predicas_visualizar: "E"` e `predicas_nova: "E"`). Coord 03 vê Prédicas mas não pode criar. Todos os demais campos são `"B"`.
 
----
+## Mapa PERMISSOES_PORTAL — Estrutura de 77 Entradas
 
-## Arquivos a Criar/Modificar
+As 77 chaves são: `{11 áreas} × {7 cargos}`:
 
-| Arquivo | Operação | O que muda |
-|---|---|---|
-| `src/lib/permissoes.ts` | Modificar | Adicionar `NivelAcesso`, `PermissoesMenu`, `PERMISSOES_MENU`, funções utilitárias de menu |
-| `src/hooks/useAreaServico.ts` | Criar | Hook centralizando busca de `area_servico` e `cargo_area` do servidor logado |
-| `src/components/AppSidebar.tsx` | Modificar | Usar `PERMISSOES_MENU[area].menu_*` para visibilidade dos itens |
-| `src/components/AppLayout.tsx` | Modificar | Passar `areaServico` para `AppSidebar` |
-| `src/pages/Participantes.tsx` | Modificar | Condicionar botões de ação (importar, exportar, novo, editar, excluir) |
-| `src/pages/Servidores.tsx` | Modificar | Condicionar cards, botões de importar/novo/editar/excluir |
-| `src/pages/Financeiro.tsx` | Modificar | Expandir guard para Hakuna (resumo de taxas); restringir abas internas |
-| `src/pages/CheckIn.tsx` | Modificar | Expandir lógica de acesso para Segurança/Eventos/Diretoria |
-| `src/pages/Equipamentos.tsx` | Modificar | Condicionar botão "Novo" e permissões de edição |
-| `src/pages/ArtesEDocs.tsx` | Modificar | Condicionar upload/edição/exclusão |
-| `src/pages/Tops.tsx` | Modificar | Condicionar abas por área (DOC vs outros) |
-| `src/pages/Configuracoes.tsx` | Modificar | Expandir acesso para DOC (listar/criar) |
-| `src/pages/TopRealTime.tsx` | Modificar | Expandir `canView` para todas as áreas; manter `canControl` restrito a ADM Coord 01 |
+```
+Hakuna_Coord 01, Hakuna_Coord 02, ..., Hakuna_Servidor
+Segurança_Coord 01, ..., Segurança_Servidor
+Eventos_Coord 01, ..., Eventos_Servidor
+Mídia_Coord 01, ..., Mídia_Servidor
+Comunicação_Coord 01, ..., Comunicação_Servidor
+Logística_Coord 01, ..., Logística_Servidor
+Voz_Coord 01, ..., Voz_Servidor
+ADM_Coord 01, ..., ADM_Servidor
+Intercessão_Coord 01, ..., Intercessão_Servidor
+DOC_Coord 01, ..., DOC_Servidor
+Diretoria_Coord 01, ..., Diretoria_Servidor
+```
 
----
+Todos os valores exatamente conforme a especificação fornecida na mensagem do usuário.
 
-## Detalhes Críticos de Implementação
+## Ordem de Implementação
 
-### Como a área é identificada
+1. Adicionar `PermissoesPortal`, `PERMISSOES_PORTAL` e funções ao `src/lib/permissoes.ts`
+2. Atualizar `src/pages/AreaPortal.tsx`:
+   - Trocar `usePermissoes` por `useAreaServico` + `getPermissoesPortal`
+   - Atualizar todas as condicionais de `TabsTrigger`
+   - Atualizar todos os `canEdit`/`canDelete` passados para sub-componentes
 
-O `role` do `useAuth()` define o nível global (`"diretoria"`, `"coordenacao"`, `"servidor"`, etc.), mas **não** identifica a área. A área vem de `servidores.area_servico`, consultada pelo email do usuário logado.
-
-- `role === "diretoria"` → usa permissões de `"Diretoria"` no mapa
-- `role === "coordenacao"` ou `"sombra"` → usa `areaServico` para buscar no mapa
-- Fallback quando área não encontrada → permissões mínimas (apenas Início, Artes, Mapa)
-
-### Permissões especiais
-
-**Hakuna — Financeiro:** Apenas a aba de "Resumo" (taxas Hakuna) é acessível. As demais sub-seções ficam ocultas. O `menu_financeiro: true` aparece na sidebar, mas internamente o componente restringe ao resumo.
-
-**DOC — Configurações:** Pode listar e criar TOPs, mas não editar usuários nem configurações sensíveis. A aba de configurações aparece mas com escopo limitado.
-
-**ADM — TOP Real Time (Regra Especial):** 
-- Todos os cargos ADM: visualizar ✅
-- Apenas `cargo_area` contendo "Coord 01" na área ADM: pode INICIAR e PULAR
-- O check já existe parcialmente em `TopRealTime.tsx`:
-  ```typescript
-  const isAdmCoord = servidor?.area_servico === "ADM" && 
-    servidor?.cargo_area?.toLowerCase().includes("coordenador");
-  const canControl = isDiretoria || isAdmCoord;
-  ```
-  Ajustar para verificar especificamente "Coord 01" ou "Coordenador 01".
-
-**Voz e Intercessão — Mapa GPS:** Campo `mapa_compartilhar_gps: "E"` que habilita um botão de compartilhamento de localização GPS no `KmzMapa.tsx`.
-
-### Ordem de implementação
-1. Adicionar tipos e mapa `PERMISSOES_MENU` em `src/lib/permissoes.ts`
-2. Criar `src/hooks/useAreaServico.ts`
-3. Modificar `AppSidebar.tsx` + `AppLayout.tsx` 
-4. Modificar páginas na ordem: `Participantes` → `Servidores` → `Financeiro` → `CheckIn` → `Equipamentos` → `ArtesEDocs` → `Tops` → `Configuracoes` → `TopRealTime`
-
-Nenhuma migration SQL necessária. Nenhuma dependência nova.
+Nenhuma migration SQL. Nenhuma dependência nova. Nenhum sub-componente filho precisa ser alterado — apenas as props que `AreaPortal.tsx` já passa para eles.
