@@ -3,6 +3,20 @@ import JSZip from "jszip";
 import type { KMZPonto, KMZRota, DiaTipo, PontoTipo } from "@/data/kmzData";
 import { COR_DIA } from "@/data/kmzData";
 
+// Color mapping by route name (matched by keywords)
+function getRotaCor(nome: string): string {
+  const n = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (n.includes("check-in") || n.includes("checkin") || n.includes("arena")) return "#1E1E1E";
+  if (n.includes("translado") && (n.includes("3,35") || n.includes("3.35"))) return "#EA580C";
+  if (n.includes("translado")) return "#EA580C";
+  if (n.includes("d1") || n.includes("lorena") || n.includes("6,13") || n.includes("6.13")) return "#DC2626";
+  if (n.includes("d2") || n.includes("8,90") || n.includes("8.90") || n.includes("8,9")) return "#EAB308";
+  if (n.includes("d3") || n.includes("5,45") || n.includes("5.45")) return "#1E3A8A";
+  if (n.includes("d4") || n.includes("5,0") || n.includes("5.0")) return "#16A34A";
+  if (n.includes("logist") || n.includes("9,36") || n.includes("9.36")) return "#8B4513";
+  return "#6366F1";
+}
+
 function inferirDia(nomePasta: string): DiaTipo {
   const n = nomePasta.toLowerCase();
   if (n.includes("logistic")) return "logistica";
@@ -60,7 +74,7 @@ function extrairPlacemarks(
       if (!coordEl?.textContent) continue;
       const coordenadas = parseCoordinates(coordEl.textContent);
       if (coordenadas.length < 2) continue;
-      const cor = COR_DIA[dia] ?? "#6366F1";
+      const cor = getRotaCor(nome) || COR_DIA[dia] || "#6366F1";
       rotas.push({
         id: `rota_${contadores.r++}`,
         nome,
