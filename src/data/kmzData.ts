@@ -1,5 +1,5 @@
 export type DiaTipo = "todos" | "logistica" | "d1" | "d2" | "d3" | "d4";
-export type PontoTipo = "base" | "predica" | "acampamento" | "extracao" | "ponto";
+export type PontoTipo = "base" | "predica" | "acampamento" | "extracao" | "hidratacao" | "ponto";
 
 export interface KMZPonto {
   id: string;
@@ -24,6 +24,7 @@ export const ICONE_TIPO: Record<PontoTipo, string> = {
   acampamento: "⛺",
   base: "🏠",
   extracao: "🚌",
+  hidratacao: "💧",
   ponto: "📍",
 };
 
