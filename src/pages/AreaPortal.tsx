@@ -143,6 +143,8 @@ export default function AreaPortal() {
   const effectiveArea  = role === "diretoria" ? "Diretoria" : decodedNome;
   const perms = getPermissoesPortal(effectiveArea, effectiveCargo);
 
+  console.log("[AreaPortal] perms debug:", { effectiveArea, effectiveCargo, cargoArea, role, permsNull: perms === null });
+
   const headerCanEdit = canEditPortal(perms, "painel_editar_area") || canEditPortal(perms, "painel_definir_coords");
   const canComment    = canAccessPortal(perms, "mural_visualizar");
 

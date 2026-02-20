@@ -1496,9 +1496,28 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
   },
 };
 
+// Normaliza valores reais de cargo_area do banco para as chaves do PERMISSOES_PORTAL
+export function normalizarCargoPortal(cargo: string | null): string | null {
+  if (!cargo) return null;
+  const map: Record<string, string> = {
+    "Coordenador 01": "Coord 01",
+    "Coordenador 02": "Coord 02",
+    "Coordenador 03": "Coord 03",
+    "Sombra 01":      "Sombra 01",
+    "Sombra 02":      "Sombra 02",
+    "Sombra 03":      "Sombra 03",
+    "Servidor":       "Servidor",
+    "Diretor Espiritual": "Servidor",
+    "Diretor":        "Servidor",
+    "Sub-Diretor":    "Servidor",
+  };
+  return map[cargo] ?? cargo;
+}
+
 export function getPermissoesPortal(area: string | null, cargo: string | null): PermissoesPortal | null {
   if (!area || !cargo) return null;
-  const key = `${area}_${cargo}`;
+  const normalizedCargo = normalizarCargoPortal(cargo);
+  const key = `${area}_${normalizedCargo}`;
   return PERMISSOES_PORTAL[key] ?? null;
 }
 
