@@ -13,16 +13,17 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis } from "recharts";
 import { getUser } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
-import { usePermissoes } from "@/hooks/usePermissoes";
+import { useAreaServico } from "@/hooks/useAreaServico";
 import {
+  getPermissoesPortal,
+  canAccessPortal,
+  canEditPortal,
+  PERMISSOES_DIRETOR_ESPIRITUAL,
   isAbaVisivel,
-  canEdit as canEditPerm,
-  canCreate as canCreatePerm,
-  canDelete as canDeletePerm,
-  canApprove as canApprovePerm,
 } from "@/lib/permissoes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
 import AreaHeader from "@/components/area/AreaHeader";
 import AreaMural from "@/components/area/AreaMural";
 import AreaCalendario from "@/components/area/AreaCalendario";
