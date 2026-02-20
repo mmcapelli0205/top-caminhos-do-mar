@@ -120,10 +120,24 @@ export default function KmzMapa() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showLegenda, setShowLegenda] = useState(false);
   const [centralize, setCentralize] = useState(false);
+  const [rotasVisiveis, setRotasVisiveis] = useState<Record<string, boolean>>({});
   const lastSendRef = useRef(0);
 
   // Load KMZ data dynamically
   const { pontos: kmzPontos, rotas: kmzRotas, loading: kmzLoading, error: kmzError } = useKmzParser("/CAMINHOS_DO_MAR.kmz");
+
+  // Initialize visibility state when routes load
+  useEffect(() => {
+    if (kmzRotas.length > 0) {
+      setRotasVisiveis((prev) => {
+        const next = { ...prev };
+        kmzRotas.forEach((r) => {
+          if (!(r.id in next)) next[r.id] = true;
+        });
+        return next;
+      });
+    }
+  }, [kmzRotas]);
 
   // Detect top_id from active TOP
   const [topId, setTopId] = useState<string | null>(null);
@@ -212,15 +226,23 @@ export default function KmzMapa() {
   });
   const locList: KmzLocalizacao[] = localizacoes ?? [];
 
-  const pontosFiltrados = useMemo(() =>
-    diaFiltro === "todos" ? kmzPontos : kmzPontos.filter((p) => p.dia === diaFiltro),
-    [diaFiltro, kmzPontos]
-  );
+  // Rotas visíveis (filtro por dia + toggle individual)
+  const rotasFiltradas = useMemo(() => {
+    const porDia = diaFiltro === "todos" ? kmzRotas : kmzRotas.filter((r) => r.dia === diaFiltro);
+    return porDia.filter((r) => rotasVisiveis[r.id] !== false);
+  }, [diaFiltro, kmzRotas, rotasVisiveis]);
 
-  const rotasFiltradas = useMemo(() =>
-    diaFiltro === "todos" ? kmzRotas : kmzRotas.filter((r) => r.dia === diaFiltro),
-    [diaFiltro, kmzRotas]
-  );
+  // IDs das rotas visíveis para ocultar pontos das rotas desligadas
+  const rotasVisivelIds = useMemo(() => new Set(rotasFiltradas.map((r) => r.id)), [rotasFiltradas]);
+
+  // Dias com pelo menos uma rota visível
+  const diasComRotaVisivel = useMemo(() => new Set(rotasFiltradas.map((r) => r.dia)), [rotasFiltradas]);
+
+  const pontosFiltrados = useMemo(() => {
+    const porDia = diaFiltro === "todos" ? kmzPontos : kmzPontos.filter((p) => p.dia === diaFiltro);
+    // Oculta pontos do dia se nenhuma rota daquele dia estiver visível
+    return porDia.filter((p) => p.dia === "todos" || diasComRotaVisivel.has(p.dia) || diasComRotaVisivel.size === 0);
+  }, [diaFiltro, kmzPontos, diasComRotaVisivel]);
 
   return (
     <div className="relative w-full overflow-hidden" style={{ height: "calc(100vh - 56px)" }}>
@@ -406,12 +428,29 @@ export default function KmzMapa() {
               </div>
               <div className="mt-2 pt-2 border-t border-white/10">
                 <div className="text-xs font-bold mb-1 text-white/60 uppercase tracking-wide">Rotas</div>
-                {kmzRotas.map((r) => (
-                  <div key={r.id} className="flex items-center gap-1.5 mb-0.5">
-                    <div className="w-4 h-1 rounded shrink-0" style={{ background: r.cor }} />
-                    <span className="text-xs">{r.nome}</span>
-                  </div>
-                ))}
+                {kmzRotas.map((r) => {
+                  const visivel = rotasVisiveis[r.id] !== false;
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() =>
+                        setRotasVisiveis((prev) => ({ ...prev, [r.id]: !visivel }))
+                      }
+                      className={`flex items-center gap-1.5 mb-1 w-full text-left transition-opacity ${
+                        visivel ? "opacity-100" : "opacity-40"
+                      }`}
+                    >
+                      <div
+                        className="w-4 h-1.5 rounded shrink-0 border border-white/20"
+                        style={{ background: r.cor }}
+                      />
+                      <span className="text-xs flex-1 truncate">{r.nome}</span>
+                      <span className="text-[10px] text-white/50 shrink-0">
+                        {visivel ? "●" : "○"}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
