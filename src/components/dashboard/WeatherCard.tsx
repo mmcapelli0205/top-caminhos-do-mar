@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CloudRain } from "lucide-react";
+import { CloudRain, Wind } from "lucide-react";
 
 const API_URL =
-  "https://api.open-meteo.com/v1/forecast?latitude=-23.7745&longitude=-46.5633&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&current=temperature_2m,weathercode,relative_humidity_2m,wind_speed_10m&timezone=America/Sao_Paulo&forecast_days=4";
+  "https://api.open-meteo.com/v1/forecast?latitude=-23.78&longitude=-46.01&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max&timezone=America/Sao_Paulo&forecast_days=7";
 
 const WMO: Record<number, { emoji: string; desc: string }> = {
   0: { emoji: "☀️", desc: "Céu Limpo" },
@@ -34,11 +34,58 @@ function getWeather(code: number) {
   return WMO[code] ?? { emoji: "🌤️", desc: "Parcialmente Nublado" };
 }
 
-const DAYS_PT = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+function getDayLabel(dateStr: string, isToday: boolean): string {
+  if (isToday) return "HOJE";
+  // Append T12:00:00 to avoid UTC midnight timezone shift (would give wrong day in UTC-3)
+  const date = new Date(dateStr + "T12:00:00");
+  return date
+    .toLocaleDateString("pt-BR", { weekday: "short" })
+    .replace(".", "")
+    .toUpperCase();
+}
+
+type DayCol = {
+  day: string;
+  isToday: boolean;
+  weather: { emoji: string; desc: string };
+  max: number;
+  min: number;
+  wind: number;
+};
+
+function DayCard({ day, isToday, weather, max, min, wind }: DayCol) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 min-w-[48px]">
+      {/* Day badge */}
+      <span
+        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+          isToday ? "bg-orange-500 text-white" : "bg-gray-600 text-white"
+        }`}
+      >
+        {day}
+      </span>
+
+      {/* Max temp */}
+      <span className="text-base font-bold text-foreground">{max}°</span>
+
+      {/* Weather emoji */}
+      <span className="text-2xl leading-none">{weather.emoji}</span>
+
+      {/* Min temp */}
+      <span className="text-sm text-muted-foreground">{min}°</span>
+
+      {/* Wind speed */}
+      <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+        <Wind className="h-3 w-3 shrink-0" />
+        {wind}
+      </span>
+    </div>
+  );
+}
 
 export default function WeatherCard() {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["weather-open-meteo"],
+    queryKey: ["weather-open-meteo-v2"],
     queryFn: async () => {
       const res = await fetch(API_URL);
       if (!res.ok) throw new Error("Falha ao buscar clima");
@@ -50,7 +97,7 @@ export default function WeatherCard() {
 
   if (isError) {
     return (
-      <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-md mx-auto">
+      <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-2xl mx-auto">
         <CardContent className="p-3 text-center">
           <CloudRain className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">Clima indisponível</p>
@@ -61,56 +108,42 @@ export default function WeatherCard() {
 
   if (isLoading || !data) {
     return (
-      <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-md mx-auto">
-        <CardContent className="p-3"><Skeleton className="h-28 w-full" /></CardContent>
+      <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-2xl mx-auto">
+        <CardContent className="p-3">
+          <Skeleton className="h-28 w-full" />
+        </CardContent>
       </Card>
     );
   }
 
   const daily = data.daily;
 
-  // Build 4 columns: today (index 0) + 3 next days
-  const columns = [0, 1, 2, 3].map((i) => {
-    const date = new Date(daily.time[i]);
-    return {
-      day: DAYS_PT[date.getDay()],
-      isToday: i === 0,
-      weather: getWeather(daily.weathercode[i]),
-      max: Math.round(daily.temperature_2m_max[i]),
-      min: Math.round(daily.temperature_2m_min[i]),
-    };
-  });
+  const columns: DayCol[] = [0, 1, 2, 3, 4, 5, 6].map((i) => ({
+    day: getDayLabel(daily.time[i], i === 0),
+    isToday: i === 0,
+    weather: getWeather(daily.weathercode[i]),
+    max: Math.round(daily.temperature_2m_max[i]),
+    min: Math.round(daily.temperature_2m_min[i]),
+    wind: Math.round(daily.windspeed_10m_max[i]),
+  }));
 
   return (
-    <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-md mx-auto">
-      <CardContent className="p-3 space-y-2">
+    <Card className="bg-gradient-to-b from-slate-800/40 to-slate-900/40 border-slate-700/30 max-w-2xl mx-auto">
+      <CardContent className="p-2 space-y-2">
         {/* Header */}
-        <p className="text-xs text-gray-400">Clima — SP-148 Km 42</p>
+        <p className="text-xs text-muted-foreground px-1">Clima — SP-148 Km 42</p>
 
-        {/* 4-column grid */}
-        <div className="grid grid-cols-4 gap-3">
+        {/* Mobile: horizontal scroll */}
+        <div className="flex overflow-x-auto gap-2 sm:hidden pb-1 px-1">
           {columns.map((col) => (
-            <div key={col.day} className="flex flex-col items-center gap-1">
-              {/* Day badge */}
-              <span
-                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                  col.isToday
-                    ? "bg-orange-500 text-white"
-                    : "bg-gray-600 text-white"
-                }`}
-              >
-                {col.isToday ? "HOJE" : col.day}
-              </span>
+            <DayCard key={col.day + col.max} {...col} />
+          ))}
+        </div>
 
-              {/* Max temp */}
-              <span className="text-lg font-bold text-white">{col.max}°</span>
-
-              {/* Weather emoji */}
-              <span className="text-3xl leading-none">{col.weather.emoji}</span>
-
-              {/* Min temp */}
-              <span className="text-lg text-gray-400">{col.min}°</span>
-            </div>
+        {/* Desktop: 7-column grid */}
+        <div className="hidden sm:grid grid-cols-7 gap-1 px-1">
+          {columns.map((col) => (
+            <DayCard key={col.day + col.max} {...col} />
           ))}
         </div>
       </CardContent>
