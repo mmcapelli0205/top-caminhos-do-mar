@@ -58,6 +58,10 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 14, title: "Mapa da Trilha", url: "/kmz", icon: Map },
 ];
 
+export function isServidorComum(cargo: string | null): boolean {
+  return cargo === "servidor";
+}
+
 export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): MenuItem[] {
   if (!cargo) return [];
 

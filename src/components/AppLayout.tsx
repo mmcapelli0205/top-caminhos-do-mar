@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { LogOut, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AguardandoAprovacao from "@/pages/AguardandoAprovacao";
+import { isServidorComum } from "@/lib/auth";
 
 const CARGO_LABELS: Record<string, string> = {
   diretoria: "Diretoria",
@@ -21,17 +22,22 @@ const CARGO_LABELS: Record<string, string> = {
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session, profile, role, loading, signOut, refreshProfile } = useAuth();
   useInactivityTimeout(40);
   const [timedOut, setTimedOut] = useState(false);
 
+  const cargo = role || profile?.cargo || null;
+  const isServidor = isServidorComum(cargo);
+
+  // Effect 1: Redirect unauthenticated users
   useEffect(() => {
     if (!loading && !session) {
       navigate("/", { replace: true });
     }
   }, [loading, session, navigate]);
 
-  // Timeout de 12s para mostrar botão de retry
+  // Effect 2: Timeout de 12s para mostrar botão de retry
   useEffect(() => {
     if (!loading) {
       setTimedOut(false);
@@ -41,7 +47,7 @@ export default function AppLayout() {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // Store profile info in localStorage for backward-compatible legacy components
+  // Effect 3: Store profile info in localStorage for backward-compatible legacy components
   useEffect(() => {
     if (!profile) return;
     try {
@@ -56,6 +62,14 @@ export default function AppLayout() {
       // Safari private browsing - ignorar silenciosamente
     }
   }, [profile, role]);
+
+  // Effect 4: Proteção de rotas para servidor comum — sempre chamado, guard interno
+  useEffect(() => {
+    if (!isServidor) return;
+    const pathname = location.pathname;
+    const allowed = pathname === "/dashboard" || pathname.startsWith("/areas/");
+    if (!allowed) navigate("/dashboard", { replace: true });
+  }, [isServidor, location.pathname, navigate]);
 
   const handleLogout = async () => {
     await signOut();
@@ -116,10 +130,43 @@ export default function AppLayout() {
     );
   }
 
+  // Layout para servidor comum: sem sidebar, conteúdo 100% largura
+  if (isServidor) {
+    return (
+      <div className="flex min-h-svh w-full flex-col">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-bold text-primary">TOP Manager</span>
+            <span className="hidden text-sm text-muted-foreground md:inline">
+              TOP #1575 - Caminhos do Mar | 02-05 Abril 2026
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="text-sm text-foreground">{profile.nome}</span>
+              <Badge variant="secondary" className="text-xs">
+                {CARGO_LABELS[cargo || ""] ?? cargo}
+              </Badge>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
+        <main className="flex-1 p-2 md:p-6">
+          <ErrorBoundary fallbackTitle="Erro na página" onReset={() => navigate(0)}>
+            <Outlet />
+          </ErrorBoundary>
+        </main>
+      </div>
+    );
+  }
+
+  // Layout normal com sidebar para todos os outros cargos
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full">
-        <AppSidebar cargo={role || profile.cargo} podeAprovar={!!profile.pode_aprovar} />
+        <AppSidebar cargo={cargo} podeAprovar={!!profile.pode_aprovar} />
         <SidebarInset>
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
             <div className="flex items-center gap-3">

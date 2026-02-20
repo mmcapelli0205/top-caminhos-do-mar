@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAuth } from "@/hooks/useAuth";
+import { isServidorComum } from "@/lib/auth";
 import type { LucideIcon } from "lucide-react";
 
 import CountdownSection from "@/components/inicio/CountdownSection";
@@ -70,7 +71,8 @@ function TopRealTimeCard() {
 
 const Dashboard = () => {
   const d = useDashboardData();
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
+  const isServidor = isServidorComum(role ?? profile?.cargo ?? null);
 
   return (
     <div className="space-y-6">
@@ -86,10 +88,10 @@ const Dashboard = () => {
       </div>
 
       {/* Countdown + Card Equipe + TopRealTime */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 ${isServidor ? "md:grid-cols-2" : "md:grid-cols-3"} gap-4`}>
         <CountdownSection />
         <QuickActions userEmail={profile?.email ?? null} />
-        <TopRealTimeCard />
+        {!isServidor && <TopRealTimeCard />}
       </div>
 
       {/* KPIs simplificados */}

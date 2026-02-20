@@ -51,9 +51,9 @@ export function AppSidebar({ cargo, podeAprovar = false }: Props) {
       </SidebarContent>
       <SidebarFooter className="p-4">
         <img
-          src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Logo%20Legendarios.png"
+          src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
           alt="Legendários"
-          className="h-16 w-auto mx-auto opacity-60 group-data-[collapsible=icon]:h-8 transition-all"
+          className="h-20 w-20 object-contain mx-auto opacity-70 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 transition-all"
         />
       </SidebarFooter>
     </Sidebar>
