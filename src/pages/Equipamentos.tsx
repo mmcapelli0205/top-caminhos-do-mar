@@ -2,6 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Wrench, Plus, Search, Eye, Pencil, ArrowRightLeft, Undo2 } from "lucide-react";
+import { useAreaServico } from "@/hooks/useAreaServico";
+import { useAuth } from "@/hooks/useAuth";
+import { getPermissoesMenu } from "@/lib/permissoes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +47,13 @@ type EmprestimoAtivo = {
 const Equipamentos = () => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { role } = useAuth();
+  const { areaServico } = useAreaServico();
+  const area = role === "diretoria" ? "Diretoria" : (areaServico ?? null);
+  const perms = getPermissoesMenu(area);
+  const canNew = perms.equipamentos_novo === "E";
+  const canEdit = perms.equipamentos_novo === "E"; // edit follows same as create
+  const canLoan = canEdit;
   const [busca, setBusca] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
   const [filtroOrigem, setFiltroOrigem] = useState("todos");
@@ -117,9 +127,11 @@ const Equipamentos = () => {
           <h1 className="text-2xl font-bold text-foreground">Equipamentos</h1>
           <Badge variant="secondary">{equipamentos.length}</Badge>
         </div>
-        <Button className={isMobile ? "w-full" : ""} onClick={() => { setEditEquip(null); setFormOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> Novo Equipamento
-        </Button>
+        {canNew && (
+          <Button className={isMobile ? "w-full" : ""} onClick={() => { setEditEquip(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Novo Equipamento
+          </Button>
+        )}
       </div>
 
       {/* Category Cards */}
@@ -194,10 +206,11 @@ const Equipamentos = () => {
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" className="flex-1" onClick={() => { setDetalhesEquip(eq); setDetalhesOpen(true); }}><Eye className="h-4 w-4 mr-1" /> Ver</Button>
-                    <Button variant="ghost" size="sm" className="flex-1" onClick={() => { setEditEquip(eq); setFormOpen(true); }}><Pencil className="h-4 w-4 mr-1" /> Editar</Button>
-                    {!emprestimo ? (
+                    {canEdit && <Button variant="ghost" size="sm" className="flex-1" onClick={() => { setEditEquip(eq); setFormOpen(true); }}><Pencil className="h-4 w-4 mr-1" /> Editar</Button>}
+                    {canLoan && !emprestimo && (
                       <Button variant="ghost" size="sm" className="flex-1" onClick={() => { setEmprestarEquip({ id: eq.id, nome: eq.nome }); setEmprestarOpen(true); }}><ArrowRightLeft className="h-4 w-4 mr-1" /> Emp.</Button>
-                    ) : (
+                    )}
+                    {canLoan && emprestimo && (
                       <Button variant="ghost" size="sm" className="flex-1" onClick={() => { setDevolverData({ emprestimo, nome: eq.nome }); setDevolverOpen(true); }}><Undo2 className="h-4 w-4 mr-1" /> Dev.</Button>
                     )}
                   </div>
@@ -244,10 +257,11 @@ const Equipamentos = () => {
                     <TableCell>
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" title="Ver detalhes" onClick={() => { setDetalhesEquip(eq); setDetalhesOpen(true); }}><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" title="Editar" onClick={() => { setEditEquip(eq); setFormOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                        {!emprestimo ? (
+                        {canEdit && <Button variant="ghost" size="icon" title="Editar" onClick={() => { setEditEquip(eq); setFormOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
+                        {canLoan && !emprestimo && (
                           <Button variant="ghost" size="icon" title="Emprestar" onClick={() => { setEmprestarEquip({ id: eq.id, nome: eq.nome }); setEmprestarOpen(true); }}><ArrowRightLeft className="h-4 w-4" /></Button>
-                        ) : (
+                        )}
+                        {canLoan && emprestimo && (
                           <Button variant="ghost" size="icon" title="Devolver" onClick={() => { setDevolverData({ emprestimo, nome: eq.nome }); setDevolverOpen(true); }}><Undo2 className="h-4 w-4" /></Button>
                         )}
                       </div>

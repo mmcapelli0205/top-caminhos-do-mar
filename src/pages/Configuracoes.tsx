@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Settings, Plus, Pencil, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAreaServico } from "@/hooks/useAreaServico";
+import { getPermissoesMenu } from "@/lib/permissoes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,7 +34,15 @@ const emptyForm: FormData = { email: "", nome: "", senha: "", role: "servidor", 
 
 const Configuracoes = () => {
   const { session, role, loading: authLoading } = useAuth();
+  const { areaServico } = useAreaServico();
+  const area = role === "diretoria" ? "Diretoria" : (areaServico ?? null);
+  const perms = getPermissoesMenu(area);
   const isDiretoria = role === "diretoria";
+  // DOC can list/create but not edit
+  const canList = perms.config_listar === "E" || isDiretoria;
+  const canCreate = perms.config_novo === "E" || isDiretoria;
+  const canEditUser = perms.config_editar === "E" || isDiretoria;
+  const hasAccess = canList || canCreate;
   const isMobile = useIsMobile();
 
   const [users, setUsers] = useState<Usuario[]>([]);
@@ -112,19 +122,19 @@ const Configuracoes = () => {
 
   if (authLoading) return (<div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>);
 
-  if (!isDiretoria) return (
+  if (!hasAccess) return (
     <div className="space-y-4">
       <div className="flex items-center gap-3"><Settings className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold text-foreground">Configurações</h1></div>
-      <p className="text-muted-foreground">Apenas a diretoria pode acessar as configurações.</p>
+      <p className="text-muted-foreground">Apenas a diretoria e áreas autorizadas podem acessar as configurações.</p>
     </div>
   );
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-3"><Settings className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold text-foreground">Configurações</h1></div>
-        <Button onClick={openCreate} className={`gap-2 ${isMobile ? "w-full" : ""}`}><Plus className="h-4 w-4" /> Novo Usuário</Button>
-      </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3"><Settings className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold text-foreground">Configurações</h1></div>
+          {canCreate && <Button onClick={openCreate} className={`gap-2 ${isMobile ? "w-full" : ""}`}><Plus className="h-4 w-4" /> Novo Usuário</Button>}
+        </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -140,7 +150,7 @@ const Configuracoes = () => {
                     <p className="font-medium truncate">{u.nome}</p>
                     <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                  {canEditUser && <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>}
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <Badge variant="secondary" className="capitalize">{u.role}</Badge>
@@ -172,7 +182,7 @@ const Configuracoes = () => {
                   <td className="px-4 py-3"><Badge variant="secondary" className="capitalize">{u.role}</Badge></td>
                   <td className="px-4 py-3 text-muted-foreground">{u.cargo || "—"}</td>
                   <td className="px-4 py-3"><Badge variant={u.status === "aprovado" ? "default" : "outline"} className="capitalize">{u.status || "pendente"}</Badge></td>
-                  <td className="px-4 py-3"><Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button></td>
+                  <td className="px-4 py-3">{canEditUser && <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>}</td>
                 </tr>
               ))}
               {users.length === 0 && (<tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhum usuário cadastrado</td></tr>)}

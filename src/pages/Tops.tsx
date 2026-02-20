@@ -12,6 +12,9 @@ import { ptBR } from "date-fns/locale";
 import { Plus, Pencil, LayoutDashboard, Calendar, MessageCircle } from "lucide-react";
 import { STATUS_COLORS } from "@/lib/whatsappUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
+import { useAreaServico } from "@/hooks/useAreaServico";
+import { getPermissoesMenu } from "@/lib/permissoes";
 import TopActiveCard from "@/components/tops/TopActiveCard";
 import TopFormDialog from "@/components/tops/TopFormDialog";
 import WhatsAppConfigSection from "@/components/tops/WhatsAppConfigSection";
@@ -22,6 +25,14 @@ import WhatsAppLogSection from "@/components/tops/WhatsAppLogSection";
 export default function Tops() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { role } = useAuth();
+  const { areaServico } = useAreaServico();
+  const area = role === "diretoria" ? "Diretoria" : (areaServico ?? null);
+  const perms = getPermissoesMenu(area);
+  const showEdicoes = perms.tops_edicoes !== "B" && perms.tops_edicoes !== null;
+  const showWhatsapp = perms.tops_whatsapp !== "B" && perms.tops_whatsapp !== null;
+  const showTemplates = perms.tops_templates !== "B" && perms.tops_templates !== null;
+  const canNewTop = perms.tops_edicoes === "E";
   const [formOpen, setFormOpen] = useState(false);
   const [editingTop, setEditingTop] = useState<any>(null);
 
@@ -64,101 +75,109 @@ export default function Tops() {
 
       <Tabs defaultValue="edicoes">
         <TabsList className="overflow-x-auto">
-          <TabsTrigger value="edicoes" className="gap-1.5"><Calendar className="h-4 w-4" /> Edições</TabsTrigger>
-          <TabsTrigger value="whatsapp" className="gap-1.5"><MessageCircle className="h-4 w-4" /> WhatsApp</TabsTrigger>
+          {showEdicoes && <TabsTrigger value="edicoes" className="gap-1.5"><Calendar className="h-4 w-4" /> Edições</TabsTrigger>}
+          {(showWhatsapp || showTemplates) && <TabsTrigger value="whatsapp" className="gap-1.5"><MessageCircle className="h-4 w-4" /> WhatsApp</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="edicoes" className="space-y-6">
-          {activeTop && <TopActiveCard top={activeTop} />}
+        {showEdicoes && (
+          <TabsContent value="edicoes" className="space-y-6">
+            {activeTop && <TopActiveCard top={activeTop} />}
 
-          <div className="flex justify-end">
-            <Button className="w-full sm:w-auto" onClick={() => { setEditingTop(null); setFormOpen(true); }}><Plus className="h-4 w-4 mr-2" /> Novo TOP</Button>
-          </div>
+            {canNewTop && (
+              <div className="flex justify-end">
+                <Button className="w-full sm:w-auto" onClick={() => { setEditingTop(null); setFormOpen(true); }}><Plus className="h-4 w-4 mr-2" /> Novo TOP</Button>
+              </div>
+            )}
 
-          {isMobile ? (
-            <div className="space-y-3">
-              {tops.map(t => {
-                const sc = STATUS_COLORS[t.status || "Planejamento"] || STATUS_COLORS["Planejamento"];
-                const c = (topCounts as Record<string, { p: number; s: number }>)[t.id];
-                return (
-                  <Card key={t.id}>
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-medium truncate">{t.nome}</span>
-                        <Badge className={sc + " text-xs"}>{t.status || "Planejamento"}</Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                        <span>{t.local || "—"}</span>
-                        <span>{fmtDate(t.data_inicio)} - {fmtDate(t.data_fim)}</span>
-                      </div>
-                      <div className="flex gap-x-4 text-sm text-muted-foreground">
-                        <span>Participantes: {c?.p ?? "—"}</span>
-                        <span>Servidores: {c?.s ?? "—"}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditingTop(t); setFormOpen(true); }}>
-                          <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate("/dashboard")}>
-                          <LayoutDashboard className="h-3.5 w-3.5 mr-1" /> Dashboard
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Local</TableHead>
-                    <TableHead>Data Início</TableHead>
-                    <TableHead>Data Fim</TableHead>
-                    <TableHead className="text-center">Participantes</TableHead>
-                    <TableHead className="text-center">Servidores</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tops.map(t => {
-                    const sc = STATUS_COLORS[t.status || "Planejamento"] || STATUS_COLORS["Planejamento"];
-                    const c = (topCounts as Record<string, { p: number; s: number }>)[t.id];
-                    return (
-                      <TableRow key={t.id}>
-                        <TableCell className="font-medium">{t.nome}</TableCell>
-                        <TableCell>{t.local || "—"}</TableCell>
-                        <TableCell>{fmtDate(t.data_inicio)}</TableCell>
-                        <TableCell>{fmtDate(t.data_fim)}</TableCell>
-                        <TableCell className="text-center">{c?.p ?? "—"}</TableCell>
-                        <TableCell className="text-center">{c?.s ?? "—"}</TableCell>
-                        <TableCell><Badge className={sc + " text-xs"}>{t.status || "Planejamento"}</Badge></TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => { setEditingTop(t); setFormOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}><LayoutDashboard className="h-3.5 w-3.5" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+            {isMobile ? (
+              <div className="space-y-3">
+                {tops.map(t => {
+                  const sc = STATUS_COLORS[t.status || "Planejamento"] || STATUS_COLORS["Planejamento"];
+                  const c = (topCounts as Record<string, { p: number; s: number }>)[t.id];
+                  return (
+                    <Card key={t.id}>
+                      <CardContent className="p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium truncate">{t.nome}</span>
+                          <Badge className={sc + " text-xs"}>{t.status || "Planejamento"}</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          <span>{t.local || "—"}</span>
+                          <span>{fmtDate(t.data_inicio)} - {fmtDate(t.data_fim)}</span>
+                        </div>
+                        <div className="flex gap-x-4 text-sm text-muted-foreground">
+                          <span>Participantes: {c?.p ?? "—"}</span>
+                          <span>Servidores: {c?.s ?? "—"}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          {canNewTop && (
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditingTop(t); setFormOpen(true); }}>
+                              <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate("/dashboard")}>
+                            <LayoutDashboard className="h-3.5 w-3.5 mr-1" /> Dashboard
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Local</TableHead>
+                      <TableHead>Data Início</TableHead>
+                      <TableHead>Data Fim</TableHead>
+                      <TableHead className="text-center">Participantes</TableHead>
+                      <TableHead className="text-center">Servidores</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tops.map(t => {
+                      const sc = STATUS_COLORS[t.status || "Planejamento"] || STATUS_COLORS["Planejamento"];
+                      const c = (topCounts as Record<string, { p: number; s: number }>)[t.id];
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-medium">{t.nome}</TableCell>
+                          <TableCell>{t.local || "—"}</TableCell>
+                          <TableCell>{fmtDate(t.data_inicio)}</TableCell>
+                          <TableCell>{fmtDate(t.data_fim)}</TableCell>
+                          <TableCell className="text-center">{c?.p ?? "—"}</TableCell>
+                          <TableCell className="text-center">{c?.s ?? "—"}</TableCell>
+                          <TableCell><Badge className={sc + " text-xs"}>{t.status || "Planejamento"}</Badge></TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {canNewTop && <Button variant="ghost" size="sm" onClick={() => { setEditingTop(t); setFormOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>}
+                              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}><LayoutDashboard className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
 
-          <TopFormDialog open={formOpen} onOpenChange={setFormOpen} top={editingTop} />
-        </TabsContent>
+            <TopFormDialog open={formOpen} onOpenChange={setFormOpen} top={editingTop} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="whatsapp" className="space-y-6">
-          <WhatsAppConfigSection />
-          <WhatsAppTemplatesSection />
-          <WhatsAppDisparoSection />
-          <WhatsAppLogSection />
-        </TabsContent>
+        {(showWhatsapp || showTemplates) && (
+          <TabsContent value="whatsapp" className="space-y-6">
+            {showWhatsapp && <WhatsAppConfigSection />}
+            {showTemplates && <WhatsAppTemplatesSection />}
+            {showWhatsapp && <WhatsAppDisparoSection />}
+            {showWhatsapp && <WhatsAppLogSection />}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

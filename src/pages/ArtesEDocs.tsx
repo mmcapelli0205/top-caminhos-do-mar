@@ -2,6 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Palette, Plus, Search, Download, Pencil, CopyPlus, Trash2, FileText, File, LayoutGrid, List, Eye } from "lucide-react";
+import { useAreaServico } from "@/hooks/useAreaServico";
+import { useAuth } from "@/hooks/useAuth";
+import { getPermissoesMenu } from "@/lib/permissoes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +55,13 @@ function isImage(tipo: string | null | undefined): boolean {
 
 const ArtesEDocs = () => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const { areaServico } = useAreaServico();
+  const area = role === "diretoria" ? "Diretoria" : (areaServico ?? null);
+  const perms = getPermissoesMenu(area);
+  const canUpload = perms.artes_upload === "E";
+  const canEditDoc = perms.artes_editar === "E";
+  const canDelete = perms.artes_excluir === "E";
   const [busca, setBusca] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
   const [filtroSubcategoria, setFiltroSubcategoria] = useState("todos");
@@ -159,9 +169,11 @@ const ArtesEDocs = () => {
           <h1 className="text-2xl font-bold text-foreground">Artes & Docs</h1>
           <Badge variant="secondary">{docs.length}</Badge>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-1" /> Upload
-        </Button>
+        {canUpload && (
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-1" /> Upload
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -232,15 +244,21 @@ const ArtesEDocs = () => {
                   <Button variant="ghost" size="icon" className="h-7 w-7" title="Preview" onClick={() => handlePreview(doc)}>
                     <Eye className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEdit(doc)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Nova Versão" onClick={() => openNovaVersao(doc)}>
-                    <CopyPlus className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => { setDeleteDoc(doc); setDeleteOpen(true); }}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {canEditDoc && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEdit(doc)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {canUpload && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7" title="Nova Versão" onClick={() => openNovaVersao(doc)}>
+                      <CopyPlus className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => { setDeleteDoc(doc); setDeleteOpen(true); }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -274,9 +292,9 @@ const ArtesEDocs = () => {
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" title="Download" onClick={() => handleDownload(doc)}><Download className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(doc)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" title="Nova Versão" onClick={() => openNovaVersao(doc)}><CopyPlus className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="text-destructive" title="Excluir" onClick={() => { setDeleteDoc(doc); setDeleteOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
+                      {canEditDoc && <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(doc)}><Pencil className="h-4 w-4" /></Button>}
+                      {canUpload && <Button variant="ghost" size="icon" title="Nova Versão" onClick={() => openNovaVersao(doc)}><CopyPlus className="h-4 w-4" /></Button>}
+                      {canDelete && <Button variant="ghost" size="icon" className="text-destructive" title="Excluir" onClick={() => { setDeleteDoc(doc); setDeleteOpen(true); }}><Trash2 className="h-4 w-4" /></Button>}
                     </div>
                   </TableCell>
                 </TableRow>
