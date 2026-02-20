@@ -1,119 +1,104 @@
 
-# Correção dos Erros de Build — AreaPortal.tsx
+# Correção — WeatherCard (7 dias + vento + dias corretos)
 
-## Diagnóstico
+## Arquivo a Modificar
+`src/components/dashboard/WeatherCard.tsx` — único arquivo alterado.
 
-O arquivo `AreaPortal.tsx` tem 10 erros de build concentrados em dois grupos:
+## Mudanças Técnicas
 
-**Grupo 1 — Linha 141:** A chamada `usePermissoes(decodedNome)` ainda existe, mas o import foi removido na iteração anterior. Também persistem variáveis derivadas `cargo`, `isDiretoriaP`, `headerCanEdit`, `canComment` que dependem desse hook.
+### 1. Nova URL da API
+```
+https://api.open-meteo.com/v1/forecast
+  ?latitude=-23.78
+  &longitude=-46.01
+  &daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max
+  &timezone=America/Sao_Paulo
+  &forecast_days=7
+```
+- Coordenadas ajustadas para `-23.78 / -46.01` (SP-148 Km 42, Serra do Mar)
+- Adicionado `windspeed_10m_max` ao parâmetro `daily`
+- `forecast_days` alterado de `4` para `7`
 
-**Grupo 2 — Linhas 401-522:** Funções auxiliares `canEditPerm`, `canCreatePerm`, `canDeletePerm` são chamadas no JSX, mas nunca foram definidas nem importadas.
+### 2. Nome do dia da semana (correção principal)
+O bug atual ocorre porque `new Date("2026-02-20")` sem horário é interpretado como **UTC midnight**, e ao chamar `.getDay()` em fuso America/São_Paulo (UTC-3) o resultado retrocede um dia.
 
-**Grupo 3 — Linhas 184-211 (TabsList) e 446 (cronograma):** Condicionais ainda usam o sistema legado `isAbaVisivel(getPermissao(...))` e variáveis `cargo`/`isDiretoriaP`.
+Solução: usar `toLocaleDateString` com locale `pt-BR` diretamente na string de data retornada pela API, que vem no formato `YYYY-MM-DD`:
 
-## Solução
+```ts
+function getDayLabel(dateStr: string, isToday: boolean): string {
+  if (isToday) return "HOJE";
+  // Append T12:00 para evitar problema de timezone com UTC midnight
+  const date = new Date(dateStr + "T12:00:00");
+  return date
+    .toLocaleDateString("pt-BR", { weekday: "short" })
+    .replace(".", "")
+    .toUpperCase();
+}
+```
+Resultado: `"sex."` → `"SEX"`, `"sáb."` → `"SÁB"`, etc.
 
-### Seção 1 — Substituir o bloco de permissões (linhas 140-147)
-
-Remover:
-```typescript
-const { cargo, getPermissao, isDiretoria: isDiretoriaP } = usePermissoes(decodedNome);
-const headerCanEdit = cargo === "coord_01" || cargo === "coord_02" || cargo === "coord_03" || isDiretoriaP;
-const canComment = cargo !== "servidor";
+### 3. Estrutura de dados dos 7 dias
+```ts
+const columns = [0,1,2,3,4,5,6].map((i) => ({
+  day: getDayLabel(daily.time[i], i === 0),
+  isToday: i === 0,
+  weather: getWeather(daily.weathercode[i]),
+  max: Math.round(daily.temperature_2m_max[i]),
+  min: Math.round(daily.temperature_2m_min[i]),
+  wind: Math.round(daily.windspeed_10m_max[i]),
+}));
 ```
 
-Adicionar:
-```typescript
-const { role } = useAuth();
-const { areaServico, cargoArea } = useAreaServico();
+### 4. Layout responsivo para 7 cards
 
-// Para diretoria: usa permissões máximas; caso contrário, usa a área+cargo do servidor
-const effectiveCargo = role === "diretoria" ? "Coord 01" : (cargoArea ?? "Servidor");
-const effectiveArea  = role === "diretoria" ? "Diretoria" : decodedNome;
-const perms = getPermissoesPortal(effectiveArea, effectiveCargo);
+**Desktop:** `grid-cols-7` — 7 colunas em linha.
 
-// Helpers derivados
-const headerCanEdit = canEditPortal(perms, "painel_editar_area") || canEditPortal(perms, "painel_definir_coords");
-const canComment    = canAccessPortal(perms, "mural_visualizar");
-```
+**Mobile:** `overflow-x-auto` com `flex` e `min-w-[52px]` em cada card — scroll horizontal suave.
 
-### Seção 2 — TabsList (linhas 183-212)
-
-Substituir todas as condicionais `isAbaVisivel(getPermissao(...))` pelo novo sistema:
-
+Estrutura:
 ```tsx
-<TabsTrigger value="painel">Painel</TabsTrigger>
-{canAccessPortal(perms, "mural_visualizar")        && <TabsTrigger value="mural">Mural</TabsTrigger>}
-{canAccessPortal(perms, "calendario_visualizar")   && <TabsTrigger value="calendario">Calendário</TabsTrigger>}
-{canAccessPortal(perms, "participantes_area")      && <TabsTrigger value="participantes">Participantes</TabsTrigger>}
-{canAccessPortal(perms, "documentos_visualizar")   && <TabsTrigger value="documentos">Documentos</TabsTrigger>}
-{(decodedNome==="Segurança"||decodedNome==="Eventos") && canAccessPortal(perms,"familias_visualizar") && <TabsTrigger value="familias">Famílias</TabsTrigger>}
-{(decodedNome==="Segurança"||decodedNome==="Eventos") && canAccessPortal(perms,"tirolesa_cards")      && <TabsTrigger value="tirolesa">Tirolesa</TabsTrigger>}
-{decodedNome==="Mídia"  && canAccessPortal(perms,"radar_visualizar") && <TabsTrigger value="radar">Radar</TabsTrigger>}
-{decodedNome==="Mídia"  && canAccessPortal(perms,"ia_criativa")      && <TabsTrigger value="ia-criativa">IA Criativa</TabsTrigger>}
-{decodedNome==="ADM"    && canAccessPortal(perms,"homologacao_ver")  && <TabsTrigger value="homologacao">Homologação</TabsTrigger>}
-{canAccessPortal(perms, "cronograma")              && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
-{canAccessPortal(perms, "predicas_visualizar")     && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
-{canAccessPortal(perms, "pedidos_ver")             && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
-{decodedNome==="Hakuna" && canAccessPortal(perms,"equipe_ver")       && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
-{decodedNome==="Hakuna" && canAccessPortal(perms,"ergo_lista")       && <TabsTrigger value="ergometricos">Ergométricos</TabsTrigger>}
-{decodedNome==="Hakuna" && canAccessPortal(perms,"autorizacoes_ver") && <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>}
-{decodedNome==="Hakuna" && canAccessPortal(perms,"medicamentos_ver") && <TabsTrigger value="medicamentos">Medicamentos</TabsTrigger>}
-{decodedNome==="Hakuna" && canAccessPortal(perms,"equip_area_ver")   && <TabsTrigger value="equipamentos_hakuna">Equipamentos</TabsTrigger>}
-{decodedNome==="Hakuna" && canAccessPortal(perms,"necessaire_ver")   && <TabsTrigger value="necessaire">Necessaire</TabsTrigger>}
+{/* Mobile: scroll horizontal */}
+<div className="flex overflow-x-auto gap-1 sm:hidden pb-1">
+  {columns.map(col => <DayCard key={col.day} {...col} />)}
+</div>
+
+{/* Desktop: grid 7 colunas */}
+<div className="hidden sm:grid grid-cols-7 gap-1">
+  {columns.map(col => <DayCard key={col.day} {...col} />)}
+</div>
 ```
 
-### Seção 3 — TabsContent com `canEditPerm` (linhas 401-522)
-
-Substituir todas as chamadas problemáticas:
-
-| Linha | Antes | Depois |
-|---|---|---|
-| 401 | `canEditPerm(getPermissao("mural"))` | `canEditPortal(perms, "mural_novo_aviso")` |
-| 401 | `canComment` | `canAccessPortal(perms, "mural_visualizar")` |
-| 405 | `canEditPerm(getPermissao("calendario"))` | `canEditPortal(perms, "calendario_novo_evento")` |
-| 409 | `canEditPerm(getPermissao("participantes"))` | `canEditPortal(perms, "participantes_area")` |
-| 413 | `canEditPerm(getPermissao("documentos"))` | `canEditPortal(perms, "documentos_upload")` |
-| 446 | `isAbaVisivel(getPermissao("cronograma"))` | `canAccessPortal(perms, "cronograma")` |
-| 458 | `cargo === "coord_01" \|\| isDiretoriaP` | `canEditPortal(perms, "crono_logistica_nova")` |
-| 463 | `canEditPerm(getPermissao("cronograma"))` | `canEditPortal(perms, "cronograma")` |
-| 471 | `canEditPerm(getPermissao("predicas"))` | `canEditPortal(perms, "predicas_nova")` |
-| 477 | `canCreatePerm(getPermissao("pedidos"))` | `canEditPortal(perms, "pedidos_novo")` |
-| 478 | `canDeletePerm(getPermissao("pedidos"))` | `canEditPortal(perms, "pedidos_novo")` |
-| 484 | `canEditPerm(getPermissao("equipe"))` | `canEditPortal(perms, "equipe_ver")` |
-| 521 | `cargo === "coord_01" \|\| cargo === "coord_02" \|\| ...` | `canEditPortal(perms, "necessaire_salvar")` |
-
-### Seção 4 — Painel ADM condicionado (linha 216-220)
-
-O bloco `AdmPedidosDashboard + AdmFinanceiroDashboard` passa a ser condicional:
+### 5. Card individual — nova linha do vento
 ```tsx
-{decodedNome === "ADM" && canAccessPortal(perms, "painel_pedidos_cards") && (
-  <div className="mb-6 space-y-6">
-    <AdmPedidosDashboard />
-    <AdmFinanceiroDashboard />
-  </div>
-)}
+{/* Vento */}
+<span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+  <Wind className="h-3 w-3" />
+  {col.wind}
+</span>
+```
+- Ícone `Wind` do `lucide-react` (já instalado)
+- Fonte menor que a temperatura mínima
+- Cor `text-muted-foreground` (mais claro)
+- Sem unidade "km/h" para caber no card estreito
+
+### 6. Ajuste de tamanhos dos cards
+Para caber 7 colunas, reduzir ligeiramente os tamanhos:
+- Badge do dia: `text-[10px]` (era `text-[11px]`)
+- Temperatura máxima: `text-base font-bold` (era `text-lg`)
+- Emoji do clima: `text-2xl` (era `text-3xl`)
+- Temperatura mínima: `text-sm` (era `text-lg`)
+- `CardContent p-2` (era `p-3`)
+
+### Resultado visual esperado
+```
+Clima — SP-148 Km 42
+┌──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+│ HOJE │ SÁB  │ DOM  │ SEG  │ TER  │ QUA  │ QUI  │
+│ 31°  │ 27°  │ 26°  │ 25°  │ 28°  │ 29°  │ 27°  │
+│  ⛅  │  🌧  │  🌧  │  ☁️  │  ⛅  │  ⛅  │  🌧  │
+│ 18°  │ 20°  │ 19°  │ 20°  │ 19°  │ 18°  │ 20°  │
+│ 💨12 │ 💨15 │ 💨8  │ 💨10 │ 💨12 │ 💨14 │ 💨9  │
+└──────┴──────┴──────┴──────┴──────┴──────┴──────┘
 ```
 
-### Seção 5 — Limpar imports não utilizados
-
-Remover do import de `@/lib/permissoes`:
-- `PERMISSOES_DIRETOR_ESPIRITUAL` (não usado mais)
-- `isAbaVisivel` (não usado mais)
-
-O import final ficará:
-```typescript
-import {
-  getPermissoesPortal,
-  canAccessPortal,
-  canEditPortal,
-} from "@/lib/permissoes";
-```
-
-## Arquivos a Modificar
-
-| Arquivo | Escopo |
-|---|---|
-| `src/pages/AreaPortal.tsx` | Apenas: imports, bloco de permissões (l.140-147), TabsList (l.183-212), 10 chamadas em TabsContent (l.401-522) |
-
-Nenhum sub-componente filho precisa ser alterado.
+Nenhuma dependência nova. Nenhuma migration SQL. Apenas `src/components/dashboard/WeatherCard.tsx`.
