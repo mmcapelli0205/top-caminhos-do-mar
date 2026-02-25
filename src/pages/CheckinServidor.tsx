@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 const AREAS = [
-  "ADM", "Comunicação", "Diretoria", "DOC", "Eventos",
+  "ADM", "Comunicação", "Diretoria", "Eventos",
   "Hakuna", "Intercessão", "Logística", "Louvor", "Mídia",
   "Segurança", "Voz",
 ];

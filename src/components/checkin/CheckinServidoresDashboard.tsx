@@ -19,7 +19,7 @@ import { CheckinConfigSection } from "./CheckinConfigSection";
 import { CheckinQrCodeCartaz } from "./CheckinQrCodeCartaz";
 
 const AREAS = [
-  "ADM", "Comunicação", "Diretoria", "DOC", "Eventos",
+  "ADM", "Comunicação", "Diretoria", "Eventos",
   "Hakuna", "Intercessão", "Logística", "Louvor", "Mídia",
   "Segurança", "Voz",
 ];

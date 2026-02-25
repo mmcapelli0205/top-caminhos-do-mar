@@ -35,7 +35,7 @@ const AREAS = [
   "Voz",
   "ADM",
   "Intercessão",
-  "DOC",
+  "Louvor",
   "Diretoria",
 ];
 

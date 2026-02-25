@@ -40,6 +40,7 @@ import AutorizacoesTab from "@/components/hakunas/AutorizacoesTab";
 import MedicamentosEstoqueTab from "@/components/hakunas/MedicamentosEstoqueTab";
 import EquipamentosEstoqueTab from "@/components/hakunas/EquipamentosEstoqueTab";
 import NecessaireTab from "@/components/hakunas/NecessaireTab";
+import LouvoresTab from "@/components/louvores/LouvoresTab";
 import Familias from "@/pages/Familias";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
@@ -206,6 +207,9 @@ export default function AreaPortal() {
           {canAccessPortal(perms, "cronograma") && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
           {canAccessPortal(perms, "predicas_visualizar") && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
           {canAccessPortal(perms, "pedidos_ver") && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
+          {(decodedNome === "Louvor" || decodedNome === "Intercessão") && canAccessPortal(perms, "louvores_visualizar") && (
+            <TabsTrigger value="louvores">🎵 Louvores</TabsTrigger>
+          )}
           {decodedNome === "Hakuna" && canAccessPortal(perms, "equipe_ver") && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
           {decodedNome === "Hakuna" && canAccessPortal(perms, "ergo_lista") && <TabsTrigger value="ergometricos">Ergométricos</TabsTrigger>}
           {decodedNome === "Hakuna" && canAccessPortal(perms, "autorizacoes_ver") && <TabsTrigger value="autorizacoes">Autorizações</TabsTrigger>}
@@ -481,6 +485,12 @@ export default function AreaPortal() {
             canDelete={canEditPortal(perms, "pedidos_novo")}
           />
         </TabsContent>
+
+        {(decodedNome === "Louvor" || decodedNome === "Intercessão") && (
+          <TabsContent value="louvores">
+            <LouvoresTab canEdit={canEditPortal(perms, "louvores_editar")} />
+          </TabsContent>
+        )}
 
         {decodedNome === "Hakuna" && (
           <TabsContent value="equipe">

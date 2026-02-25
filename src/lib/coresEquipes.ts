@@ -8,7 +8,6 @@ export const CORES_EQUIPES: Record<string, string> = {
   "Comunicação": "#7C3AED",
   "ADM": "#22C55E",
   "Intercessão": "#F8FAFC",
-  "DOC": "#F8FAFC",
   "Louvor": "#F8FAFC",
   "Alimentação": "#D2B48C",
   "Diretoria": "#1F2937",
