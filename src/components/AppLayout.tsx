@@ -21,7 +21,6 @@ const CARGO_LABELS: Record<string, string> = {
   flutuante02: "Flutuante 02",
   flutuante03: "Flutuante 03",
   expert: "Expert",
-  sombra: "Sombra",
   servidor: "Servidor",
 };
 

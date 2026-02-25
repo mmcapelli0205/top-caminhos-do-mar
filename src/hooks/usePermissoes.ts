@@ -16,7 +16,7 @@ export function usePermissoes(areaNome: string) {
     queryFn: async () => {
       const { data } = await supabase
         .from("areas")
-        .select("id, coordenador_id, coordenador_02_id, coordenador_03_id, flutuante_01_id, flutuante_02_id, flutuante_03_id, sombra_id, sombra_02_id, sombra_03_id")
+        .select("id, coordenador_id, coordenador_02_id, coordenador_03_id, flutuante_01_id, flutuante_02_id, flutuante_03_id, expert_id")
         .eq("nome", areaNome)
         .maybeSingle();
       return data;
@@ -49,9 +49,7 @@ export function usePermissoes(areaNome: string) {
     if (areaAny.flutuante_01_id === sid) return "coord_01";
     if (areaAny.flutuante_02_id === sid) return "coord_02";
     if (areaAny.flutuante_03_id === sid) return "coord_03";
-    if (area.sombra_id === sid) return "sombra_01";
-    if (area.sombra_02_id === sid) return "sombra_02";
-    if (area.sombra_03_id === sid) return "sombra_03";
+    if (areaAny.expert_id === sid) return "coord_01";
 
     return "servidor";
   }

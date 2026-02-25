@@ -37,7 +37,6 @@ const CARGOS = [
   { value: "flutuante02", label: "Flutuante 02" },
   { value: "flutuante03", label: "Flutuante 03" },
   { value: "expert", label: "Expert" },
-  { value: "sombra", label: "Sombra" },
   { value: "diretoria", label: "Diretoria" },
 ];
 

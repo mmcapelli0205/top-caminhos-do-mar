@@ -91,10 +91,6 @@ export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): 
       );
       break;
 
-    case "sombra":
-      items = ALL_MENU_ITEMS.filter((item) => [1, 8, 14].includes(item.id));
-      break;
-
     case "servidor":
       items = ALL_MENU_ITEMS.filter((item) => [1, 8, 14].includes(item.id));
       break;
