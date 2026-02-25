@@ -135,7 +135,7 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
             "Comunicação": "midia.png",
             "Segurança": "seguranca.png",
             "Voz": "voz.png",
-            "Diretoria": "Logo%20Legendarios.png",
+            "Diretoria": "logo.png",
           };
           const logoFile = LOGOS_EQUIPES[area.nome];
           const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
