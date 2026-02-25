@@ -47,7 +47,7 @@ const ALL_MENU_ITEMS: MenuItem[] = [
   { id: 1, title: "Início", url: "/dashboard", icon: Home },
   { id: 2, title: "Participantes", url: "/participantes", icon: Users },
   { id: 4, title: "Servidores", url: "/servidores", icon: Shield },
-  { id: 6, title: "Financeiro", url: "/financeiro", icon: DollarSign },
+  // Financeiro removido do menu lateral — agora é aba exclusiva nos portais Diretoria/ADM
   { id: 7, title: "Equipamentos", url: "/equipamentos", icon: Wrench },
   { id: 8, title: "Artes & Docs", url: "/artes-docs", icon: ImageIcon },
   { id: 9, title: "Check-in", url: "/check-in", icon: QrCode },
