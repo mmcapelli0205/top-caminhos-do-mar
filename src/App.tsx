@@ -12,7 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Participantes from "./pages/Participantes";
 import Servidores from "./pages/Servidores";
 import ServidorForm from "./pages/ServidorForm";
-import Financeiro from "./pages/Financeiro";
+import FinanceiroRedirect from "./pages/FinanceiroRedirect";
 import Equipamentos from "./pages/Equipamentos";
 import ArtesEDocs from "./pages/ArtesEDocs";
 import CheckIn from "./pages/CheckIn";
@@ -67,7 +67,7 @@ const App = () => {
               <Route path="/servidores" element={<Servidores />} />
               <Route path="/servidores/novo" element={<ServidorForm />} />
               <Route path="/servidores/:id/editar" element={<ServidorForm />} />
-              <Route path="/financeiro" element={<Financeiro />} />
+              <Route path="/financeiro" element={<FinanceiroRedirect />} />
               <Route path="/equipamentos" element={<Equipamentos />} />
               <Route path="/artes-docs" element={<ArtesEDocs />} />
               <Route path="/check-in" element={<CheckIn />} />

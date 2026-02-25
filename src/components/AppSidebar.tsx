@@ -24,7 +24,7 @@ const ALL_ITEMS: MenuItem[] = [
   { id: "inicio",       title: "Início",          url: "/dashboard",    icon: Home,      menuKey: "menu_mapa" },      // sempre visível — tratado especialmente
   { id: "participantes",title: "Participantes",   url: "/participantes",icon: Users,     menuKey: "menu_participantes" },
   { id: "servidores",   title: "Servidores",      url: "/servidores",   icon: Shield,    menuKey: "menu_servidores" },
-  { id: "financeiro",   title: "Financeiro",      url: "/financeiro",   icon: DollarSign,menuKey: "menu_financeiro" },
+  // Financeiro removido do menu lateral — agora é aba exclusiva nos portais Diretoria/ADM
   { id: "checkin",      title: "Check-in",        url: "/check-in",     icon: QrCode,    menuKey: "menu_checkin" },
   { id: "equipamentos", title: "Equipamentos",    url: "/equipamentos", icon: Wrench,    menuKey: "menu_equipamentos" },
   { id: "artes",        title: "Artes & Docs",    url: "/artes-docs",   icon: ImageIcon, menuKey: "menu_artes" },

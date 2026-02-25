@@ -42,6 +42,7 @@ import EquipamentosEstoqueTab from "@/components/hakunas/EquipamentosEstoqueTab"
 import NecessaireTab from "@/components/hakunas/NecessaireTab";
 import LouvoresTab from "@/components/louvores/LouvoresTab";
 import Familias from "@/pages/Familias";
+import Financeiro from "@/pages/Financeiro";
 import Tirolesa from "@/pages/Tirolesa";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -208,6 +209,9 @@ export default function AreaPortal() {
           )}
           {canAccessPortal(perms, "cronograma") && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
           {canAccessPortal(perms, "predicas_visualizar") && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
+          {(decodedNome === "Diretoria" || decodedNome === "ADM") && (
+            <TabsTrigger value="financeiro">💰 Financeiro</TabsTrigger>
+          )}
           
           {(decodedNome === "Louvor" || decodedNome === "Intercessão") && canAccessPortal(perms, "louvores_visualizar") && (
             <TabsTrigger value="louvores">🎵 Louvores</TabsTrigger>
@@ -484,6 +488,12 @@ export default function AreaPortal() {
         {(decodedNome === "Louvor" || decodedNome === "Intercessão") && (
           <TabsContent value="louvores">
             <LouvoresTab canEdit={canEditPortal(perms, "louvores_editar")} />
+          </TabsContent>
+        )}
+
+        {(decodedNome === "Diretoria" || decodedNome === "ADM") && (
+          <TabsContent value="financeiro">
+            <Financeiro />
           </TabsContent>
         )}
 
