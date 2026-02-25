@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import AreaPedidos from "@/components/area/AreaPedidos";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -51,15 +54,18 @@ interface Props {
   canEdit: boolean;
   servidoresCount: number;
   designacoesCount: number;
+  showPedidoButton?: boolean;
+  canEditPedido?: boolean;
 }
 
-export default function AreaHeader({ area, canEdit, servidoresCount, designacoesCount }: Props) {
+export default function AreaHeader({ area, canEdit, servidoresCount, designacoesCount, showPedidoButton, canEditPedido }: Props) {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [descricao, setDescricao] = useState(area.descricao ?? "");
   const [cor, setCor] = useState(area.cor ?? "#6366f1");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pedidoSheetOpen, setPedidoSheetOpen] = useState(false);
 
   // Leadership selects
   const [coordOpen, setCoordOpen] = useState(false);
@@ -150,9 +156,27 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
           {area.descricao && <p className="text-sm text-muted-foreground">{area.descricao}</p>}
         </div>
         {canEdit && (
-          <Button variant="outline" size="sm" className="ml-auto" onClick={() => { setDescricao(area.descricao ?? ""); setCor(area.cor ?? "#6366f1"); setEditOpen(true); }}>
+          <Button variant="outline" size="sm" onClick={() => { setDescricao(area.descricao ?? ""); setCor(area.cor ?? "#6366f1"); setEditOpen(true); }}>
             <Settings2 className="h-4 w-4 mr-1" /> Editar Área
           </Button>
+        )}
+        {showPedidoButton && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg"
+                  onClick={() => setPedidoSheetOpen(true)}
+                >
+                  📦 Pedido
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Solicitar equipamentos, alimentação, medicamentos, etc para a ADM</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 
@@ -261,6 +285,22 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pedido Sheet */}
+      <Sheet open={pedidoSheetOpen} onOpenChange={setPedidoSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>📦 Pedidos — {area.nome}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <AreaPedidos
+              areaNome={area.nome}
+              canEdit={canEditPedido}
+              canDelete={canEditPedido}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
