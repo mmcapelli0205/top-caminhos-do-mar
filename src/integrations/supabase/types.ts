@@ -328,15 +328,13 @@ export type Database = {
           cor: string | null
           created_at: string | null
           descricao: string | null
+          expert_id: string | null
           flutuante_01_id: string | null
           flutuante_02_id: string | null
           flutuante_03_id: string | null
           id: string
           logo_url: string | null
           nome: string
-          sombra_02_id: string | null
-          sombra_03_id: string | null
-          sombra_id: string | null
           top_id: string | null
         }
         Insert: {
@@ -346,15 +344,13 @@ export type Database = {
           cor?: string | null
           created_at?: string | null
           descricao?: string | null
+          expert_id?: string | null
           flutuante_01_id?: string | null
           flutuante_02_id?: string | null
           flutuante_03_id?: string | null
           id?: string
           logo_url?: string | null
           nome: string
-          sombra_02_id?: string | null
-          sombra_03_id?: string | null
-          sombra_id?: string | null
           top_id?: string | null
         }
         Update: {
@@ -364,15 +360,13 @@ export type Database = {
           cor?: string | null
           created_at?: string | null
           descricao?: string | null
+          expert_id?: string | null
           flutuante_01_id?: string | null
           flutuante_02_id?: string | null
           flutuante_03_id?: string | null
           id?: string
           logo_url?: string | null
           nome?: string
-          sombra_02_id?: string | null
-          sombra_03_id?: string | null
-          sombra_id?: string | null
           top_id?: string | null
         }
         Relationships: [
@@ -398,6 +392,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "areas_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "areas_flutuante_01_id_fkey"
             columns: ["flutuante_01_id"]
             isOneToOne: false
@@ -414,27 +415,6 @@ export type Database = {
           {
             foreignKeyName: "areas_flutuante_03_id_fkey"
             columns: ["flutuante_03_id"]
-            isOneToOne: false
-            referencedRelation: "servidores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "areas_sombra_02_id_fkey"
-            columns: ["sombra_02_id"]
-            isOneToOne: false
-            referencedRelation: "servidores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "areas_sombra_03_id_fkey"
-            columns: ["sombra_03_id"]
-            isOneToOne: false
-            referencedRelation: "servidores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "areas_sombra_id_fkey"
-            columns: ["sombra_id"]
             isOneToOne: false
             referencedRelation: "servidores"
             referencedColumns: ["id"]

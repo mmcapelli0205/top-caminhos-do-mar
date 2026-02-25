@@ -141,7 +141,7 @@ const TopRealTime = () => {
   const canControl = isDiretoria || isAdmCoord01;
   // canView: all coordination roles, all areas
   const canView = canControl || isCoord01 || isAdmCoordAny ||
-    userCargo === "coordenacao" || userCargo === "coord02" || userCargo === "coord03" || userCargo === "sombra";
+    userCargo === "coordenacao" || userCargo === "coord02" || userCargo === "coord03" || userCargo === "flutuante01" || userCargo === "flutuante02" || userCargo === "flutuante03" || userCargo === "expert";
 
   // Redirect if no access
   useEffect(() => {

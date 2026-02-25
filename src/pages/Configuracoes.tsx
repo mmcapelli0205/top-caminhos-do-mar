@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const API_URL = "https://ilknzgupnswyeynwpovj.supabase.co/functions/v1/manage-users";
 
-const ROLES = ["diretoria", "coordenacao", "coord02", "coord03", "flutuante01", "flutuante02", "flutuante03", "expert", "sombra", "servidor"];
+const ROLES = ["diretoria", "coordenacao", "coord02", "coord03", "flutuante01", "flutuante02", "flutuante03", "expert", "servidor"];
 const AREAS = ["Eventos", "Segurança", "Hakunas", "Logística", "Comunicação", "Mídia", "Administração", "Intercessão"];
 
 interface Usuario {
@@ -204,7 +204,7 @@ const Configuracoes = () => {
               <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ROLES.map((r) => (<SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>))}</SelectContent></Select>
             </div>
             <div className="space-y-2"><Label>Cargo</Label><Input value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} placeholder="Ex: Coordenador de Eventos" /></div>
-            {["coordenacao", "coord02", "coord03", "flutuante01", "flutuante02", "flutuante03", "expert", "sombra"].includes(form.role) && (
+            {["coordenacao", "coord02", "coord03", "flutuante01", "flutuante02", "flutuante03", "expert"].includes(form.role) && (
               <div className="space-y-2">
                 <Label>Área de preferência</Label>
                 <Select value={form.area_preferencia} onValueChange={(v) => setForm({ ...form, area_preferencia: v })}><SelectTrigger><SelectValue placeholder="Selecione a área" /></SelectTrigger><SelectContent>{AREAS.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>

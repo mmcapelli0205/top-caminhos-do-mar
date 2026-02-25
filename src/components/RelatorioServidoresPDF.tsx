@@ -43,9 +43,10 @@ const ORDEM_CARGO = [
   "Coord 01",
   "Coord 02",
   "Coord 03",
-  "Sombra 01",
-  "Sombra 02",
-  "Sombra 03",
+  "Flutuante 01",
+  "Flutuante 02",
+  "Flutuante 03",
+  "Expert",
 ];
 
 const CORES_AREAS: Record<string, string> = {
@@ -311,7 +312,8 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
 
           const cargo = s.cargo_area || "Servidor";
           const isCoord = cargo.startsWith("Coord");
-          const isSombra = cargo.startsWith("Sombra");
+          const isFlutuante = cargo.startsWith("Flutuante");
+          const isExpert = cargo === "Expert";
 
           // Número sequencial
           doc.setFont("helvetica", "normal");
@@ -320,9 +322,9 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
           doc.text(String(idx + 1), NUM_COL, y + 5.2, { align: "right" });
 
           // Nome
-          if (isCoord) {
+          if (isCoord || isExpert) {
             doc.setFont("helvetica", "bold");
-          } else if (isSombra) {
+          } else if (isFlutuante) {
             doc.setFont("helvetica", "italic");
           } else {
             doc.setFont("helvetica", "normal");
@@ -419,7 +421,7 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
           </div>
 
           <div className="rounded-md bg-muted/50 p-3 space-y-1.5 text-sm text-muted-foreground">
-            <p>• Servidores ordenados por cargo (Coord → Sombra → Servidor) e nome</p>
+            <p>• Servidores ordenados por cargo (Coord → Flutuante → Expert → Servidor) e nome</p>
             <p>• Cada área tem sua barra colorida identificadora</p>
             <p>• Quebra de página automática entre seções</p>
           </div>
