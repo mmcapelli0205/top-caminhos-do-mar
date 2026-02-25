@@ -328,6 +328,9 @@ export type Database = {
           cor: string | null
           created_at: string | null
           descricao: string | null
+          flutuante_01_id: string | null
+          flutuante_02_id: string | null
+          flutuante_03_id: string | null
           id: string
           logo_url: string | null
           nome: string
@@ -343,6 +346,9 @@ export type Database = {
           cor?: string | null
           created_at?: string | null
           descricao?: string | null
+          flutuante_01_id?: string | null
+          flutuante_02_id?: string | null
+          flutuante_03_id?: string | null
           id?: string
           logo_url?: string | null
           nome: string
@@ -358,6 +364,9 @@ export type Database = {
           cor?: string | null
           created_at?: string | null
           descricao?: string | null
+          flutuante_01_id?: string | null
+          flutuante_02_id?: string | null
+          flutuante_03_id?: string | null
           id?: string
           logo_url?: string | null
           nome?: string
@@ -384,6 +393,27 @@ export type Database = {
           {
             foreignKeyName: "areas_coordenador_id_fkey"
             columns: ["coordenador_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_flutuante_01_id_fkey"
+            columns: ["flutuante_01_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_flutuante_02_id_fkey"
+            columns: ["flutuante_02_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_flutuante_03_id_fkey"
+            columns: ["flutuante_03_id"]
             isOneToOne: false
             referencedRelation: "servidores"
             referencedColumns: ["id"]
