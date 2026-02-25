@@ -29,7 +29,7 @@ import AreaDesignacoes from "@/components/area/AreaDesignacoes";
 import AreaDocumentos from "@/components/area/AreaDocumentos";
 import AreaRadar from "@/components/area/AreaRadar";
 import AreaIACriativa from "@/components/area/AreaIACriativa";
-import AreaPedidos from "@/components/area/AreaPedidos";
+
 import AdmPedidosDashboard from "@/components/area/AdmPedidosDashboard";
 import AdmFinanceiroDashboard from "@/components/area/AdmFinanceiroDashboard";
 import HomologacaoTimeline from "@/components/area/HomologacaoTimeline";
@@ -180,6 +180,8 @@ export default function AreaPortal() {
         canEdit={headerCanEdit}
         servidoresCount={servidoresCount}
         designacoesCount={designacoesCount}
+        showPedidoButton={canAccessPortal(perms, "pedidos_ver")}
+        canEditPedido={canEditPortal(perms, "pedidos_novo")}
       />
 
       <Tabs defaultValue={defaultTab} className="w-full">
@@ -206,7 +208,7 @@ export default function AreaPortal() {
           )}
           {canAccessPortal(perms, "cronograma") && <TabsTrigger value="cronograma">Cronograma</TabsTrigger>}
           {canAccessPortal(perms, "predicas_visualizar") && <TabsTrigger value="predicas">Prédicas</TabsTrigger>}
-          {canAccessPortal(perms, "pedidos_ver") && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
+          
           {(decodedNome === "Louvor" || decodedNome === "Intercessão") && canAccessPortal(perms, "louvores_visualizar") && (
             <TabsTrigger value="louvores">🎵 Louvores</TabsTrigger>
           )}
@@ -478,13 +480,6 @@ export default function AreaPortal() {
           <PredicasTab canEdit={canEditPortal(perms, "predicas_nova")} />
         </TabsContent>
 
-        <TabsContent value="pedidos">
-          <AreaPedidos
-            areaNome={decodedNome}
-            canEdit={canEditPortal(perms, "pedidos_novo")}
-            canDelete={canEditPortal(perms, "pedidos_novo")}
-          />
-        </TabsContent>
 
         {(decodedNome === "Louvor" || decodedNome === "Intercessão") && (
           <TabsContent value="louvores">
