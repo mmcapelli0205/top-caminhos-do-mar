@@ -30,9 +30,13 @@ const formatPhone = (phone: string | null) => {
 
 const CARGOS = [
   { value: "servidor", label: "Servidor" },
-  { value: "coordenacao", label: "Coordenador" },
-  { value: "coord02", label: "Coord 02" },
-  { value: "coord03", label: "Coord 03" },
+  { value: "coordenacao", label: "Coordenador 01" },
+  { value: "coord02", label: "Coordenador 02" },
+  { value: "coord03", label: "Coordenador 03" },
+  { value: "flutuante01", label: "Flutuante 01" },
+  { value: "flutuante02", label: "Flutuante 02" },
+  { value: "flutuante03", label: "Flutuante 03" },
+  { value: "expert", label: "Expert" },
   { value: "sombra", label: "Sombra" },
   { value: "diretoria", label: "Diretoria" },
 ];

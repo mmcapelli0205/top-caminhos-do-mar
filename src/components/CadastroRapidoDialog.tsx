@@ -16,7 +16,8 @@ const EQUIPES = [
 const CARGOS_DIRETORIA = ["Diretor", "Sub-Diretor", "Diretor Espiritual"];
 const CARGOS_EQUIPE = [
   "Coordenador 01", "Coordenador 02", "Coordenador 03",
-  "Sombra 01", "Sombra 02", "Sombra 03", "Servidor",
+  "Flutuante 01", "Flutuante 02", "Flutuante 03",
+  "Expert", "Servidor",
 ];
 
 interface Props {

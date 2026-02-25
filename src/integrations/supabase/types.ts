@@ -1951,6 +1951,66 @@ export type Database = {
         }
         Relationships: []
       }
+      louvores: {
+        Row: {
+          artista: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          instrumentos: string[] | null
+          nome_louvor: string
+          observacoes: string | null
+          ordem: number | null
+          predica_id: string | null
+          tom: string | null
+          top_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          artista?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          instrumentos?: string[] | null
+          nome_louvor: string
+          observacoes?: string | null
+          ordem?: number | null
+          predica_id?: string | null
+          tom?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          artista?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          instrumentos?: string[] | null
+          nome_louvor?: string
+          observacoes?: string | null
+          ordem?: number | null
+          predica_id?: string | null
+          tom?: string | null
+          top_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "louvores_predica_id_fkey"
+            columns: ["predica_id"]
+            isOneToOne: false
+            referencedRelation: "predicas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "louvores_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mensagens_log: {
         Row: {
           canal: string | null
@@ -3100,6 +3160,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_area: { Args: never; Returns: string }
+      get_user_cargo: { Args: never; Returns: string }
+      get_user_role: { Args: never; Returns: string }
+      has_financial_access: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3107,6 +3171,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_approved_user: { Args: never; Returns: boolean }
+      is_area_coord: { Args: { area_to_check: string }; Returns: boolean }
+      is_coord_or_above: { Args: never; Returns: boolean }
+      is_diretoria: { Args: never; Returns: boolean }
+      is_same_area: { Args: { area_to_check: string }; Returns: boolean }
     }
     Enums: {
       app_role:
@@ -3116,6 +3185,10 @@ export type Database = {
         | "coord03"
         | "sombra"
         | "servidor"
+        | "flutuante01"
+        | "flutuante02"
+        | "flutuante03"
+        | "expert"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3250,6 +3323,10 @@ export const Constants = {
         "coord03",
         "sombra",
         "servidor",
+        "flutuante01",
+        "flutuante02",
+        "flutuante03",
+        "expert",
       ],
     },
   },
