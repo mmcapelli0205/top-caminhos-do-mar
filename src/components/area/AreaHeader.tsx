@@ -37,7 +37,7 @@ const AREA_ICONS: Record<string, LucideIcon> = {
   "Intercessão": Heart,
   "Alimentação": Briefcase,
   "Tempo e Execução": Clock,
-  "DOC": FileText,
+  "Louvor": FileText,
   "Diretoria": Crown,
 };
 
@@ -123,7 +123,6 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
             "Eventos": "eventos.png",
             "Hakuna": "hakunas.png",
             "Intercessão": "intercessao.png",
-            "DOC": "intercessao.png",
             "Louvor": "intercessao.png",
             "Logística": "logistica.png",
             "Mídia": "midia.png",

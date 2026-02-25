@@ -127,7 +127,7 @@ export default function PredicaFormDialog({ open, onOpenChange, predica }: Props
       const { data } = await supabase
         .from("servidores")
         .select("id, nome")
-        .in("area_servico", ["Intercessão", "DOC", "Voz"])
+        .in("area_servico", ["Intercessão", "Louvor", "Voz"])
         .order("nome");
       return data ?? [];
     },

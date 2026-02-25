@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const EQUIPES = [
   "ADM", "Eventos", "Segurança", "Logística", "Hakuna", "Voz",
-  "Comunicação", "Mídia", "Intercessão", "DOC", "Louvor", "Diretoria",
+  "Comunicação", "Mídia", "Intercessão", "Louvor", "Diretoria",
 ];
 
 const CARGOS_DIRETORIA = ["Diretor", "Sub-Diretor", "Diretor Espiritual"];

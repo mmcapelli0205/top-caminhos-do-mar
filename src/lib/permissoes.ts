@@ -30,6 +30,7 @@ export type AbaPermissao = {
   financeiro: NivelPermissao;
   radar: NivelPermissao;
   ia_criativa: NivelPermissao;
+  louvores: NivelPermissao;
 };
 
 type AbaKey = keyof AbaPermissao;
@@ -80,22 +81,16 @@ export const PERMISSOES: Record<string, Partial<Record<CargoArea, Partial<AbaPer
     servidor:  { mural: "V", calendario: "V", documentos: "V" },
   },
   "Intercessão": {
-    coord_01:  { mural: "E", calendario: "E", participantes: "A", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E" },
-    coord_02:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E" },
-    coord_03:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E" },
-    servidor:  { mural: "V", calendario: "V", documentos: "V" },
-  },
-  "DOC": {
-    coord_01:  { mural: "E", calendario: "E", participantes: "A", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E" },
-    coord_02:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E" },
-    coord_03:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E" },
-    servidor:  { mural: "V", calendario: "V", documentos: "V" },
+    coord_01:  { mural: "E", calendario: "E", participantes: "A", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E", louvores: "E" },
+    coord_02:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E", louvores: "E" },
+    coord_03:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E", louvores: "E" },
+    servidor:  { mural: "V", calendario: "V", documentos: "V", louvores: "V" },
   },
   "Louvor": {
-    coord_01:  { mural: "E", calendario: "E", participantes: "A", documentos: "E", cronograma: "V", predicas: "V", pedidos: "E" },
-    coord_02:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "V", pedidos: "E" },
-    coord_03:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "V", pedidos: "E" },
-    servidor:  { mural: "V", calendario: "V", documentos: "V" },
+    coord_01:  { mural: "E", calendario: "E", participantes: "A", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E", louvores: "E" },
+    coord_02:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E", louvores: "E" },
+    coord_03:  { mural: "E", calendario: "E", participantes: "V", documentos: "E", cronograma: "V", predicas: "E", pedidos: "E", louvores: "E" },
+    servidor:  { mural: "V", calendario: "V", documentos: "V", louvores: "V" },
   },
   "ADM": {
     coord_01:  { mural: "E", calendario: "E", participantes: "A", documentos: "E", familias: "V", tirolesa: "V", cronograma: "E", predicas: "E", pedidos: "E", equipe: "V", ergometricos: "V", autorizacoes: "V", medicamentos: "V", equipamentos: "V", homologacao: "E", financeiro: "E" },
@@ -104,7 +99,7 @@ export const PERMISSOES: Record<string, Partial<Record<CargoArea, Partial<AbaPer
     servidor:  { mural: "V", calendario: "V", documentos: "V" },
   },
   "Diretoria": {
-    diretoria: { mural: "E", calendario: "E", participantes: "E", documentos: "E", familias: "E", tirolesa: "E", cronograma: "E", predicas: "E", pedidos: "E", equipe: "V", ergometricos: "V", autorizacoes: "V", medicamentos: "V", equipamentos: "V", homologacao: "E", financeiro: "E", radar: "V", ia_criativa: "V" },
+    diretoria: { mural: "E", calendario: "E", participantes: "E", documentos: "E", familias: "E", tirolesa: "E", cronograma: "E", predicas: "E", pedidos: "E", equipe: "V", ergometricos: "V", autorizacoes: "V", medicamentos: "V", equipamentos: "V", homologacao: "E", financeiro: "E", radar: "V", ia_criativa: "V", louvores: "V" },
   },
 };
 
@@ -458,27 +453,6 @@ export const PERMISSOES_MENU: Record<string, PermissoesMenu> = {
     menu_tops: false, menu_config: false, menu_realtime: true,
     menu_mapa: true, menu_aprovacoes: false,
   },
-  "DOC": {
-    participantes_listar: "V", participantes_buscar: null, participantes_filtros: "V",
-    participantes_importar: "B", participantes_exportar: null, participantes_novo: null,
-    participantes_visualizar: "V", participantes_editar: null,
-    servidores_cards: "B", servidores_listar: "B", servidores_filtros: "B",
-    servidores_exportar: "B", servidores_importar: "B", servidores_novo: "E",
-    servidores_visualizar: "B", servidores_editar: "B", servidores_excluir: "B",
-    financeiro_resumo: "B", financeiro_completo: "B",
-    checkin_pulseiras: null, checkin_realizar: null, checkin_consultar: null, checkin_gestao: null,
-    equipamentos_listar: null, equipamentos_novo: null, equipamentos_filtros: null,
-    artes_visualizar: "E", artes_upload: "E", artes_download: "V", artes_editar: "V", artes_excluir: "V",
-    tops_edicoes: "B", tops_whatsapp: "B", tops_templates: "V",
-    config_listar: "E", config_novo: "E", config_editar: "B",
-    realtime_visualizar: "V", realtime_iniciar: "B", realtime_pular: "B",
-    mapa_visualizar: "V", mapa_compartilhar_gps: null,
-    aprovacoes: "B",
-    menu_participantes: true, menu_servidores: true, menu_financeiro: false,
-    menu_checkin: false, menu_equipamentos: false, menu_artes: true,
-    menu_tops: true, menu_config: true, menu_realtime: true,
-    menu_mapa: true, menu_aprovacoes: false,
-  },
   "Diretoria": {
     participantes_listar: "V", participantes_buscar: "V", participantes_filtros: "V",
     participantes_importar: "B", participantes_exportar: "E", participantes_novo: "E",
@@ -603,19 +577,12 @@ export interface PermissoesPortal {
   painel_pedidos_cards?: NivelAcesso;
   painel_pedidos_listar?: NivelAcesso;
   painel_pedidos_alterar_status?: NivelAcesso;
+  // Louvor + Intercessão
+  louvores_visualizar?: NivelAcesso;
+  louvores_editar?: NivelAcesso;
 }
 
-// Base bloqueado para DOC
-const DOC_BASE: PermissoesPortal = {
-  painel_cards: null, painel_definir_coords: null, painel_editar_area: null,
-  mural_visualizar: null, mural_novo_aviso: null,
-  calendario_visualizar: null, calendario_novo_evento: null,
-  participantes_area: null,
-  documentos_visualizar: null, documentos_upload: null,
-  cronograma: null,
-  predicas_visualizar: null, predicas_nova: null,
-  pedidos_ver: null, pedidos_novo: null,
-};
+
 
 export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
   // ─── HAKUNA ───
@@ -1028,6 +995,7 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "V",
     predicas_visualizar: "E", predicas_nova: "E",
     pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "E", louvores_editar: "E",
   },
   "Intercessão_Coord 02": {
     painel_cards: "E", painel_definir_coords: "E", painel_editar_area: "E",
@@ -1038,6 +1006,7 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "V",
     predicas_visualizar: "E", predicas_nova: "E",
     pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "E", louvores_editar: "E",
   },
   "Intercessão_Coord 03": {
     painel_cards: "E", painel_definir_coords: "V", painel_editar_area: null,
@@ -1048,6 +1017,7 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "V",
     predicas_visualizar: "E", predicas_nova: "E",
     pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "E", louvores_editar: "E",
   },
   "Intercessão_Servidor": {
     painel_cards: "E", painel_definir_coords: null, painel_editar_area: null,
@@ -1058,13 +1028,54 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "V",
     predicas_visualizar: "V", predicas_nova: null,
     pedidos_ver: "E", pedidos_novo: null,
+    louvores_visualizar: "V", louvores_editar: null,
   },
 
-  // ─── DOC ─── (tudo bloqueado, exceto prédicas para coordenadores)
-  "DOC_Coord 01": { ...DOC_BASE, predicas_visualizar: "E", predicas_nova: "E" },
-  "DOC_Coord 02": { ...DOC_BASE, predicas_visualizar: "E", predicas_nova: "E" },
-  "DOC_Coord 03": { ...DOC_BASE, predicas_visualizar: "E", predicas_nova: null },
-  "DOC_Servidor": { ...DOC_BASE },
+  // ─── LOUVOR ───
+  "Louvor_Coord 01": {
+    painel_cards: "E", painel_definir_coords: "E", painel_editar_area: "E",
+    mural_visualizar: "E", mural_novo_aviso: "E",
+    calendario_visualizar: "E", calendario_novo_evento: "E",
+    participantes_area: "E",
+    documentos_visualizar: "E", documentos_upload: "E",
+    cronograma: "V",
+    predicas_visualizar: "E", predicas_nova: "E",
+    pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "E", louvores_editar: "E",
+  },
+  "Louvor_Coord 02": {
+    painel_cards: "E", painel_definir_coords: "E", painel_editar_area: "E",
+    mural_visualizar: "E", mural_novo_aviso: "E",
+    calendario_visualizar: "E", calendario_novo_evento: "E",
+    participantes_area: "E",
+    documentos_visualizar: "E", documentos_upload: "E",
+    cronograma: "V",
+    predicas_visualizar: "E", predicas_nova: "E",
+    pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "E", louvores_editar: "E",
+  },
+  "Louvor_Coord 03": {
+    painel_cards: "E", painel_definir_coords: "V", painel_editar_area: null,
+    mural_visualizar: "E", mural_novo_aviso: "E",
+    calendario_visualizar: "E", calendario_novo_evento: "E",
+    participantes_area: "E",
+    documentos_visualizar: "E", documentos_upload: "E",
+    cronograma: "V",
+    predicas_visualizar: "E", predicas_nova: "E",
+    pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "E", louvores_editar: "E",
+  },
+  "Louvor_Servidor": {
+    painel_cards: "E", painel_definir_coords: null, painel_editar_area: null,
+    mural_visualizar: "E", mural_novo_aviso: null,
+    calendario_visualizar: "E", calendario_novo_evento: null,
+    participantes_area: null,
+    documentos_visualizar: "E", documentos_upload: null,
+    cronograma: "V",
+    predicas_visualizar: "V", predicas_nova: null,
+    pedidos_ver: "E", pedidos_novo: null,
+    louvores_visualizar: "V", louvores_editar: null,
+  },
 
   // ─── DIRETORIA ───
   "Diretoria_Coord 01": {
@@ -1076,6 +1087,7 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "E",
     predicas_visualizar: "E", predicas_nova: "E",
     pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "V", louvores_editar: null,
   },
   "Diretoria_Coord 02": {
     painel_cards: "E", painel_definir_coords: "E", painel_editar_area: "E",
@@ -1086,6 +1098,7 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "E",
     predicas_visualizar: "E", predicas_nova: "E",
     pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "V", louvores_editar: null,
   },
   "Diretoria_Coord 03": {
     painel_cards: "E", painel_definir_coords: "E", painel_editar_area: "E",
@@ -1096,6 +1109,7 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "V",
     predicas_visualizar: "E", predicas_nova: null,
     pedidos_ver: "E", pedidos_novo: "E",
+    louvores_visualizar: "V", louvores_editar: null,
   },
   "Diretoria_Servidor": {
     painel_cards: "E", painel_definir_coords: null, painel_editar_area: null,
@@ -1106,6 +1120,7 @@ export const PERMISSOES_PORTAL: Record<string, PermissoesPortal> = {
     cronograma: "V",
     predicas_visualizar: "E", predicas_nova: null,
     pedidos_ver: "E", pedidos_novo: null,
+    louvores_visualizar: "V", louvores_editar: null,
   },
 };
 

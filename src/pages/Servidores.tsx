@@ -41,7 +41,7 @@ type Servidor = Tables<"servidores">;
 const AREAS_SERVICO = [
   "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
   "Logística", "Voz", "ADM",
-  "Intercessão", "DOC", "Diretoria",
+  "Intercessão", "Louvor", "Diretoria",
 ];
 
 const LOGOS_EQUIPES: Record<string, string> = {
@@ -49,7 +49,6 @@ const LOGOS_EQUIPES: Record<string, string> = {
   "Eventos": "eventos.png",
   "Hakuna": "hakunas.png",
   "Intercessão": "intercessao.png",
-  "DOC": "intercessao.png",
   "Louvor": "intercessao.png",
   "Logística": "logistica.png",
   "Mídia": "midia.png",
