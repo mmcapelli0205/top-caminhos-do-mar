@@ -17,6 +17,10 @@ const CARGO_LABELS: Record<string, string> = {
   coordenacao: "Coordenação",
   coord02: "Coord 02",
   coord03: "Coord 03",
+  flutuante01: "Flutuante 01",
+  flutuante02: "Flutuante 02",
+  flutuante03: "Flutuante 03",
+  expert: "Expert",
   sombra: "Sombra",
   servidor: "Servidor",
 };

@@ -126,7 +126,34 @@ Deno.serve(async (req) => {
 
       const senha = "TOP2026!";
       const diretoriaCargos = ["Diretor", "Sub-Diretor", "Diretor Espiritual"];
-      const role = diretoriaCargos.includes(cargo_area) ? "diretoria" : "coordenacao";
+      const CARGO_TO_ROLE: Record<string, string> = {
+        "Diretor": "diretoria",
+        "Sub-Diretor": "diretoria",
+        "Diretor Espiritual": "diretoria",
+        "Coordenador 01": "coordenacao",
+        "Coordenador 02": "coord02",
+        "Coordenador 03": "coord03",
+        "Flutuante 01": "flutuante01",
+        "Flutuante 02": "flutuante02",
+        "Flutuante 03": "flutuante03",
+        "Expert": "expert",
+        "Servidor": "servidor",
+      };
+      const CARGO_TO_PROFILE: Record<string, string> = {
+        "Diretor": "diretoria",
+        "Sub-Diretor": "diretoria",
+        "Diretor Espiritual": "diretoria",
+        "Coordenador 01": "coordenacao",
+        "Coordenador 02": "coordenacao",
+        "Coordenador 03": "coordenacao",
+        "Flutuante 01": "coordenacao",
+        "Flutuante 02": "coordenacao",
+        "Flutuante 03": "coordenacao",
+        "Expert": "coordenacao",
+        "Servidor": "servidor",
+      };
+      const role = CARGO_TO_ROLE[cargo_area] || "servidor";
+      const profileCargo = CARGO_TO_PROFILE[cargo_area] || "servidor";
 
       // Create auth user
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
@@ -146,7 +173,7 @@ Deno.serve(async (req) => {
           nome: nome.trim(),
           email: emailToUse,
           status: "aprovado",
-          cargo: role,
+          cargo: profileCargo,
           area_preferencia: equipe,
           login_temporario: true,
           primeiro_acesso: true,
@@ -320,11 +347,26 @@ Deno.serve(async (req) => {
       const { user_id, cargo, aprovado_por } = body;
       if (!user_id || !cargo) return json({ error: "user_id e cargo obrigatórios" }, 400);
 
+      // Map granular role to simplified profile cargo
+      const ROLE_TO_PROFILE: Record<string, string> = {
+        "diretoria": "diretoria",
+        "coordenacao": "coordenacao",
+        "coord02": "coordenacao",
+        "coord03": "coordenacao",
+        "flutuante01": "coordenacao",
+        "flutuante02": "coordenacao",
+        "flutuante03": "coordenacao",
+        "expert": "coordenacao",
+        "sombra": "sombra",
+        "servidor": "servidor",
+      };
+      const profileCargo = ROLE_TO_PROFILE[cargo] || "servidor";
+
       const { error: profileError } = await supabase
         .from("user_profiles")
         .update({
           status: "aprovado",
-          cargo,
+          cargo: profileCargo,
           aprovado_por: aprovado_por || null,
           data_aprovacao: new Date().toISOString(),
         })

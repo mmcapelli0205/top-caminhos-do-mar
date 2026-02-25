@@ -82,6 +82,15 @@ export function getVisibleMenuItems(cargo: string | null, podeAprovar = false): 
       );
       break;
 
+    case "flutuante01":
+    case "flutuante02":
+    case "flutuante03":
+    case "expert":
+      items = ALL_MENU_ITEMS.filter((item) =>
+        [1, 2, 4, 8, 13, 14].includes(item.id)
+      );
+      break;
+
     case "sombra":
       items = ALL_MENU_ITEMS.filter((item) => [1, 8, 14].includes(item.id));
       break;
