@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const TAMANHOS_FARDA = ["PP", "P", "M", "G", "GG", "XGG"];
 
 const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/public-assets/logo.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/public-assets/Caminhos%20do%20Mar%20sem%20fundo.png";
 
 export default function PrimeiroAcesso() {
   const navigate = useNavigate();
@@ -176,7 +176,7 @@ export default function PrimeiroAcesso() {
       <div className="w-full max-w-2xl space-y-6">
         {/* Logo */}
         <div className="flex justify-center">
-          <img src={LOGO_URL} alt="Logo" className="w-48" />
+          <img src={LOGO_URL} alt="" className="w-[220px] max-w-[280px] sm:w-[280px] sm:max-w-[350px] object-contain" />
         </div>
 
         {/* Step indicator */}
