@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const TAMANHOS_FARDA = ["PP", "P", "M", "G", "GG", "XGG"];
 
 const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/public-assets/Caminhos%20do%20Mar%20sem%20fundo.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20sem%20fundo.png";
 
 export default function PrimeiroAcesso() {
   const navigate = useNavigate();
