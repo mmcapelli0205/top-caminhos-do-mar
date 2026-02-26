@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const BG_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/public-assets/Caminhos%20do%20Mar%20-%20foto.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20-%20foto.png";
 const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/public-assets/Caminhos%20do%20Mar%20sem%20fundo.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20sem%20fundo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -164,7 +164,7 @@ const Login = () => {
           <img
             src={LOGO_URL}
             alt=""
-            className="w-[440px] max-w-[560px] sm:w-[560px] sm:max-w-[700px] object-contain"
+            className="w-[200px] max-w-[250px] sm:w-[280px] sm:max-w-[320px] object-contain"
           />
         </div>
 
