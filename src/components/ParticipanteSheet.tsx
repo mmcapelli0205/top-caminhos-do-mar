@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { Participante } from "@/hooks/useParticipantes";
 import { CheckCircle, XCircle } from "lucide-react";
+import { imcBadgeColor } from "@/lib/imcUtils";
 
 interface Props {
   participante: Participante | null;
@@ -85,6 +86,14 @@ export default function ParticipanteSheet({ participante, open, onOpenChange, fa
               <Section title="Dados Físicos">
                 <Field label="Peso (kg)" value={p.peso?.toString()} />
                 <Field label="Altura (m)" value={p.altura?.toString()} />
+                <Field label="IMC" value={
+                  (p as any).imc != null ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{Number((p as any).imc).toFixed(1)}</span>
+                      <Badge className={imcBadgeColor((p as any).imc_classificacao)}>{(p as any).imc_classificacao}</Badge>
+                    </div>
+                  ) : "—"
+                } />
                 <Field label="Condicionamento" value={p.condicionamento?.toString()} />
                 <Field label="Tamanho Farda" value={p.tamanho_farda} />
               </Section>

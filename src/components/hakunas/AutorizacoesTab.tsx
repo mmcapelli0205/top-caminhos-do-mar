@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Info } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { imcBadgeColor } from "@/lib/imcUtils";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Participante = Tables<"participantes">;
@@ -94,6 +95,12 @@ export default function AutorizacoesTab() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{p.nome}</p>
                       <p className="text-sm text-muted-foreground">Idade: {calcAge(p.data_nascimento) ?? "—"}</p>
+                      {(p as any).imc != null && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-xs text-muted-foreground">IMC: {Number((p as any).imc).toFixed(1)}</span>
+                          <Badge className={`text-[10px] px-1.5 py-0 ${imcBadgeColor((p as any).imc_classificacao)}`}>{(p as any).imc_classificacao}</Badge>
+                        </div>
+                      )}
                     </div>
                     <Badge variant={status === "aprovado" ? "default" : status === "reprovado" ? "destructive" : "secondary"}>{status}</Badge>
                   </div>
@@ -123,6 +130,8 @@ export default function AutorizacoesTab() {
               <TableRow>
                 <TableHead className="sticky left-0 bg-card z-10">Nome</TableHead>
                 <TableHead>Idade</TableHead>
+                <TableHead>IMC</TableHead>
+                <TableHead>Classificação</TableHead>
                 <TableHead>Doença/Condição</TableHead>
                 <TableHead className="hidden md:table-cell">Ergométrico</TableHead>
                 <TableHead>Autorização</TableHead>
@@ -133,10 +142,10 @@ export default function AutorizacoesTab() {
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                  <TableRow key={i}>{Array.from({ length: 9 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
                 ))
               ) : participantes.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum participante</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum participante</TableCell></TableRow>
               ) : participantes.map((p) => {
                 const aut = autMap.get(p.id);
                 const status = aut?.status ?? "pendente";
@@ -145,6 +154,12 @@ export default function AutorizacoesTab() {
                   <TableRow key={p.id} className={hasDoenca ? "bg-accent/30" : ""}>
                     <TableCell className="sticky left-0 bg-card z-10 font-medium">{p.nome}</TableCell>
                     <TableCell>{calcAge(p.data_nascimento) ?? "—"}</TableCell>
+                    <TableCell>{(p as any).imc != null ? Number((p as any).imc).toFixed(1) : "—"}</TableCell>
+                    <TableCell>
+                      {(p as any).imc_classificacao ? (
+                        <Badge className={imcBadgeColor((p as any).imc_classificacao)}>{(p as any).imc_classificacao}</Badge>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">{p.doenca ?? "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge variant={p.ergometrico_status === "aprovado" ? "default" : p.ergometrico_status === "reprovado" ? "destructive" : "secondary"}>
