@@ -168,6 +168,14 @@ const Login = () => {
           />
         </div>
 
+        <div className="mb-2 flex justify-center">
+          <img
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
+            alt=""
+            className="h-[56px] sm:h-[68px] object-contain"
+          />
+        </div>
+
         <h1 className="mb-1 text-center text-2xl font-bold text-white sm:text-3xl">
           TOP Manager
         </h1>
