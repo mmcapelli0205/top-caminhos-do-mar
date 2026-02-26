@@ -164,7 +164,7 @@ const Login = () => {
           <img
             src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
             alt=""
-            className="h-[90px] sm:h-[110px] object-contain"
+            className="h-[180px] sm:h-[220px] object-contain"
           />
         </div>
 
