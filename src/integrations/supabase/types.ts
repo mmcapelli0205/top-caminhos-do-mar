@@ -2142,6 +2142,8 @@ export type Database = {
           forma_pagamento: string | null
           id: string
           igreja: string | null
+          imc: number | null
+          imc_classificacao: string | null
           inscrito_por: string | null
           instagram: string | null
           medicamentos: string | null
@@ -2185,6 +2187,8 @@ export type Database = {
           forma_pagamento?: string | null
           id?: string
           igreja?: string | null
+          imc?: number | null
+          imc_classificacao?: string | null
           inscrito_por?: string | null
           instagram?: string | null
           medicamentos?: string | null
@@ -2228,6 +2232,8 @@ export type Database = {
           forma_pagamento?: string | null
           id?: string
           igreja?: string | null
+          imc?: number | null
+          imc_classificacao?: string | null
           inscrito_por?: string | null
           instagram?: string | null
           medicamentos?: string | null

@@ -15,9 +15,9 @@ import {
 } from "@/components/ui/select";
 
 const BG_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20-%20foto.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/public-assets/Caminhos%20do%20Mar%20-%20foto.png";
 const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Captura%20de%20tela%202026-02-06%20235131.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/public-assets/Captura%20de%20tela%202026-02-06%20235131.png";
 
 const AREAS = [
   "Eventos",
