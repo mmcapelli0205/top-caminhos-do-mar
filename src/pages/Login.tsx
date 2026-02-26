@@ -164,7 +164,7 @@ const Login = () => {
           <img
             src={LOGO_URL}
             alt=""
-            className="w-[220px] max-w-[280px] sm:w-[280px] sm:max-w-[350px] object-contain"
+            className="w-[440px] max-w-[560px] sm:w-[560px] sm:max-w-[700px] object-contain"
           />
         </div>
 
