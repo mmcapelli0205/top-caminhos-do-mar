@@ -162,17 +162,9 @@ const Login = () => {
       <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/70 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
         <div className="mb-4 flex justify-center">
           <img
-            src={LOGO_URL}
-            alt=""
-            className="w-[200px] max-w-[250px] sm:w-[280px] sm:max-w-[320px] object-contain"
-          />
-        </div>
-
-        <div className="mb-2 flex justify-center">
-          <img
             src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
             alt=""
-            className="h-[56px] sm:h-[68px] object-contain"
+            className="h-[90px] sm:h-[110px] object-contain"
           />
         </div>
 
