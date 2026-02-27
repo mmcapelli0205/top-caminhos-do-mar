@@ -160,11 +160,16 @@ const Login = () => {
       <div className="absolute inset-0 bg-black/60" />
 
       <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/70 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
-        <div className="mb-6 flex justify-center">
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <img
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
+            alt="Caminhos do Mar"
+            className="h-[120px] sm:h-[140px] object-contain"
+          />
           <img
             src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo.png"
             alt="TOPSYS"
-            className="h-[60px] sm:h-[72px] object-contain"
+            className="h-[40px] sm:h-[48px] object-contain"
           />
         </div>
 
