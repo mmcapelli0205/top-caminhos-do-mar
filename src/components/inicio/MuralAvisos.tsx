@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Megaphone } from "lucide-react";
@@ -37,17 +36,18 @@ export default function MuralAvisos() {
   };
 
   return (
-    <Card className="bg-gradient-to-br from-yellow-900/30 to-amber-900/20 border-yellow-600/30">
-      <CardHeader className="flex flex-row items-center gap-2 pb-3">
-        <Megaphone className="h-5 w-5 text-yellow-400" />
-        <CardTitle className="text-sm font-medium text-yellow-400">Últimos Avisos</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Megaphone className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-medium text-foreground">Últimos Avisos</h3>
+      </div>
+
+      <div className="space-y-2">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)
         ) : !avisos?.length ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhum aviso recente. As equipes podem postar avisos no Portal de Áreas.
+          <p className="text-sm text-muted-foreground text-center py-6">
+            Nenhum aviso recente
           </p>
         ) : (
           avisos.map((aviso) => {
@@ -56,11 +56,11 @@ export default function MuralAvisos() {
             return (
               <div
                 key={aviso.id}
-                className="rounded-lg border p-3 space-y-1"
-                style={{ borderLeftWidth: 4, borderLeftColor: cor }}
+                className="rounded-md border border-border p-3 space-y-1"
+                style={{ borderLeftWidth: 3, borderLeftColor: cor }}
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="text-sm font-semibold text-foreground flex-1 min-w-0 truncate">
+                  <h4 className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">
                     {aviso.titulo}
                   </h4>
                   {aviso.areas?.nome && (
@@ -74,7 +74,7 @@ export default function MuralAvisos() {
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">{aviso.conteudo}</p>
                 {aviso.created_at && (
-                  <p className="text-[10px] text-muted-foreground/60">
+                  <p className="text-[10px] text-muted-foreground/50">
                     {formatDistanceToNow(new Date(aviso.created_at), {
                       addSuffix: true,
                       locale: ptBR,
@@ -85,7 +85,7 @@ export default function MuralAvisos() {
             );
           })
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
