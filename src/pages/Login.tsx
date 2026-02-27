@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, Loader2, ChevronsRight } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const BG_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Estrada%20Velha%20de%20Santos.jpg";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20-%20foto.png";
 const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png";
+  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20sem%20fundo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -157,29 +157,29 @@ const Login = () => {
         alt="Caminhos do Mar"
         className="absolute inset-0 h-full w-full object-cover"
       />
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/60" />
 
       <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/70 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
-        <div className="mb-2 flex justify-center">
+        <div className="mb-4 flex justify-center">
           <img
-            src={LOGO_URL}
-            alt="TOP 1575 - Caminhos do Mar"
-            className="h-[260px] sm:h-[300px] object-contain drop-shadow-2xl"
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
+            alt=""
+            className="h-[180px] sm:h-[220px] object-contain"
           />
         </div>
 
-        <h1 className="text-center text-2xl font-extrabold tracking-wide text-white sm:text-3xl">
+        <h1 className="mb-1 text-center text-2xl font-bold text-white sm:text-3xl">
           TOPSYS
         </h1>
-        <p className="mb-6 text-center text-sm font-light tracking-[0.3em] text-gray-300 uppercase">
-          Gestão
+        <p className="mb-6 text-center text-sm text-gray-300">
+          Track Caminhos do Mar
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <div
-              className={`flex items-center gap-2 rounded-xl border bg-white/5 px-3 ${
-                errors.email ? "border-red-500" : "border-white/20"
+              className={`flex items-center gap-2 rounded-lg border bg-white/5 px-3 ${
+                errors.email ? "border-red-500" : "border-white/10"
               }`}
             >
               <Mail className="h-5 w-5 shrink-0 text-gray-400" />
@@ -196,8 +196,8 @@ const Login = () => {
 
           <div>
             <div
-              className={`flex items-center gap-2 rounded-xl border bg-white/5 px-3 ${
-                errors.password ? "border-red-500" : "border-white/20"
+              className={`flex items-center gap-2 rounded-lg border bg-white/5 px-3 ${
+                errors.password ? "border-red-500" : "border-white/10"
               }`}
             >
               <Lock className="h-5 w-5 shrink-0 text-gray-400" />
@@ -223,16 +223,9 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#E8731A] font-bold text-white tracking-wider transition-all hover:bg-[#c96115] hover:shadow-lg hover:shadow-orange-500/25 disabled:opacity-70"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#E8731A] font-semibold text-white transition-colors hover:bg-[#c96115] disabled:opacity-70"
           >
-            {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <>
-                ENTRAR
-                <ChevronsRight className="h-5 w-5" />
-              </>
-            )}
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "ENTRAR"}
           </button>
         </form>
 
