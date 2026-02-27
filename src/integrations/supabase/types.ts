@@ -891,6 +891,27 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_financeiras: {
+        Row: {
+          chave: string
+          id: string
+          updated_at: string | null
+          valor: number | null
+        }
+        Insert: {
+          chave: string
+          id?: string
+          updated_at?: string | null
+          valor?: number | null
+        }
+        Update: {
+          chave?: string
+          id?: string
+          updated_at?: string | null
+          valor?: number | null
+        }
+        Relationships: []
+      }
       cronograma_atividades: {
         Row: {
           cenario_recursos: string | null
@@ -2150,6 +2171,7 @@ export type Database = {
           motivo_inscricao: string | null
           nome: string
           numero_legendario: string | null
+          observacoes: string | null
           peso: number | null
           peso_checkin: number | null
           profissao: string | null
@@ -2195,6 +2217,7 @@ export type Database = {
           motivo_inscricao?: string | null
           nome: string
           numero_legendario?: string | null
+          observacoes?: string | null
           peso?: number | null
           peso_checkin?: number | null
           profissao?: string | null
@@ -2240,6 +2263,7 @@ export type Database = {
           motivo_inscricao?: string | null
           nome?: string
           numero_legendario?: string | null
+          observacoes?: string | null
           peso?: number | null
           peso_checkin?: number | null
           profissao?: string | null
@@ -3070,6 +3094,30 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      webhook_log: {
+        Row: {
+          created_at: string | null
+          id: string
+          payload: Json
+          result: Json | null
+          source: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          payload: Json
+          result?: Json | null
+          source?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          result?: Json | null
+          source?: string
         }
         Relationships: []
       }
