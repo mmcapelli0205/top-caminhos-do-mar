@@ -64,8 +64,12 @@ const Dashboard = () => {
           className="h-20 w-20 md:h-24 md:w-24 object-contain"
         />
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">TOPSYS</h1>
-          <p className="text-xs font-semibold text-orange-500/90">TOP 1575 — Caminhos do Mar</p>
+          <img
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo.png"
+            alt="TOPSYS"
+            className="h-8 md:h-10 object-contain mx-auto"
+          />
+          <p className="text-xs font-semibold text-orange-500/90 mt-1">TOP 1575 — Caminhos do Mar</p>
         </div>
       </div>
 

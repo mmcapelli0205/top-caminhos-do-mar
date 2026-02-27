@@ -108,14 +108,12 @@ export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
         <div className="flex items-center gap-2.5 px-4 py-3.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="relative shrink-0">
             <img
-              src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
-              alt="TOP"
-              className="h-9 w-9 object-contain"
+              src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo.png"
+              alt="TOPSYS"
+              className="h-8 object-contain group-data-[collapsible=icon]:h-7"
             />
-            <div className="absolute inset-0 rounded-lg bg-orange-500/10 blur-md -z-10" />
           </div>
           <div className="group-data-[collapsible=icon]:hidden overflow-hidden">
-            <p className="text-[14px] font-bold text-white/90 leading-tight tracking-tight">TOPSYS</p>
             <p className="text-[10px] text-orange-400/70 font-medium leading-tight">Caminhos do Mar</p>
           </div>
         </div>

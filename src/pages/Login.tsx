@@ -160,17 +160,14 @@ const Login = () => {
       <div className="absolute inset-0 bg-black/60" />
 
       <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/70 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
-        <div className="mb-4 flex justify-center">
+        <div className="mb-6 flex justify-center">
           <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
-            alt=""
-            className="h-[180px] sm:h-[220px] object-contain"
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo.png"
+            alt="TOPSYS"
+            className="h-[60px] sm:h-[72px] object-contain"
           />
         </div>
 
-        <h1 className="mb-1 text-center text-2xl font-bold text-white sm:text-3xl">
-          TOPSYS
-        </h1>
         <p className="mb-6 text-center text-sm text-gray-300">
           Track Caminhos do Mar
         </p>
