@@ -5,30 +5,6 @@ const END = new Date("2026-04-05T23:59:59-03:00").getTime();
 
 type Phase = "counting" | "started" | "finished";
 
-function TimeUnit({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-xl bg-[#1e1e1e] border border-[#2a2a2a] shadow-sm">
-        <span className="text-2xl sm:text-3xl font-semibold text-foreground tabular-nums tracking-tight">
-          {value}
-        </span>
-      </div>
-      <span className="mt-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function Separator() {
-  return (
-    <div className="flex flex-col items-center justify-center gap-1.5 pb-5">
-      <div className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-      <div className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-    </div>
-  );
-}
-
 export default function CountdownSection() {
   const [diff, setDiff] = useState(TARGET - Date.now());
   const [phase, setPhase] = useState<Phase>("counting");
@@ -48,20 +24,18 @@ export default function CountdownSection() {
 
   if (phase === "finished") {
     return (
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
-        <p className="text-xl font-semibold text-emerald-400">TOP 1575 — Finalizado ✅</p>
+      <div className="flex flex-col items-center justify-center py-6">
+        <p className="text-2xl font-bold text-green-400">TOP 1575 — Finalizado ✅</p>
       </div>
     );
   }
 
   if (phase === "started") {
     return (
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 mb-3">
-          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-sm font-medium text-red-400">AO VIVO</span>
-        </div>
-        <p className="text-2xl font-bold text-foreground">O TOP já começou! 🔥</p>
+      <div className="flex flex-col items-center justify-center py-6">
+        <p className="text-3xl font-bold text-orange-400 animate-pulse">
+          🔥 O TOP JÁ COMEÇOU!
+        </p>
       </div>
     );
   }
@@ -76,31 +50,36 @@ export default function CountdownSection() {
 
   const pad = (n: number) => String(n).padStart(2, "0");
 
+  const blocks = [
+    { value: pad(days), label: "DIAS" },
+    { value: pad(hours), label: "HORAS" },
+    { value: pad(minutes), label: "MIN" },
+    { value: pad(seconds), label: "SEG" },
+  ];
+
   return (
-    <div className="rounded-lg border border-border bg-card p-5 sm:p-6 flex flex-col items-center justify-center">
-      <p className="text-xs font-medium text-muted-foreground mb-4 tracking-wide">
-        Faltam {weeks > 0 && `${weeks} semana${weeks !== 1 ? "s" : ""} e `}{remainingDays} dia{remainingDays !== 1 ? "s" : ""}
+    <div className="flex flex-col items-center justify-center gap-3">
+      <p className="text-xs font-semibold tracking-widest uppercase text-orange-400/80">
+        Faltam {weeks} semana{weeks !== 1 ? "s" : ""} e {remainingDays} dia{remainingDays !== 1 ? "s" : ""}
       </p>
-
-      <div className="flex items-start gap-2 sm:gap-3">
-        <TimeUnit value={pad(days)} label="dias" />
-        <Separator />
-        <TimeUnit value={pad(hours)} label="horas" />
-        <Separator />
-        <TimeUnit value={pad(minutes)} label="min" />
-        <Separator />
-        <TimeUnit value={pad(seconds)} label="seg" />
-      </div>
-
-      <div className="mt-4 w-full max-w-[260px]">
-        <div className="h-1 w-full rounded-full bg-[#1e1e1e] overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary/60 transition-all duration-1000"
-            style={{
-              width: `${Math.min(100, Math.max(2, 100 - (days / 90) * 100))}%`,
-            }}
-          />
-        </div>
+      <div className="flex items-center gap-2">
+        {blocks.map((b, i) => (
+          <div key={b.label} className="flex items-center gap-2">
+            <div className="flex flex-col items-center">
+              <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg border border-orange-500/30 bg-orange-500/5 flex items-center justify-center">
+                <span className="text-2xl md:text-3xl font-mono font-bold text-orange-300 tabular-nums">
+                  {b.value}
+                </span>
+              </div>
+              <span className="text-[9px] md:text-[10px] text-orange-400/60 uppercase tracking-wider mt-1 font-medium">
+                {b.label}
+              </span>
+            </div>
+            {i < blocks.length - 1 && (
+              <span className="text-orange-500/40 text-lg font-bold mb-4">:</span>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

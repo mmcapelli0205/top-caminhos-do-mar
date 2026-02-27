@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
 import { CORES_EQUIPES, getTextColor } from "@/lib/coresEquipes";
 
@@ -51,33 +50,42 @@ export default function QuickActions({ userEmail }: Props) {
   const initials = area.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
-    <Card
-      className="cursor-pointer hover:scale-[1.02] transition-all border-border h-full"
+    <div
+      className="cursor-pointer group flex flex-col items-center justify-center text-center gap-2 py-4"
       onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
     >
-      <CardContent className="flex flex-col items-center text-center p-6">
+      {/* Logo imponente */}
+      <div className="relative">
         {logoFile && !imgError ? (
           <img
             src={`${ASSET_BASE}${logoFile}`}
             alt={area}
-            className="h-16 w-16 object-contain mx-auto"
+            className="h-24 w-24 md:h-28 md:w-28 object-contain drop-shadow-lg group-hover:scale-105 transition-transform duration-300"
             onError={() => setImgError(true)}
           />
         ) : (
           <div
-            className="h-16 w-16 rounded-full flex items-center justify-center"
+            className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center shadow-lg"
             style={{ backgroundColor: bgColor }}
           >
-            <span className="text-xl font-bold" style={{ color: textColor }}>
+            <span className="text-3xl font-bold" style={{ color: textColor }}>
               {initials}
             </span>
           </div>
         )}
-        <p className="font-bold text-xl text-foreground mt-2">{area}</p>
-        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-          Acessar minha área <ChevronRight className="h-4 w-4" />
-        </p>
-      </CardContent>
-    </Card>
+        {/* Glow sutil atrás do logo */}
+        <div
+          className="absolute inset-0 rounded-full blur-2xl opacity-20 -z-10"
+          style={{ backgroundColor: bgColor }}
+        />
+      </div>
+
+      <p className="font-bold text-lg text-foreground group-hover:text-orange-400 transition-colors">
+        {area}
+      </p>
+      <p className="text-xs text-muted-foreground flex items-center gap-0.5 group-hover:text-orange-400/70 transition-colors">
+        Acessar minha área <ChevronRight className="h-3 w-3" />
+      </p>
+    </div>
   );
 }

@@ -71,30 +71,36 @@ export default function CalendarioMensal() {
   if (isMobile) {
     const next7 = Array.from({ length: 7 }, (_, i) => addDays(today, i));
     return (
-      <Card id="calendario-section">
+      <Card id="calendario-section" className="border-border/50">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Próximos 7 dias</CardTitle>
+            <CalendarDays className="h-4 w-4 text-orange-400" />
+            <CardTitle className="text-sm font-medium text-foreground">Próximos 7 dias</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-1">
           {next7.map((day) => {
             const dayEvents = eventsForDay(day);
+            const isToday2 = isSameDay(day, today);
             return (
-              <div key={day.toISOString()} className="flex gap-3 items-start py-1 border-b border-border/40 last:border-0">
-                <div className={`text-center min-w-[40px] ${isSameDay(day, today) ? "text-primary font-bold" : "text-muted-foreground"}`}>
-                  <div className="text-xs uppercase">{format(day, "EEE", { locale: ptBR })}</div>
-                  <div className="text-lg">{format(day, "dd")}</div>
+              <div
+                key={day.toISOString()}
+                className={`flex gap-3 items-start py-2 px-2 rounded-lg border-b border-border/20 last:border-0 ${
+                  isToday2 ? "bg-orange-500/8" : ""
+                }`}
+              >
+                <div className={`text-center min-w-[40px] ${isToday2 ? "text-orange-400 font-bold" : "text-muted-foreground"}`}>
+                  <div className="text-[10px] uppercase tracking-wide">{format(day, "EEE", { locale: ptBR })}</div>
+                  <div className="text-lg font-semibold">{format(day, "dd")}</div>
                 </div>
                 <div className="flex-1 space-y-1">
                   {dayEvents.length === 0 ? (
-                    <p className="text-xs text-muted-foreground/50">—</p>
+                    <p className="text-xs text-muted-foreground/30 pt-1">—</p>
                   ) : (
                     dayEvents.map((ev, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: ev.cor }} />
-                        <span className="text-xs text-foreground truncate">{ev.titulo}</span>
+                        <span className="text-xs text-foreground/80 truncate">{ev.titulo}</span>
                       </div>
                     ))
                   )}
@@ -107,25 +113,35 @@ export default function CalendarioMensal() {
     );
   }
 
-  // Desktop: full month grid
+  // Desktop: full month grid — dark theme
   const calStart = startOfWeek(monthStart);
   const calEnd = endOfWeek(monthEnd);
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
 
   return (
-    <Card id="calendario-section" className="bg-amber-50 border-amber-200">
+    <Card id="calendario-section" className="border-border/50">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5 text-amber-700" />
-          <CardTitle className="text-sm font-bold text-gray-900">
+          <CalendarDays className="h-4 w-4 text-orange-400" />
+          <CardTitle className="text-sm font-medium text-foreground">
             {format(currentMonth, "MMMM yyyy", { locale: ptBR }).replace(/^\w/, (c) => c.toUpperCase())}
           </CardTitle>
         </div>
-        <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-700 hover:text-gray-900" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+        <div className="flex gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-white/5"
+            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-700 hover:text-gray-900" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-white/5"
+            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -133,28 +149,32 @@ export default function CalendarioMensal() {
       <CardContent>
         <div className="grid grid-cols-7 gap-px">
           {WEEKDAYS.map((d) => (
-            <div key={d} className="text-center text-[10px] font-medium text-gray-600 py-1">
+            <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider py-1.5">
               {d}
             </div>
           ))}
           {days.map((day) => {
             const inMonth = isSameMonth(day, currentMonth);
-            const isToday = isSameDay(day, today);
+            const isToday2 = isSameDay(day, today);
             const dayEvents = eventsForDay(day);
 
             const cell = (
               <div
-                className={`min-h-[52px] p-1 rounded-md text-center transition-colors ${
-                  !inMonth ? "opacity-30" : ""
-                } ${isToday ? "ring-1 ring-orange-500 bg-orange-500 text-white" : "hover:bg-amber-100"}`}
+                className={`min-h-[48px] p-1 rounded-md text-center transition-all duration-150 ${
+                  !inMonth ? "opacity-20" : ""
+                } ${
+                  isToday2
+                    ? "bg-orange-500 text-white ring-1 ring-orange-400/50"
+                    : "hover:bg-white/[0.04]"
+                }`}
               >
-                <span className={`text-xs ${isToday ? "font-bold text-white" : "text-gray-700"}`}>
+                <span className={`text-xs ${isToday2 ? "font-bold text-white" : "text-muted-foreground"}`}>
                   {format(day, "d")}
                 </span>
                 {dayEvents.length > 0 && (
                   <div className="flex justify-center gap-0.5 mt-1 flex-wrap">
                     {dayEvents.slice(0, 3).map((ev, i) => (
-                      <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ev.cor }} />
+                      <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isToday2 ? "#fff" : ev.cor }} />
                     ))}
                   </div>
                 )}
@@ -168,7 +188,7 @@ export default function CalendarioMensal() {
                 <PopoverTrigger asChild>
                   <button className="w-full text-left">{cell}</button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-3 space-y-2" side="top">
+                <PopoverContent className="w-64 p-3 space-y-2 bg-card border-border/50" side="top">
                   <p className="text-xs font-semibold text-foreground">
                     {format(day, "dd 'de' MMMM", { locale: ptBR })}
                   </p>
