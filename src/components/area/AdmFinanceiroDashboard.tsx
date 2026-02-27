@@ -9,6 +9,7 @@ import { DollarSign, TrendingUp, TrendingDown, Clock, AlertTriangle, ArrowRight 
 import { Link } from "react-router-dom";
 import { differenceInDays } from "date-fns";
 
+const KEY_RECEITA_REAL = "receita_real_valor";
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const CAT_COLORS = [
@@ -60,13 +61,27 @@ export default function AdmFinanceiroDashboard() {
     },
   });
 
+  const { data: receitaRealConfig } = useQuery({
+    queryKey: ["adm-fin-receita-real"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("configuracoes_financeiras")
+        .select("valor")
+        .eq("chave", KEY_RECEITA_REAL)
+        .maybeSingle();
+      return data?.valor ?? 0;
+    },
+  });
+
   const receitaParticipantes = participantes.reduce((s, p) => s + (p.valor_pago ?? 0), 0);
   const receitaServidores = servidores.reduce((s, p) => s + (p.valor_pago ?? 0), 0);
   const receitaDoacoes = doacoes.reduce((s, d) => s + (d.valor ?? 0), 0);
   const receita = receitaParticipantes + receitaServidores + receitaDoacoes;
 
   const totalDespesas = despesas.reduce((s, d) => s + (d.valor ?? 0), 0);
-  const saldo = receita - totalDespesas;
+  const receitaReal = (receitaRealConfig ?? 0) as number;
+  const receitaBase = receitaReal > 0 ? receitaReal : receita;
+  const saldo = receitaBase - totalDespesas;
 
   const totalPedidosPendentes = pedidosPendentes.reduce((s, p) => s + (p.valor_total_estimado ?? 0), 0);
   const budgetComprometido = saldo - totalPedidosPendentes;

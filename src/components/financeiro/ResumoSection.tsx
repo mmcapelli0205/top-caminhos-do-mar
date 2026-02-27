@@ -1,14 +1,15 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { FileDown, BarChart3 } from "lucide-react";
+import { FileDown, BarChart3, Check } from "lucide-react";
 import jsPDF from "jspdf";
 import RelatorioConsolidado from "./RelatorioConsolidado";
+import { toast } from "sonner";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -30,21 +31,92 @@ const BADGE_COLORS = [
   "bg-green-100 text-green-800", "bg-fuchsia-100 text-fuchsia-800", "bg-stone-100 text-stone-800",
 ];
 
-const ALL_CATEGORIAS = [
-  "Administrativas", "Juridicas", "Papelaria", "Comunicação", "Equipamentos",
-  "Combustível", "Montanha", "Locação da Base", "Banheiros Químicos",
-  "Fogos/Decoração", "Fardas", "Gorras", "Patchs", "Pins",
-  "Taxa Global", "Taxa Ticket and Go", "Diversos",
-  "MRE", "Ceia do Rei", "Bebidas",
-];
-
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+// Config keys
+const KEY_TAXA_TICKET = "taxa_ticket_and_go_valor";
+const KEY_TAXA_GLOBAL = "taxa_global_percentual";
+const KEY_TAXA_TOP = "taxa_top_valor";
+const KEY_RECEITA_REAL = "receita_real_valor";
+
 const ResumoSection = () => {
-  const [ticketPercent, setTicketPercent] = useState(10);
-  const [globalPercent, setGlobalPercent] = useState(0);
+  const queryClient = useQueryClient();
   const [showRelatorio, setShowRelatorio] = useState(false);
+  const [savedKeys, setSavedKeys] = useState<Record<string, boolean>>({});
+
+  // Load persisted configs
+  const { data: configs } = useQuery({
+    queryKey: ["configuracoes-financeiras"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("configuracoes_financeiras")
+        .select("chave, valor");
+      return data ?? [];
+    },
+  });
+
+  const getConfigVal = useCallback((key: string, fallback: number) => {
+    const found = configs?.find((c) => c.chave === key);
+    return found?.valor ?? fallback;
+  }, [configs]);
+
+  const [taxaTicketVal, setTaxaTicketVal] = useState<number>(0);
+  const [globalPercent, setGlobalPercent] = useState<number>(0);
+  const [taxaTopVal, setTaxaTopVal] = useState<number>(4125);
+  const [receitaRealVal, setReceitaRealVal] = useState<number>(0);
+
+  // Sync state from DB
+  useEffect(() => {
+    if (configs) {
+      setTaxaTicketVal(getConfigVal(KEY_TAXA_TICKET, 0));
+      setGlobalPercent(getConfigVal(KEY_TAXA_GLOBAL, 0));
+      setTaxaTopVal(getConfigVal(KEY_TAXA_TOP, 4125));
+      setReceitaRealVal(getConfigVal(KEY_RECEITA_REAL, 0));
+    }
+  }, [configs, getConfigVal]);
+
+  // Upsert mutation
+  const upsertConfig = useMutation({
+    mutationFn: async ({ chave, valor }: { chave: string; valor: number }) => {
+      // Check if exists
+      const { data: existing } = await supabase
+        .from("configuracoes_financeiras")
+        .select("id")
+        .eq("chave", chave)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("configuracoes_financeiras")
+          .update({ valor, updated_at: new Date().toISOString() })
+          .eq("chave", chave);
+      } else {
+        await supabase
+          .from("configuracoes_financeiras")
+          .insert({ chave, valor });
+      }
+    },
+    onSuccess: (_, { chave }) => {
+      queryClient.invalidateQueries({ queryKey: ["configuracoes-financeiras"] });
+      setSavedKeys((prev) => ({ ...prev, [chave]: true }));
+      setTimeout(() => setSavedKeys((prev) => ({ ...prev, [chave]: false })), 2000);
+    },
+    onError: () => {
+      toast.error("Erro ao salvar configuração");
+    },
+  });
+
+  const saveField = (chave: string, valor: number) => {
+    upsertConfig.mutate({ chave, valor });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, chave: string, valor: number) => {
+    if (e.key === "Enter") {
+      saveField(chave, valor);
+      (e.target as HTMLInputElement).blur();
+    }
+  };
 
   const { data: participantes } = useQuery({
     queryKey: ["fin-participantes"],
@@ -87,16 +159,19 @@ const ResumoSection = () => {
   const receitaDoacoes = (doacoes ?? []).reduce((s, d) => s + (d.valor ?? 0), 0);
   const receitaBruta = receitaParticipantes + receitaServidores + receitaDoacoes;
 
-  // Tax calculations — differentiated
-  const taxaTicketPart = receitaParticipantes * (ticketPercent / 100);
-  const taxaTicketServ = receitaServidores * (ticketPercent / 100);
-  const taxaGlobalPart = receitaParticipantes * (globalPercent / 100);
-  const totalTaxas = taxaTicketPart + taxaTicketServ + taxaGlobalPart;
+  // Tax calculations
+  const taxaGlobalCalc = receitaParticipantes * (globalPercent / 100);
+  const totalTaxas = taxaTicketVal + taxaGlobalCalc + taxaTopVal;
   const receitaLiquida = receitaBruta - totalTaxas;
 
+  // Saldo: use Receita Real if set, otherwise Receita Líquida
   const despesaTotal = (despesas ?? []).reduce((s, d) => s + (d.valor ?? 0), 0);
-  const saldo = receitaLiquida - despesaTotal;
-  const despesaPercent = receitaLiquida > 0 ? (despesaTotal / receitaLiquida * 100).toFixed(1) : "0.0";
+  const receitaBase = receitaRealVal > 0 ? receitaRealVal : receitaLiquida;
+  const saldo = receitaBase - despesaTotal;
+  const despesaPercent = receitaBase > 0 ? (despesaTotal / receitaBase * 100).toFixed(1) : "0.0";
+
+  // Diferença
+  const diferenca = receitaLiquida - receitaRealVal;
 
   // category map
   const catMap = new Map<string, number>();
@@ -107,7 +182,7 @@ const ResumoSection = () => {
   const pieData = Array.from(catMap.entries()).map(([name, value]) => ({ name, value }));
 
   const barData = [
-    { name: "Receita Líq.", valor: receitaLiquida },
+    { name: "Receita Base", valor: receitaBase },
     { name: "Despesas", valor: despesaTotal },
   ];
 
@@ -132,10 +207,15 @@ const ResumoSection = () => {
     doc.text(`Inscrições Servidores: ${fmt(receitaServidores)}`, 18, y); y += 6;
     doc.text(`Doações: ${fmt(receitaDoacoes)}`, 18, y); y += 6;
     doc.text(`Total Bruto: ${fmt(receitaBruta)}`, 18, y); y += 6;
-    doc.text(`Taxa Ticket and Go (${ticketPercent}%) sobre Part+Serv: -${fmt(taxaTicketPart + taxaTicketServ)}`, 18, y); y += 6;
-    doc.text(`Taxa Global (${globalPercent}%) sobre Part: -${fmt(taxaGlobalPart)}`, 18, y); y += 6;
+    doc.text(`Taxa Ticket and Go: -${fmt(taxaTicketVal)}`, 18, y); y += 6;
+    doc.text(`Taxa Global (${globalPercent}%) sobre Part: -${fmt(taxaGlobalCalc)}`, 18, y); y += 6;
+    doc.text(`Taxa do TOP: -${fmt(taxaTopVal)}`, 18, y); y += 6;
     doc.setFontSize(11);
-    doc.text(`Receita Líquida: ${fmt(receitaLiquida)}`, 18, y); y += 12;
+    doc.text(`Receita Líquida: ${fmt(receitaLiquida)}`, 18, y); y += 6;
+    if (receitaRealVal > 0) {
+      doc.text(`Receita Real: ${fmt(receitaRealVal)}`, 18, y); y += 6;
+    }
+    y += 6;
 
     doc.setFontSize(12);
     doc.text("DESPESAS POR CATEGORIA", 14, y); y += 8;
@@ -153,6 +233,11 @@ const ResumoSection = () => {
     doc.text(`RESULTADO FINAL: ${prefix}${fmt(saldo)}`, 14, y);
 
     doc.save("balanco-financeiro-top1575.pdf");
+  };
+
+  const SavedIndicator = ({ configKey }: { configKey: string }) => {
+    if (!savedKeys[configKey]) return null;
+    return <span className="text-green-500 text-xs flex items-center gap-0.5 ml-1 animate-in fade-in"><Check className="h-3 w-3" /> Salvo</span>;
   };
 
   if (showRelatorio) {
@@ -186,38 +271,96 @@ const ResumoSection = () => {
             <p className="text-xs text-muted-foreground">
               Part: {fmt(receitaParticipantes)} | Serv: {fmt(receitaServidores)} | Doações: {fmt(receitaDoacoes)}
             </p>
-            {/* Ticket and Go tax */}
+
+            {/* Taxa Ticket and Go — R$ fixo */}
             <div className="flex items-center gap-2 text-sm">
-              <span>Taxa Ticket and Go:</span>
+              <span className="whitespace-nowrap">Taxa Ticket and Go: R$</span>
               <Input
                 type="number"
                 min={0}
-                max={100}
-                value={ticketPercent}
-                onChange={(e) => setTicketPercent(parseFloat(e.target.value) || 0)}
-                className="w-16 h-7 text-center text-sm px-1"
+                step={0.01}
+                value={taxaTicketVal}
+                onChange={(e) => setTaxaTicketVal(parseFloat(e.target.value) || 0)}
+                onBlur={() => saveField(KEY_TAXA_TICKET, taxaTicketVal)}
+                onKeyDown={(e) => handleKeyDown(e, KEY_TAXA_TICKET, taxaTicketVal)}
+                className="w-28 h-7 text-center text-sm px-1"
               />
-              <span>%</span>
-              <span className="text-destructive ml-auto">-{fmt(taxaTicketPart + taxaTicketServ)}</span>
+              <span className="text-destructive ml-auto whitespace-nowrap">-{fmt(taxaTicketVal)}</span>
+              <SavedIndicator configKey={KEY_TAXA_TICKET} />
             </div>
-            {/* Global tax */}
+
+            {/* Taxa Global — % sobre participantes */}
             <div className="flex items-center gap-2 text-sm">
-              <span>Taxa Global:</span>
+              <span className="whitespace-nowrap">Taxa Global:</span>
               <Input
                 type="number"
                 min={0}
                 max={100}
                 value={globalPercent}
                 onChange={(e) => setGlobalPercent(parseFloat(e.target.value) || 0)}
+                onBlur={() => saveField(KEY_TAXA_GLOBAL, globalPercent)}
+                onKeyDown={(e) => handleKeyDown(e, KEY_TAXA_GLOBAL, globalPercent)}
                 className="w-16 h-7 text-center text-sm px-1"
               />
               <span>%</span>
-              <span className="text-destructive ml-auto">-{fmt(taxaGlobalPart)}</span>
+              <span className="text-destructive ml-auto whitespace-nowrap">-{fmt(taxaGlobalCalc)}</span>
+              <SavedIndicator configKey={KEY_TAXA_GLOBAL} />
             </div>
-            <p className="text-xs text-muted-foreground italic">Global incide apenas sobre participantes</p>
+            <p className="text-xs text-muted-foreground italic">Global incide apenas sobre participantes (senderistas)</p>
+
+            {/* Taxa do TOP — R$ fixo */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="whitespace-nowrap">Taxa do TOP: R$</span>
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={taxaTopVal}
+                onChange={(e) => setTaxaTopVal(parseFloat(e.target.value) || 0)}
+                onBlur={() => saveField(KEY_TAXA_TOP, taxaTopVal)}
+                onKeyDown={(e) => handleKeyDown(e, KEY_TAXA_TOP, taxaTopVal)}
+                className="w-28 h-7 text-center text-sm px-1"
+              />
+              <span className="text-destructive ml-auto whitespace-nowrap">-{fmt(taxaTopVal)}</span>
+              <SavedIndicator configKey={KEY_TAXA_TOP} />
+            </div>
+
+            <hr className="border-border my-1" />
+
+            {/* Receita Líquida */}
             <p className="text-lg font-bold text-green-600 pt-1">
               Líquida: {fmt(receitaLiquida)}
             </p>
+
+            {/* Receita Real */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="whitespace-nowrap font-medium text-green-600">Receita Real: R$</span>
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={receitaRealVal}
+                onChange={(e) => setReceitaRealVal(parseFloat(e.target.value) || 0)}
+                onBlur={() => saveField(KEY_RECEITA_REAL, receitaRealVal)}
+                onKeyDown={(e) => handleKeyDown(e, KEY_RECEITA_REAL, receitaRealVal)}
+                className="w-32 h-7 text-center text-sm px-1"
+              />
+              <SavedIndicator configKey={KEY_RECEITA_REAL} />
+            </div>
+
+            {/* Diferença */}
+            {receitaRealVal > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="whitespace-nowrap font-medium">Diferença:</span>
+                {diferenca === 0 ? (
+                  <span className="text-green-600 font-medium">{fmt(0)} ✓</span>
+                ) : diferenca > 0 ? (
+                  <span className="text-amber-500 font-medium">{fmt(diferenca)} a verificar</span>
+                ) : (
+                  <span className="text-green-600 font-medium">Recebeu {fmt(Math.abs(diferenca))} a mais que o calculado</span>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -241,7 +384,7 @@ const ResumoSection = () => {
               {fmt(saldo)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Despesas representam {despesaPercent}% da Receita
+              Base: {receitaRealVal > 0 ? "Receita Real" : "Receita Líquida"} — Despesas representam {despesaPercent}%
             </p>
           </CardContent>
         </Card>
