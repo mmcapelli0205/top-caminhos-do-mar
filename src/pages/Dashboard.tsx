@@ -1,5 +1,5 @@
 import {
-  Users, UsersRound, Bell, UserCheck,
+  Users, UsersRound, UserCheck, Radio,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import type { LucideIcon } from "lucide-react";
 
 import CountdownSection from "@/components/inicio/CountdownSection";
 import QuickActions from "@/components/inicio/QuickActions";
-import MuralAvisos from "@/components/inicio/MuralAvisos";
 import CalendarioMensal from "@/components/inicio/CalendarioMensal";
 import WeatherCard from "@/components/dashboard/WeatherCard";
 
@@ -51,6 +50,7 @@ function KpiCard({
 const Dashboard = () => {
   const d = useDashboardData();
   const { profile, role } = useAuth();
+  const navigate = useNavigate();
   const isServidor = isServidorComum(role ?? profile?.cargo ?? null);
 
   return (
@@ -64,7 +64,7 @@ const Dashboard = () => {
           className="h-20 w-20 md:h-24 md:w-24 object-contain"
         />
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">TOP Manager</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">TOPSYS</h1>
           <p className="text-xs font-semibold text-orange-500/90">TOP 1575 — Caminhos do Mar</p>
         </div>
       </div>
@@ -80,17 +80,40 @@ const Dashboard = () => {
         <WeatherCard />
       </div>
 
+      {/* ─ TOP Real Time – botão especial ─ */}
+      <button
+        onClick={() => navigate("/top-real-time")}
+        className="w-full group relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent hover:from-emerald-500/20 hover:via-emerald-500/10 transition-all duration-300 p-4"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-xl bg-emerald-500/15 flex items-center justify-center ring-1 ring-emerald-500/30 group-hover:ring-emerald-500/50 transition-all">
+              <Radio className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-emerald-400 tracking-wide">TOP REAL TIME</p>
+              <p className="text-[10px] text-emerald-400/50 font-medium">Monitoramento ao vivo do evento</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <svg className="h-4 w-4 text-emerald-400/60 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </div>
+        </div>
+      </button>
+
       {/* ─ KPIs ─ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <KpiCard title="Participantes" value={d.totalInscritos} icon={Users} color="#E8731A" isLoading={d.isLoading} />
         <KpiCard title="Servidores" value={d.totalServidores} icon={UserCheck} color="#22C55E" isLoading={d.isLoading} />
         <KpiCard title="Famílias" value={d.familiasFormadas} icon={UsersRound} color="#A855F7" isLoading={d.isLoading} />
-        <KpiCard title="Avisos" value={d.avisosRecentes} icon={Bell} color="#3B82F6" isLoading={d.isLoading} />
       </div>
 
-      {/* ─ Avisos + Calendário ─ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MuralAvisos />
+      {/* ─ Calendário ─ */}
+      <div className="grid grid-cols-1 gap-4">
         <CalendarioMensal />
       </div>
     </div>

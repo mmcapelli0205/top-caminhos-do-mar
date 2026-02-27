@@ -162,7 +162,7 @@ export default function PrimeiroAcesso() {
 
       if (profileError) throw profileError;
 
-      toast({ title: "Perfil completo! Bem-vindo ao TOP Manager!" });
+      toast({ title: "Perfil completo! Bem-vindo ao TOPSYS!" });
       navigate("/dashboard", { replace: true });
     } catch (e: any) {
       toast({ title: e.message || "Erro ao salvar perfil", variant: "destructive" });
@@ -194,7 +194,7 @@ export default function PrimeiroAcesso() {
         {etapa === 1 ? (
           <div className="rounded-xl border border-border bg-card p-6 shadow-lg space-y-6">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">👋 Bem-vindo ao TOP Manager!</h1>
+              <h1 className="text-2xl font-bold text-foreground">👋 Bem-vindo ao TOPSYS!</h1>
               <p className="mt-1 text-muted-foreground">Atualize seus dados de acesso</p>
             </div>
 

@@ -207,7 +207,7 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
         doc.setTextColor(156, 163, 175);
-        doc.text("TOP Manager — top-caminhos-do-mar.lovable.app", margin, pageH - 7);
+        doc.text("TOPSYS — top-caminhos-do-mar.lovable.app", margin, pageH - 7);
         doc.text(`Página ${pageNum}`, pageW - margin, pageH - 7, { align: "right" });
 
         // Linha do rodapé

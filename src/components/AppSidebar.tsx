@@ -115,7 +115,7 @@ export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
             <div className="absolute inset-0 rounded-lg bg-orange-500/10 blur-md -z-10" />
           </div>
           <div className="group-data-[collapsible=icon]:hidden overflow-hidden">
-            <p className="text-[14px] font-bold text-white/90 leading-tight tracking-tight">TOP Manager</p>
+            <p className="text-[14px] font-bold text-white/90 leading-tight tracking-tight">TOPSYS</p>
             <p className="text-[10px] text-orange-400/70 font-medium leading-tight">Caminhos do Mar</p>
           </div>
         </div>
