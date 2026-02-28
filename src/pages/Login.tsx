@@ -160,16 +160,11 @@ const Login = () => {
       <div className="absolute inset-0 bg-black/60" />
 
       <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/70 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
-        <div className="mb-4 flex flex-col items-center gap-3">
+        <div className="mb-4 flex flex-col items-center gap-2">
           <img
             src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
             alt="Caminhos do Mar"
             className="h-[140px] sm:h-[160px] object-contain"
-          />
-          <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo-light.svg"
-            alt="TOPSYS"
-            className="h-[36px] sm:h-[42px] object-contain brightness-0 invert"
           />
         </div>
 
@@ -240,9 +235,13 @@ const Login = () => {
           </button>
         </div>
 
-        <p className="mt-5 text-center text-xs text-gray-500">
-          Acesso restrito à equipe autorizada
-        </p>
+        <div className="mt-5 flex justify-center">
+          <img
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Custom%20Sans-Serif%20Logo%20for%20TOPSYS.svg"
+            alt="TOPSYS"
+            className="h-[28px] object-contain opacity-40"
+          />
+        </div>
       </div>
 
       {/* Keyword Dialog */}
