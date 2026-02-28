@@ -108,7 +108,7 @@ export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
         <div className="flex items-center gap-2.5 px-4 py-3.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="relative shrink-0">
             <img
-              src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo.svg"
+              src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo-light.svg"
               alt="TOPSYS"
               className="h-8 object-contain group-data-[collapsible=icon]:h-7 brightness-0 invert"
             />

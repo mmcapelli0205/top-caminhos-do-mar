@@ -167,7 +167,7 @@ const Login = () => {
             className="h-[140px] sm:h-[160px] object-contain"
           />
           <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo.svg"
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo-light.svg"
             alt="TOPSYS"
             className="h-[36px] sm:h-[42px] object-contain brightness-0 invert"
           />
