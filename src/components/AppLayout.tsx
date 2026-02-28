@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AguardandoAprovacao from "@/pages/AguardandoAprovacao";
 import { isServidorComum } from "@/lib/auth";
+import CommandSearch from "@/components/CommandSearch";
 
 const CARGO_LABELS: Record<string, string> = {
   diretoria: "Diretoria",
@@ -147,6 +148,7 @@ export default function AppLayout() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <CommandSearch cargo={cargo} areaServico={areaServico} podeAprovar={!!profile.pode_aprovar} />
             <div className="hidden items-center gap-2 sm:flex">
               <span className="text-sm text-foreground">{profile.nome}</span>
               <Badge variant="secondary" className="text-xs">
@@ -182,6 +184,7 @@ export default function AppLayout() {
               </span>
             </div>
             <div className="flex items-center gap-3">
+              <CommandSearch cargo={cargo} areaServico={areaServico} podeAprovar={!!profile.pode_aprovar} />
               <div className="hidden items-center gap-2 sm:flex">
                 <span className="text-sm text-foreground">{profile.nome}</span>
                 <Badge variant="secondary" className="text-xs">
