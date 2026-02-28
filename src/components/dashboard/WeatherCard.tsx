@@ -1,37 +1,67 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CloudRain, Wind } from "lucide-react";
+import { Wind } from "lucide-react";
+import {
+  SunIcon,
+  MoonIcon,
+  CloudIcon,
+  PartlyCloudyIcon,
+  RainIcon,
+  HeavyRainIcon,
+  SnowIcon,
+  ThunderIcon,
+  FogIcon,
+  DrizzleIcon,
+} from "@/components/ui/animated-weather-icons";
+import type { ComponentType } from "react";
 
 const API_URL =
-  "https://api.open-meteo.com/v1/forecast?latitude=-23.78&longitude=-46.01&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max&current=temperature_2m,weathercode,windspeed_10m&timezone=America/Sao_Paulo&forecast_days=7";
+  "https://api.open-meteo.com/v1/forecast?latitude=-23.78&longitude=-46.01&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max&current=temperature_2m,weathercode,windspeed_10m,is_day&timezone=America/Sao_Paulo&forecast_days=7";
 
-const WMO: Record<number, { emoji: string; desc: string }> = {
-  0: { emoji: "☀️", desc: "Céu Limpo" },
-  1: { emoji: "⛅", desc: "Parcialmente Nublado" },
-  2: { emoji: "⛅", desc: "Parcialmente Nublado" },
-  3: { emoji: "☁️", desc: "Nublado" },
-  45: { emoji: "🌫️", desc: "Névoa" },
-  48: { emoji: "🌫️", desc: "Névoa" },
-  51: { emoji: "🌦️", desc: "Garoa" },
-  53: { emoji: "🌦️", desc: "Garoa" },
-  55: { emoji: "🌦️", desc: "Garoa" },
-  61: { emoji: "🌧️", desc: "Chuva" },
-  63: { emoji: "🌧️", desc: "Chuva" },
-  65: { emoji: "🌧️", desc: "Chuva Forte" },
-  71: { emoji: "🌨️", desc: "Neve" },
-  73: { emoji: "🌨️", desc: "Neve" },
-  75: { emoji: "🌨️", desc: "Neve" },
-  80: { emoji: "🌧️", desc: "Pancadas" },
-  81: { emoji: "🌧️", desc: "Pancadas" },
-  82: { emoji: "🌧️", desc: "Pancadas Fortes" },
-  95: { emoji: "⛈️", desc: "Tempestade" },
-  96: { emoji: "⛈️", desc: "Tempestade" },
-  99: { emoji: "⛈️", desc: "Tempestade" },
+interface WeatherIconProps {
+  size?: number;
+  className?: string;
+}
+
+interface WeatherInfo {
+  Icon: ComponentType<WeatherIconProps>;
+  desc: string;
+}
+
+const WMO_DAY: Record<number, WeatherInfo> = {
+  0: { Icon: SunIcon, desc: "Céu Limpo" },
+  1: { Icon: PartlyCloudyIcon, desc: "Parcialmente Nublado" },
+  2: { Icon: PartlyCloudyIcon, desc: "Parcialmente Nublado" },
+  3: { Icon: CloudIcon, desc: "Nublado" },
+  45: { Icon: FogIcon, desc: "Névoa" },
+  48: { Icon: FogIcon, desc: "Névoa" },
+  51: { Icon: DrizzleIcon, desc: "Garoa" },
+  53: { Icon: DrizzleIcon, desc: "Garoa" },
+  55: { Icon: DrizzleIcon, desc: "Garoa" },
+  61: { Icon: RainIcon, desc: "Chuva" },
+  63: { Icon: RainIcon, desc: "Chuva" },
+  65: { Icon: HeavyRainIcon, desc: "Chuva Forte" },
+  71: { Icon: SnowIcon, desc: "Neve" },
+  73: { Icon: SnowIcon, desc: "Neve" },
+  75: { Icon: SnowIcon, desc: "Neve" },
+  80: { Icon: RainIcon, desc: "Pancadas" },
+  81: { Icon: RainIcon, desc: "Pancadas" },
+  82: { Icon: HeavyRainIcon, desc: "Pancadas Fortes" },
+  95: { Icon: ThunderIcon, desc: "Tempestade" },
+  96: { Icon: ThunderIcon, desc: "Tempestade" },
+  99: { Icon: ThunderIcon, desc: "Tempestade" },
 };
 
-function getWeather(code: number) {
-  return WMO[code] ?? { emoji: "🌤️", desc: "Parcialmente Nublado" };
+const WMO_NIGHT: Record<number, WeatherInfo> = {
+  0: { Icon: MoonIcon, desc: "Noite Limpa" },
+  1: { Icon: MoonIcon, desc: "Noite c/ Nuvens" },
+  2: { Icon: CloudIcon, desc: "Parcialmente Nublado" },
+};
+
+function getWeather(code: number, isDay: boolean = true): WeatherInfo {
+  if (!isDay && WMO_NIGHT[code]) return WMO_NIGHT[code];
+  return WMO_DAY[code] ?? { Icon: PartlyCloudyIcon, desc: "Parcialmente Nublado" };
 }
 
 function getDayLabel(dateStr: string, isToday: boolean): string {
@@ -61,7 +91,7 @@ export default function WeatherCard() {
     return (
       <Card className="border-border/50">
         <CardContent className="p-4 text-center">
-          <CloudRain className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+          <CloudIcon size={24} className="mx-auto mb-1" />
           <p className="text-xs text-muted-foreground">Clima indisponível</p>
         </CardContent>
       </Card>
@@ -80,7 +110,9 @@ export default function WeatherCard() {
 
   const daily = data.daily;
   const current = data.current;
-  const currentWeather = getWeather(current?.weathercode ?? 0);
+  const isDay = current?.is_day === 1;
+  const currentWeather = getWeather(current?.weathercode ?? 0, isDay);
+  const CurrentIcon = currentWeather.Icon;
   const currentTemp = Math.round(current?.temperature_2m ?? 0);
   const currentWind = Math.round(current?.windspeed_10m ?? 0);
 
@@ -90,7 +122,7 @@ export default function WeatherCard() {
         {/* Header compacto com clima atual */}
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30">
           <div className="flex items-center gap-2">
-            <span className="text-xl leading-none">{currentWeather.emoji}</span>
+            <CurrentIcon size={32} />
             <div>
               <span className="text-lg font-bold text-foreground">{currentTemp}°C</span>
               <span className="text-xs text-muted-foreground ml-1.5">{currentWeather.desc}</span>
@@ -108,7 +140,8 @@ export default function WeatherCard() {
         <div className="grid grid-cols-7 divide-x divide-border/20">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => {
             const isToday = i === 0;
-            const weather = getWeather(daily.weathercode[i]);
+            const weather = getWeather(daily.weathercode[i], true);
+            const DayIcon = weather.Icon;
             const max = Math.round(daily.temperature_2m_max[i]);
             const min = Math.round(daily.temperature_2m_min[i]);
             const wind = Math.round(daily.windspeed_10m_max[i]);
@@ -130,7 +163,7 @@ export default function WeatherCard() {
                   {getDayLabel(daily.time[i], isToday)}
                 </span>
                 <span className="text-[8px] text-muted-foreground/60">{getDateLabel(daily.time[i])}</span>
-                <span className="text-lg leading-none">{weather.emoji}</span>
+                <DayIcon size={24} />
                 <span className="text-xs font-semibold text-foreground">{max}°</span>
                 <span className="text-[10px] text-muted-foreground">{min}°</span>
                 <span className="flex items-center gap-0.5 text-[8px] text-muted-foreground/50">
