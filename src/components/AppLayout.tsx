@@ -142,7 +142,7 @@ export default function AppLayout() {
       <div className="flex min-h-svh w-full flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <img src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo-light.svg" alt="TOPSYS" className="h-7 object-contain" />
+             <img src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png" alt="TOPSYS" className="h-7 object-contain" />
             <span className="hidden text-sm text-muted-foreground md:inline">
               TOP #1575 - Caminhos do Mar | 02-05 Abril 2026
             </span>
@@ -178,7 +178,7 @@ export default function AppLayout() {
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
-              <img src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/topsys-logo-light.svg" alt="TOPSYS" className="h-7 object-contain" />
+              <img src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png" alt="TOPSYS" className="h-7 object-contain" />
               <span className="hidden text-sm text-muted-foreground md:inline">
                 TOP #1575 - Caminhos do Mar | 02-05 Abril 2026
               </span>
