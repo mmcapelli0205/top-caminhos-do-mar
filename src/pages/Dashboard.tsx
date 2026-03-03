@@ -63,14 +63,7 @@ const Dashboard = () => {
           alt="Caminhos do Mar"
           className="h-20 w-20 md:h-24 md:w-24 object-contain"
         />
-        <div>
-          <img
-             src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
-            alt="TOPSYS"
-            className="h-8 md:h-10 object-contain mx-auto"
-          />
-          <p className="text-xs font-semibold text-orange-500/90 mt-1">TOP 1575 — Caminhos do Mar</p>
-        </div>
+        <p className="text-xs font-semibold text-orange-500/90 mt-1">TOP 1575 — Caminhos do Mar</p>
       </div>
 
       {/* ─ ROW: Countdown | Equipe Logo | Countdown acts together ─ */}
