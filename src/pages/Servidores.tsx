@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Shield, Search, Download, Plus, Eye, Pencil, Check, X,
   ArrowUp, ArrowDown, AlertTriangle, RefreshCw, Upload, Trash2, Star,
+  RotateCcw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,8 @@ const statusColors: Record<string, string> = {
   aprovado: "bg-green-600/20 text-green-400 border-green-600/30",
   recusado: "bg-red-600/20 text-red-400 border-red-600/30",
   sem_area: "bg-red-900/30 text-red-300 border-red-800/40",
+  desistente: "bg-yellow-600/20 text-yellow-400 border-yellow-600/30",
+  removido: "bg-red-600/20 text-red-400 border-red-600/30",
 };
 
 const statusLabels: Record<string, string> = {
@@ -77,6 +80,8 @@ const statusLabels: Record<string, string> = {
   aprovado: "Aprovado",
   recusado: "Recusado",
   sem_area: "Sem Área",
+  desistente: "Desistente",
+  removido: "Removido",
 };
 
 function calcAge(dob: string | null): number | null {
@@ -91,9 +96,19 @@ export default function Servidores() {
   const { role, profile } = useAuth();
   const { areaServico } = useAreaServico();
 
-  const effectiveArea = role === "diretoria" ? "Diretoria" : areaServico;
+  const isDiretoria = role === "diretoria";
+  const effectiveArea = isDiretoria ? "Diretoria" : areaServico;
   const perms = getPermissoesMenu(effectiveArea);
   const canDeleteServidor = perms.servidores_excluir === "E";
+
+  // Fetch all areas from DB
+  const { data: areasDB = [] } = useQuery({
+    queryKey: ["areas-nomes"],
+    queryFn: async () => {
+      const { data } = await supabase.from("areas").select("nome").order("nome");
+      return (data ?? []).map(a => a.nome);
+    },
+  });
 
   const { data: servidores = [], isLoading } = useQuery({
     queryKey: ["servidores"],
@@ -107,7 +122,7 @@ export default function Servidores() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterArea, setFilterArea] = useState("todas");
-  const [filterStatus, setFilterStatus] = useState("todos");
+  const [filterStatus, setFilterStatus] = useState("aprovado");
   const [sortKey, setSortKey] = useState<SortKey>("nome");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -125,8 +140,10 @@ export default function Servidores() {
   const [recusando, setRecusando] = useState(false);
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
   const [importOpen, setImportOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Servidor | null>(null);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
+
+  // Desistência/Remoção modal
+  const [desistenciaTarget, setDesistenciaTarget] = useState<Servidor | null>(null);
 
   const existingCpfs = useMemo(() => servidores.map(s => s.cpf).filter(Boolean) as string[], [servidores]);
 
@@ -140,10 +157,21 @@ export default function Servidores() {
   const pendentes = useMemo(() => servidores.filter(s => s.status === "pendente"), [servidores]);
   const semArea = useMemo(() => servidores.filter(s => s.status === "sem_area"), [servidores]);
 
+  // Counters
+  const statusCounts = useMemo(() => {
+    const counts = { aprovado: 0, desistente: 0, removido: 0, pendente: 0, sem_area: 0, recusado: 0 };
+    servidores.forEach(s => {
+      const st = (s.status ?? "aprovado") as keyof typeof counts;
+      if (st in counts) counts[st]++;
+    });
+    return counts;
+  }, [servidores]);
+
   const areaCounts = useMemo(() => {
     const map: Record<string, { total: number; pendentes: number }> = {};
     AREAS_SERVICO.forEach(a => { map[a] = { total: 0, pendentes: 0 }; });
     servidores.forEach(s => {
+      if (s.status !== "aprovado") return;
       const area = s.area_servico;
       if (!area || !map[area]) return;
       map[area].total++;
@@ -229,12 +257,38 @@ export default function Servidores() {
     queryClient.invalidateQueries({ queryKey: ["servidores"] });
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    const { error } = await supabase.from("servidores").delete().eq("id", deleteTarget.id);
-    if (error) { toast.error("Erro ao excluir: " + error.message); return; }
-    toast.success("Servidor excluído com sucesso");
-    setDeleteTarget(null);
+  // Desistência / Remoção via RPC
+  async function handleDesistencia(tipo: "desistente" | "removido") {
+    if (!desistenciaTarget) return;
+    const { error } = await supabase.rpc("marcar_servidor_desistente", {
+      servidor_uuid: desistenciaTarget.id,
+      novo_status: tipo,
+    });
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`${desistenciaTarget.nome} marcado como ${statusLabels[tipo]}.`);
+    setDesistenciaTarget(null);
+    queryClient.invalidateQueries({ queryKey: ["servidores"] });
+  }
+
+  // Reativar
+  async function handleReativar(s: Servidor) {
+    const { error } = await supabase.from("servidores").update({
+      status: "aprovado",
+      updated_at: new Date().toISOString(),
+    }).eq("id", s.id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`${s.nome} reativado com sucesso!`);
+    queryClient.invalidateQueries({ queryKey: ["servidores"] });
+  }
+
+  // Inline area change
+  async function handleAreaChange(s: Servidor, newArea: string) {
+    const { error } = await supabase.from("servidores").update({
+      area_servico: newArea,
+      updated_at: new Date().toISOString(),
+    }).eq("id", s.id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`Área de ${s.nome} atualizada para ${newArea}`);
     queryClient.invalidateQueries({ queryKey: ["servidores"] });
   }
 
@@ -252,6 +306,8 @@ export default function Servidores() {
     URL.revokeObjectURL(url);
   }
 
+  const isInactive = (s: Servidor) => s.status === "desistente" || s.status === "removido";
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -259,7 +315,11 @@ export default function Servidores() {
         <div className="flex items-center gap-3">
           <Shield className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Servidores</h1>
-          <span className="text-sm text-muted-foreground">({servidores.length} total)</span>
+          <span className="text-sm text-muted-foreground">
+            ({statusCounts.aprovado} ativos
+            {statusCounts.desistente > 0 && ` | ${statusCounts.desistente} desistentes`}
+            {statusCounts.removido > 0 && ` | ${statusCounts.removido} removidos`})
+          </span>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           {perms.servidores_exportar === "E" && (
@@ -325,9 +385,9 @@ export default function Servidores() {
               onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
             >
               <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-                {c.total}
+                {c?.total ?? 0}
               </Badge>
-              {c.pendentes > 0 && (
+              {(c?.pendentes ?? 0) > 0 && (
                 <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
                   {c.pendentes}
                 </Badge>
@@ -383,13 +443,15 @@ export default function Servidores() {
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos Status</SelectItem>
-            <SelectItem value="pendente">Pendente</SelectItem>
-            <SelectItem value="aprovado">Aprovado</SelectItem>
-            <SelectItem value="recusado">Recusado</SelectItem>
-            <SelectItem value="sem_area">Sem Área</SelectItem>
+            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="aprovado">Ativos ({statusCounts.aprovado})</SelectItem>
+            <SelectItem value="pendente">Pendentes ({statusCounts.pendente})</SelectItem>
+            <SelectItem value="desistente">Desistentes ({statusCounts.desistente})</SelectItem>
+            <SelectItem value="removido">Removidos ({statusCounts.removido})</SelectItem>
+            <SelectItem value="sem_area">Sem Área ({statusCounts.sem_area})</SelectItem>
+            <SelectItem value="recusado">Recusados ({statusCounts.recusado})</SelectItem>
           </SelectContent>
         </Select>
         <div className="relative flex-1 min-w-0">
@@ -406,15 +468,16 @@ export default function Servidores() {
           ) : paginated.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</p>
           ) : paginated.map(s => {
-            const st = s.status ?? "ativo";
+            const st = s.status ?? "aprovado";
+            const inactive = isInactive(s);
             return (
-              <Card key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
+              <Card key={s.id} className={`cursor-pointer ${inactive ? "opacity-60" : ""}`} onClick={() => setSelectedServidor(s)}>
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium truncate flex items-center gap-1">
+                    <span className={`font-medium truncate flex items-center gap-1 ${inactive ? "text-muted-foreground line-through" : ""}`}>
                       {s.origem === "convite" && <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400 shrink-0" />}
                       {s.dados_completos === false && (
-                        <TooltipProvider><Tooltip><TooltipTrigger asChild><span><AlertTriangle className="h-3.5 w-3.5 text-yellow-400 animate-pulse shrink-0" /></span></TooltipTrigger><TooltipContent>Dados incompletos - aguardando preenchimento</TooltipContent></Tooltip></TooltipProvider>
+                        <TooltipProvider><Tooltip><TooltipTrigger asChild><span><AlertTriangle className="h-3.5 w-3.5 text-yellow-400 animate-pulse shrink-0" /></span></TooltipTrigger><TooltipContent>Dados incompletos</TooltipContent></Tooltip></TooltipProvider>
                       )}
                       {s.nome}
                     </span>
@@ -431,19 +494,14 @@ export default function Servidores() {
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/servidores/${s.id}/editar`)}>
                       <Pencil className="h-4 w-4 mr-1" /> Editar
                     </Button>
-                    {st === "pendente" && (
-                      <>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-400" onClick={() => handleAceitar(s)}>
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => { setRecusarTarget(s); setRecusarMotivo(""); }}>
-                          <X className="h-4 w-4" />
-                       </Button>
-                      </>
+                    {inactive && isDiretoria && (
+                      <Button variant="ghost" size="sm" className="text-green-400" onClick={() => handleReativar(s)}>
+                        <RotateCcw className="h-4 w-4 mr-1" /> Reativar
+                      </Button>
                     )}
-                    {canDeleteServidor && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteTarget(s)}>
-                        <Trash2 className="h-4 w-4" />
+                    {!inactive && canDeleteServidor && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDesistenciaTarget(s)}>
+                        <X className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
@@ -481,14 +539,15 @@ export default function Servidores() {
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
                 </TableRow>
               ) : paginated.map(s => {
-                const st = s.status ?? "ativo";
+                const st = s.status ?? "aprovado";
+                const inactive = isInactive(s);
                 return (
-                  <TableRow key={s.id} className="cursor-pointer" onClick={() => setSelectedServidor(s)}>
+                  <TableRow key={s.id} className={`cursor-pointer ${inactive ? "opacity-50" : ""}`} onClick={() => setSelectedServidor(s)}>
                     <TableCell className="font-medium">
-                      <span className="flex items-center gap-1">
+                      <span className={`flex items-center gap-1 ${inactive ? "text-muted-foreground line-through" : ""}`}>
                         {s.origem === "convite" && <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400 shrink-0" />}
                         {s.dados_completos === false && (
-                          <TooltipProvider><Tooltip><TooltipTrigger asChild><span><AlertTriangle className="h-3.5 w-3.5 text-yellow-400 animate-pulse shrink-0" /></span></TooltipTrigger><TooltipContent>Dados incompletos - aguardando preenchimento</TooltipContent></Tooltip></TooltipProvider>
+                          <TooltipProvider><Tooltip><TooltipTrigger asChild><span><AlertTriangle className="h-3.5 w-3.5 text-yellow-400 animate-pulse shrink-0" /></span></TooltipTrigger><TooltipContent>Dados incompletos</TooltipContent></Tooltip></TooltipProvider>
                         )}
                         {s.nome}
                       </span>
@@ -497,7 +556,23 @@ export default function Servidores() {
                     <TableCell className="hidden md:table-cell">{s.telefone ?? "—"}</TableCell>
                     <TableCell className="hidden lg:table-cell">{s.area_preferencia_1 ?? "—"}</TableCell>
                     <TableCell className="hidden lg:table-cell">{s.area_preferencia_2 ?? "—"}</TableCell>
-                    <TableCell>{s.area_servico ?? "—"}</TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      {isDiretoria && !inactive ? (
+                        <Select
+                          value={s.area_servico ?? ""}
+                          onValueChange={(v) => handleAreaChange(s, v)}
+                        >
+                          <SelectTrigger className="h-8 w-[140px] bg-transparent border-none hover:bg-white/5 text-sm px-2">
+                            <SelectValue placeholder="Sem área" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {areasDB.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span>{s.area_servico ?? "—"}</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge className={statusColors[st] ?? ""}>{statusLabels[st] ?? st}</Badge>
                     </TableCell>
@@ -521,11 +596,23 @@ export default function Servidores() {
                         )}
                         {st === "sem_area" && (
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-400 hover:text-orange-300" onClick={() => { setRealocarTarget(s); setRealocarArea(""); }}>
-                          <RefreshCw className="h-4 w-4" />
+                            <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
-                        {canDeleteServidor && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteTarget(s)}>
+                        {inactive && isDiretoria && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-400 hover:text-green-300" onClick={() => handleReativar(s)}>
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Reativar servidor</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {!inactive && canDeleteServidor && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDesistenciaTarget(s)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
@@ -564,6 +651,32 @@ export default function Servidores() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRecusarTarget(null)}>Cancelar</Button>
             <Button variant="destructive" disabled={!recusarMotivo.trim() || recusando} onClick={handleRecusarConfirm}>Confirmar Recusa</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Desistência / Remoção Dialog */}
+      <Dialog open={!!desistenciaTarget} onOpenChange={open => { if (!open) setDesistenciaTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Desistência / Remoção</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            O que deseja fazer com <strong>{desistenciaTarget?.nome}</strong>?
+          </p>
+          <p className="text-xs text-muted-foreground">
+            O servidor será removido das coordenações de área automaticamente. O registro nunca é excluído permanentemente.
+          </p>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setDesistenciaTarget(null)}>Cancelar</Button>
+            <Button
+              variant="outline"
+              className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-600/20"
+              onClick={() => handleDesistencia("desistente")}
+            >
+              Marcar como Desistente
+            </Button>
+            <Button variant="destructive" onClick={() => handleDesistencia("removido")}>
+              Remover Servidor
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -635,23 +748,6 @@ export default function Servidores() {
       <ServidorSheet servidor={selectedServidor} open={!!selectedServidor} onOpenChange={open => { if (!open) setSelectedServidor(null); }} />
 
       <ImportServidoresCSVDialog open={importOpen} onOpenChange={setImportOpen} existingCpfs={existingCpfs} />
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Servidor</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir {deleteTarget?.nome}? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <RelatorioServidoresPDF open={relatorioOpen} onOpenChange={setRelatorioOpen} />
     </div>
