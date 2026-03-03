@@ -37,6 +37,7 @@ const AREAS = [
   "Intercessão",
   "Louvor",
   "Diretoria",
+  "Sem Área",
 ];
 
 const ORDEM_CARGO = [
@@ -104,7 +105,9 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
         .select("nome, area_servico, cargo_area, status")
         .order("nome", { ascending: true });
 
-      if (areaFiltro !== "Todas") {
+      if (areaFiltro === "Sem Área") {
+        query = query.is("area_servico", null);
+      } else if (areaFiltro !== "Todas") {
         query = query.eq("area_servico", areaFiltro);
       }
 
