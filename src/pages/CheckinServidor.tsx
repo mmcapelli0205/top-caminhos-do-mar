@@ -78,7 +78,7 @@ export default function CheckinServidor() {
         .from("servidores")
         .select("id, nome, cpf, cargo_area")
         .eq("area_servico", areaSelecionada)
-        .eq("status", "ativo")
+        .eq("status", "aprovado")
         .order("nome");
 
       // Quem já fez check-in

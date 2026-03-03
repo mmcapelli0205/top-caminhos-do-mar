@@ -60,7 +60,7 @@ export function CheckinServidoresDashboard({ topId, userId, userEmail, isAdmin }
 
   const carregar = useCallback(async () => {
     const [{ data: srvs }, { data: cks }, { data: cfg }] = await Promise.all([
-      supabase.from("servidores").select("id, nome, area_servico").eq("status", "ativo"),
+      supabase.from("servidores").select("id, nome, area_servico").eq("status", "aprovado"),
       topId
         ? supabase.from("checkin_servidores").select("*").eq("top_id", topId)
         : supabase.from("checkin_servidores").select("*"),

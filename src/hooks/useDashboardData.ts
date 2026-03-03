@@ -51,7 +51,7 @@ export function useDashboardData() {
       const { count, error } = await supabase
         .from("servidores")
         .select("*", { count: "exact", head: true })
-        .eq("status", "ativo");
+        .eq("status", "aprovado");
       if (error) throw error;
       return count ?? 0;
     },
