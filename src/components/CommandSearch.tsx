@@ -144,8 +144,8 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
         if (perms.menu_servidores || cargo === "diretoria") {
           const { data: servs } = await supabase
             .from("servidores")
-            .select("id, nome_completo, area_servico, cargo")
-            .ilike("nome_completo", `%${q}%`)
+            .select("id, nome, area_servico, cargo_area")
+            .ilike("nome", `%${q}%`)
             .limit(5);
 
           if (servs) {
@@ -153,10 +153,10 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
               ...servs.map((s) => ({
                 id: `serv-${s.id}`,
                 type: "servidor" as const,
-                label: s.nome_completo,
-                sublabel: `Servidor · ${s.area_servico || "Sem área"} · ${s.cargo || ""}`,
+                label: s.nome,
+                sublabel: `Servidor · ${s.area_servico || "Sem área"} · ${s.cargo_area || ""}`,
                 icon: <Shield className="h-4 w-4 text-emerald-500" />,
-                url: `/servidores?busca=${encodeURIComponent(s.nome_completo)}`,
+                url: `/servidores?busca=${encodeURIComponent(s.nome)}`,
               }))
             );
           }
@@ -166,8 +166,8 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
         if (perms.menu_participantes || cargo === "diretoria") {
           const { data: parts } = await supabase
             .from("participantes")
-            .select("id, nome_completo, familia, status")
-            .ilike("nome_completo", `%${q}%`)
+            .select("id, nome, familia, status")
+            .ilike("nome", `%${q}%`)
             .limit(5);
 
           if (parts) {
@@ -175,10 +175,10 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
               ...parts.map((p) => ({
                 id: `part-${p.id}`,
                 type: "participante" as const,
-                label: p.nome_completo,
+                label: p.nome,
                 sublabel: `Participante · ${p.familia || "Sem família"} · ${p.status || ""}`,
                 icon: <User className="h-4 w-4 text-amber-500" />,
-                url: `/participantes?busca=${encodeURIComponent(p.nome_completo)}`,
+                url: `/participantes?busca=${encodeURIComponent(p.nome)}`,
               }))
             );
           }
@@ -187,7 +187,7 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
         // Áreas
         const { data: areas } = await supabase
           .from("areas")
-          .select("id, nome, coordenador")
+          .select("id, nome")
           .ilike("nome", `%${q}%`)
           .limit(5);
 
@@ -197,7 +197,7 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
               id: `area-${a.id}`,
               type: "area" as const,
               label: a.nome,
-              sublabel: `Área · Coord: ${a.coordenador || "—"}`,
+              sublabel: `Área`,
               icon: <Building2 className="h-4 w-4 text-purple-500" />,
               url: `/dashboard`,
             }))

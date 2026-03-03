@@ -170,7 +170,7 @@ export function PartlyCloudyIcon({ size = 48, className }: WeatherIconProps) {
         style={{ transformOrigin: "16px 16px" }}>
         {[0, 60, 120, 180, 240, 300].map((deg) => (
           <line key={deg} x1="16" y1="6" x2="16" y2="9" stroke="#FBBF24" strokeWidth={1.5} strokeLinecap="round"
-            style={{ transformOrigin: "16px 16px", rotate: deg }} />
+            style={{ transformOrigin: "16px 16px", rotate: `${deg}deg` }} />
         ))}
       </motion.g>
       <circle cx="16" cy="16" r="6" stroke="#FBBF24" strokeWidth={1.5} fill="#FBBF24" fillOpacity={0.15} />
