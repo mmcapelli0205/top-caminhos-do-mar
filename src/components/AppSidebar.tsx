@@ -104,21 +104,7 @@ export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
   return (
     <Sidebar collapsible="icon" className="border-r border-white/[0.04]">
       <SidebarContent className="pt-1.5 pb-4 bg-[hsl(240,35%,9%)]">
-        {/* Brand Header */}
-        <div className="flex items-center gap-2.5 px-4 py-3.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <div className="relative shrink-0">
-            <img
-              src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
-              alt="TOPSYS"
-              className="h-9 w-auto object-contain group-data-[collapsible=icon]:h-7"
-            />
-          </div>
-          <div className="group-data-[collapsible=icon]:hidden overflow-hidden">
-            <p className="text-[10px] text-orange-400/70 font-medium leading-tight">Caminhos do Mar</p>
-          </div>
-        </div>
-
-        <div className="mx-4 h-px bg-white/[0.05] group-data-[collapsible=icon]:mx-2" />
+        <div className="h-3" />
 
         <SidebarGroup className="flex-1">
           <SidebarGroupContent>
@@ -132,13 +118,13 @@ export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
       </SidebarContent>
 
       <SidebarFooter className="px-4 py-3 border-t border-white/[0.04] bg-[hsl(240,35%,9%)]">
-        <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
-          <div className="h-7 w-7 rounded-md bg-gradient-to-br from-orange-500/25 to-orange-600/10 flex items-center justify-center shrink-0 ring-1 ring-orange-500/20">
-            <span className="text-[10px] font-bold text-orange-400">T</span>
-          </div>
-          <div className="group-data-[collapsible=icon]:hidden overflow-hidden">
-            <p className="text-[11px] text-white/30 truncate">TOP #1575 • Abr 2026</p>
-          </div>
+        <div className="flex flex-col items-center gap-1.5 group-data-[collapsible=icon]:items-center">
+          <img
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
+            alt="TOPSYS"
+            className="h-8 w-auto object-contain group-data-[collapsible=icon]:h-6"
+          />
+          <p className="text-[11px] text-white/30 truncate group-data-[collapsible=icon]:hidden">TOP #1575 • Abr 2026</p>
         </div>
       </SidebarFooter>
     </Sidebar>
