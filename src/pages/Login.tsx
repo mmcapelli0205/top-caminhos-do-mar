@@ -235,7 +235,7 @@ const Login = () => {
       </div>
 
       <img
-        src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
+        src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Top%20Sys%20sem%20fundo%201200X400.png"
         alt="TOPSYS"
         style={{ height: 180, width: 'auto', background: 'none' }}
         className="relative z-10 mt-6"

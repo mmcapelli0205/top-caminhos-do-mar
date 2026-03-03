@@ -120,7 +120,7 @@ export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
       <SidebarFooter className="px-4 py-3 border-t border-white/[0.04] bg-[hsl(240,35%,9%)]">
         <div className="flex flex-col items-center gap-1.5 group-data-[collapsible=icon]:items-center">
           <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Top%20Sys%20sem%20fundo%201200X400.png"
             alt="TOPSYS"
             className="h-20 w-auto object-contain group-data-[collapsible=icon]:h-10"
           />
