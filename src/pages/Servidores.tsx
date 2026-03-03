@@ -188,7 +188,7 @@ export default function Servidores() {
       list = list.filter(s => s.nome.toLowerCase().includes(q) || (s.cpf?.toLowerCase().includes(q) ?? false));
     }
     if (filterArea !== "todas") list = list.filter(s => s.area_servico === filterArea);
-    if (filterStatus !== "todos") list = list.filter(s => s.status === filterStatus);
+    if (filterStatus !== "todos") list = list.filter(s => (s.status ?? "aprovado") === filterStatus);
     return list;
   }, [servidores, debouncedSearch, filterArea, filterStatus]);
 
