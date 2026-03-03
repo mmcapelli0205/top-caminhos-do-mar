@@ -151,7 +151,7 @@ const Login = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black">
       <img
         src={BG_URL}
         alt="Caminhos do Mar"
@@ -168,7 +168,7 @@ const Login = () => {
           />
         </div>
 
-        {/* spacer */}
+        
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -232,15 +232,14 @@ const Login = () => {
             Criar conta
           </button>
         </div>
-
-        <div className="mt-5 flex justify-center">
-          <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
-            alt="TOPSYS"
-            className="h-[180px] w-auto object-contain bg-transparent"
-          />
-        </div>
       </div>
+
+      <img
+        src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
+        alt="TOPSYS"
+        style={{ height: 180, width: 'auto', background: 'none' }}
+        className="relative z-10 mt-6"
+      />
 
       {/* Keyword Dialog */}
       <Dialog open={showKeywordDialog} onOpenChange={setShowKeywordDialog}>
