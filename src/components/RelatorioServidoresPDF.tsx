@@ -37,6 +37,7 @@ const AREAS = [
   "Intercessão",
   "Louvor",
   "Diretoria",
+  "Sem Área",
 ];
 
 const ORDEM_CARGO = [

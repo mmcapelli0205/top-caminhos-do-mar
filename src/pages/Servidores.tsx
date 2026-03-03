@@ -652,6 +652,8 @@ export default function Servidores() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RelatorioServidoresPDF open={relatorioOpen} onOpenChange={setRelatorioOpen} />
     </div>
   );
 }
