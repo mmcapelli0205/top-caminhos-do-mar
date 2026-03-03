@@ -166,7 +166,7 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
         if (perms.menu_participantes || cargo === "diretoria") {
           const { data: parts } = await supabase
             .from("participantes")
-            .select("id, nome, familia, status")
+            .select("id, nome, familia_id, status")
             .ilike("nome", `%${q}%`)
             .limit(5);
 
@@ -176,7 +176,7 @@ export default function CommandSearch({ cargo, areaServico, podeAprovar = false 
                 id: `part-${p.id}`,
                 type: "participante" as const,
                 label: p.nome,
-                sublabel: `Participante · ${p.familia || "Sem família"} · ${p.status || ""}`,
+                sublabel: `Participante · Família ${p.familia_id || "—"} · ${p.status || ""}`,
                 icon: <User className="h-4 w-4 text-amber-500" />,
                 url: `/participantes?busca=${encodeURIComponent(p.nome)}`,
               }))
