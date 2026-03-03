@@ -32,6 +32,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import ServidorSheet from "@/components/ServidorSheet";
 import ImportServidoresCSVDialog from "@/components/ImportServidoresCSVDialog";
+import RelatorioServidoresPDF from "@/components/RelatorioServidoresPDF";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAreaServico } from "@/hooks/useAreaServico";
 import { getPermissoesMenu } from "@/lib/permissoes";
@@ -125,6 +126,7 @@ export default function Servidores() {
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
   const [importOpen, setImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Servidor | null>(null);
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
 
   const existingCpfs = useMemo(() => servidores.map(s => s.cpf).filter(Boolean) as string[], [servidores]);
 
@@ -265,6 +267,9 @@ export default function Servidores() {
               <Download className="h-4 w-4 mr-1" /> CSV
             </Button>
           )}
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setRelatorioOpen(true)}>
+            <Download className="h-4 w-4 mr-1" /> Relatório PDF
+          </Button>
           {perms.servidores_importar === "E" && (
             <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
