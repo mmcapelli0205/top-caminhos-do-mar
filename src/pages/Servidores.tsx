@@ -171,11 +171,12 @@ export default function Servidores() {
     const map: Record<string, { total: number; pendentes: number }> = {};
     AREAS_SERVICO.forEach(a => { map[a] = { total: 0, pendentes: 0 }; });
     servidores.forEach(s => {
-      if (s.status !== "aprovado") return;
+      const st = s.status ?? "aprovado";
+      if (st !== "aprovado" && st !== "pendente") return;
       const area = s.area_servico;
       if (!area || !map[area]) return;
       map[area].total++;
-      if (s.status === "pendente") map[area].pendentes++;
+      if (st === "pendente") map[area].pendentes++;
     });
     return map;
   }, [servidores]);
