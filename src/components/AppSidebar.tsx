@@ -122,7 +122,7 @@ export function AppSidebar({ cargo, areaServico, podeAprovar = false }: Props) {
           <img
             src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
             alt="TOPSYS"
-            className="h-8 w-auto object-contain group-data-[collapsible=icon]:h-6"
+            className="h-20 w-auto object-contain group-data-[collapsible=icon]:h-10"
           />
           <p className="text-[11px] text-white/30 truncate group-data-[collapsible=icon]:hidden">TOP #1575 • Abr 2026</p>
         </div>

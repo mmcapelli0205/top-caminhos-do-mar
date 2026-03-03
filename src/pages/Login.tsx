@@ -168,13 +168,9 @@ const Login = () => {
           />
         </div>
 
-        <div className="mb-6 flex justify-center">
-          <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
-            alt="TOPSYS"
-            className="h-[60px] w-auto object-contain"
-          />
-        </div>
+        <p className="mb-6 text-center text-sm text-gray-300">
+          Track Caminhos do Mar
+        </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -240,6 +236,12 @@ const Login = () => {
         </div>
 
       </div>
+
+      <img
+        src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
+        alt="TOPSYS"
+        className="relative z-10 mt-6 h-[150px] w-auto object-contain"
+      />
 
       {/* Keyword Dialog */}
       <Dialog open={showKeywordDialog} onOpenChange={setShowKeywordDialog}>
