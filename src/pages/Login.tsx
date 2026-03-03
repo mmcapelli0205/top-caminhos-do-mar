@@ -168,9 +168,7 @@ const Login = () => {
           />
         </div>
 
-        <p className="mb-6 text-center text-sm text-gray-300">
-          Track Caminhos do Mar
-        </p>
+        {/* spacer */}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
