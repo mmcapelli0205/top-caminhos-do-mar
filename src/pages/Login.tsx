@@ -237,9 +237,9 @@ const Login = () => {
 
         <div className="mt-5 flex justify-center">
           <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Custom%20Sans-Serif%20Logo%20for%20TOPSYS.svg"
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/TopSys%20-%20Logo%20Novo.png"
             alt="TOPSYS"
-            className="h-[28px] object-contain opacity-40"
+            className="h-[32px] object-contain opacity-60"
           />
         </div>
       </div>
