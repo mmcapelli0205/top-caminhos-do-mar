@@ -3240,6 +3240,10 @@ export type Database = {
       is_coord_or_above: { Args: never; Returns: boolean }
       is_diretoria: { Args: never; Returns: boolean }
       is_same_area: { Args: { area_to_check: string }; Returns: boolean }
+      marcar_servidor_desistente: {
+        Args: { novo_status?: string; servidor_uuid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
