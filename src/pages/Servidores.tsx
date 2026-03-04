@@ -658,7 +658,7 @@ export default function Servidores() {
 
       {/* Desistência / Remoção Dialog */}
       <Dialog open={!!desistenciaTarget} onOpenChange={open => { if (!open) setDesistenciaTarget(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Desistência / Remoção</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
             O que deseja fazer com <strong>{desistenciaTarget?.nome}</strong>?
@@ -666,16 +666,18 @@ export default function Servidores() {
           <p className="text-xs text-muted-foreground">
             O servidor será removido das coordenações de área automaticamente. O registro nunca é excluído permanentemente.
           </p>
-          <div className="flex flex-col sm:flex-row gap-2 pt-4">
-            <Button variant="outline" className="flex-1" onClick={() => setDesistenciaTarget(null)}>Cancelar</Button>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-4">
+            <Button variant="outline" className="w-full whitespace-normal text-center h-auto min-h-10 py-2" onClick={() => setDesistenciaTarget(null)}>
+              Cancelar
+            </Button>
             <Button
               variant="outline"
-              className="flex-1 border-yellow-600/50 text-yellow-400 hover:bg-yellow-600/20"
+              className="w-full whitespace-normal text-center h-auto min-h-10 py-2 border-yellow-600/50 text-yellow-400 hover:bg-yellow-600/20"
               onClick={() => handleDesistencia("desistente")}
             >
               Marcar como Desistente
             </Button>
-            <Button variant="destructive" className="flex-1" onClick={() => handleDesistencia("removido")}>
+            <Button variant="destructive" className="w-full whitespace-normal text-center h-auto min-h-10 py-2" onClick={() => handleDesistencia("removido")}>
               Remover Servidor
             </Button>
           </div>
