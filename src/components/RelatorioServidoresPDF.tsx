@@ -112,13 +112,17 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
       // 1. Buscar servidores
       let query = supabase
         .from("servidores")
-        .select("nome, area_servico, cargo_area, status")
+        .select("nome, area_servico, cargo_area, status, numero_legendario, experiencia")
         .order("nome", { ascending: true });
 
       if (areaFiltro === "Sem Área") {
         query = query.is("area_servico", null);
       } else if (areaFiltro !== "Todas") {
         query = query.eq("area_servico", areaFiltro);
+      }
+
+      if (experienciaFiltro !== "Todas") {
+        query = query.eq("experiencia", experienciaFiltro);
       }
 
       const { data: servidores, error } = await query;
