@@ -135,7 +135,7 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
             "Comunicação": "midia.png",
             "Segurança": "seguranca.png",
             "Voz": "voz.png",
-            "Diretoria": "logo.png",
+            "Diretoria": "Logo%20Caminhos%20do%20Mar%20Correto%20.png",
           };
           const logoFile = LOGOS_EQUIPES[area.nome];
           const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
