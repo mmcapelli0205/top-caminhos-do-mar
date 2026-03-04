@@ -349,10 +349,13 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
           doc.setFontSize(9.5);
           doc.setTextColor(27, 40, 56);
 
+          // Montar nome com nº legendário
+          const numLeg = s.numero_legendario ? ` #${s.numero_legendario}` : "";
+          const nomeCompleto = (s.nome || "-") + numLeg;
+
           // Truncar nome se muito longo
           const maxNomeW = CARGO_COL - AREA_COL - 2;
-          let nome = s.nome || "-";
-          // Estimativa: ~2mm por caractere em 9.5pt
+          let nome = nomeCompleto;
           while (nome.length > 2 && doc.getTextWidth(nome) > maxNomeW) {
             nome = nome.slice(0, -4) + "...";
           }
@@ -431,6 +434,23 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
                 {AREAS.map((a) => (
                   <SelectItem key={a} value={a}>
                     {a}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Filtrar por Experiência</Label>
+            <Select value={experienciaFiltro} onValueChange={setExperienciaFiltro}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todas">Todas</SelectItem>
+                {EXPERIENCIAS.map((e) => (
+                  <SelectItem key={e} value={e}>
+                    {e}
                   </SelectItem>
                 ))}
               </SelectContent>
