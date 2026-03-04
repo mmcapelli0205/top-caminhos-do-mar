@@ -95,17 +95,17 @@ const Dashboard = () => {
       {/* ÁREA PRINCIPAL — 3 colunas desktop, 1 coluna mobile */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start">
         {/* ═══ COLUNA ESQUERDA ═══ */}
-        <div className="relative flex flex-col items-center gap-4 py-6 min-h-[340px]">
-          {/* AHU sombreado */}
-          <span
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] md:text-[150px] font-black select-none pointer-events-none z-0 leading-none whitespace-nowrap"
-            style={{ color: "rgba(255,255,255,0.04)" }}
+        <div className="flex flex-col items-center gap-4 py-6">
+          {/* AHU — elemento normal, não absolute */}
+          <p
+            className="text-[120px] font-black select-none leading-none tracking-[0.15em] mb-5"
+            style={{ color: "rgba(255,255,255,0.06)" }}
           >
-            A H U
-          </span>
+            AHU
+          </p>
 
           {/* KPI cards empilhados */}
-          <div className="relative z-10 flex flex-col gap-3 w-full max-w-[200px] mt-auto">
+          <div className="flex flex-col gap-3 w-full max-w-[200px]">
             {kpis.map((k) => (
               <Card
                 key={k.label}
@@ -182,14 +182,14 @@ const Dashboard = () => {
         </div>
 
         {/* ═══ COLUNA DIREITA ═══ */}
-        <div className="relative flex flex-col items-center gap-5 py-6 min-h-[340px]">
-          {/* AMOR HONRA UNIDADE sombreado */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none pointer-events-none z-0 text-center leading-tight whitespace-nowrap">
+        <div className="flex flex-col items-start gap-5 py-6">
+          {/* AMOR HONRA UNIDADE — elementos normais, text-align left */}
+          <div className="select-none mb-2">
             {["AMOR", "HONRA", "UNIDADE"].map((w) => (
               <p
                 key={w}
-                className="text-[60px] md:text-[72px] font-black tracking-[6px] uppercase"
-                style={{ color: "rgba(255,255,255,0.04)", lineHeight: 1.15 }}
+                className="text-[60px] font-black tracking-[6px] uppercase leading-tight"
+                style={{ color: "rgba(255,255,255,0.06)" }}
               >
                 {w}
               </p>
@@ -197,14 +197,12 @@ const Dashboard = () => {
           </div>
 
           {/* Contagem regressiva */}
-          <div className="relative z-10">
-            <CountdownSection />
-          </div>
+          <CountdownSection />
 
           {/* TOP Real Time */}
           <button
             onClick={() => navigate("/top-real-time")}
-            className="relative z-10 w-full max-w-sm group overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent hover:from-emerald-500/20 hover:via-emerald-500/10 transition-all duration-300 p-4"
+            className="w-full max-w-sm group overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent hover:from-emerald-500/20 hover:via-emerald-500/10 transition-all duration-300 p-4"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
