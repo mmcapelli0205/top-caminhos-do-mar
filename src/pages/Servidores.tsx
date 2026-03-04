@@ -588,6 +588,23 @@ export default function Servidores() {
                         <span>{s.area_servico ?? "—"}</span>
                       )}
                     </TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      {isDiretoria && !inactive ? (
+                        <Select
+                          value={s.experiencia ?? ""}
+                          onValueChange={(v) => handleExperienciaChange(s, v)}
+                        >
+                          <SelectTrigger className="h-8 w-[130px] bg-transparent border-none hover:bg-white/5 text-sm px-2">
+                            <SelectValue placeholder="—" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {EXPERIENCIAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span>{s.experiencia ?? "—"}</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge className={statusColors[st] ?? ""}>{statusLabels[st] ?? st}</Badge>
                     </TableCell>
