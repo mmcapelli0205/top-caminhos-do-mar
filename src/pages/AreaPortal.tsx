@@ -94,7 +94,9 @@ export default function AreaPortal() {
     enabled: !!decodedNome,
   });
 
-  const servidoresCount = servidoresDaArea.length;
+  const servidoresAtivos = servidoresDaArea.filter(s => s.status === 'aprovado' || !s.status);
+  const servidoresInativos = servidoresDaArea.filter(s => s.status === 'desistente' || s.status === 'removido');
+  const servidoresCount = servidoresAtivos.length;
 
   const { data: designacoesCount = 0 } = useQuery({
     queryKey: ["area-designacoes-count", area?.id],
@@ -339,23 +341,45 @@ export default function AreaPortal() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
-              {servidoresDaArea.length === 0 ? (
+              {servidoresAtivos.length === 0 && servidoresInativos.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhum servidor alocado nesta área.</p>
               ) : (
-                servidoresDaArea.map(s => (
-                  <div key={s.id} className="flex items-center justify-between bg-muted/30 rounded px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{s.nome}</span>
-                      {s.numero_legendario && <Badge variant="outline" className="text-[10px]">#{s.numero_legendario}</Badge>}
-                      {s.cargo_area && <Badge variant="secondary" className="text-[10px]">{s.cargo_area}</Badge>}
+                <>
+                  {servidoresAtivos.map(s => (
+                    <div key={s.id} className="flex items-center justify-between bg-muted/30 rounded px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{s.nome}</span>
+                        {s.numero_legendario && <Badge variant="outline" className="text-[10px]">#{s.numero_legendario}</Badge>}
+                        {s.cargo_area && <Badge variant="secondary" className="text-[10px]">{s.cargo_area}</Badge>}
+                      </div>
+                      {s.telefone && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {s.telefone}
+                        </span>
+                      )}
                     </div>
-                    {s.telefone && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Phone className="h-3 w-3" /> {s.telefone}
-                      </span>
-                    )}
-                  </div>
-                ))
+                  ))}
+                  {servidoresInativos.length > 0 && (
+                    <>
+                      <div className="flex items-center gap-2 py-3">
+                        <div className="flex-1 border-t border-muted-foreground/20" />
+                        <span className="text-xs text-muted-foreground">Desistentes / Removidos ({servidoresInativos.length})</span>
+                        <div className="flex-1 border-t border-muted-foreground/20" />
+                      </div>
+                      {servidoresInativos.map(s => (
+                        <div key={s.id} className="flex items-center justify-between bg-muted/30 rounded px-3 py-2 opacity-50">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-muted-foreground">{s.nome}</span>
+                            {s.numero_legendario && <Badge variant="outline" className="text-[10px]">#{s.numero_legendario}</Badge>}
+                            <Badge className="text-[10px] bg-destructive text-destructive-foreground">
+                              {s.status === 'removido' ? 'REMOVIDO' : 'DESISTENTE'}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
