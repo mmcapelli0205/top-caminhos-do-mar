@@ -282,6 +282,8 @@ export default function Servidores() {
     queryClient.invalidateQueries({ queryKey: ["servidores"] });
   }
 
+  const EXPERIENCIAS = ["Nunca Serviu", "1 vez", "2 vezes", "3 vezes", "+5 vezes", "+10 vezes"];
+
   // Inline area change
   async function handleAreaChange(s: Servidor, newArea: string) {
     const { error } = await supabase.from("servidores").update({
@@ -290,6 +292,17 @@ export default function Servidores() {
     }).eq("id", s.id);
     if (error) { toast.error("Erro: " + error.message); return; }
     toast.success(`Área de ${s.nome} atualizada para ${newArea}`);
+    queryClient.invalidateQueries({ queryKey: ["servidores"] });
+  }
+
+  // Inline experiencia change
+  async function handleExperienciaChange(s: Servidor, newExp: string) {
+    const { error } = await supabase.from("servidores").update({
+      experiencia: newExp,
+      updated_at: new Date().toISOString(),
+    }).eq("id", s.id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`Experiência de ${s.nome} atualizada para ${newExp}`);
     queryClient.invalidateQueries({ queryKey: ["servidores"] });
   }
 
@@ -522,6 +535,7 @@ export default function Servidores() {
                 <TableHead className="hidden lg:table-cell">1ª Opção</TableHead>
                 <TableHead className="hidden lg:table-cell">2ª Opção</TableHead>
                 <TableHead>Área Atual</TableHead>
+                <TableHead>Experiência</TableHead>
                 <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}>Status<SortIcon col="status" /></TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -530,14 +544,14 @@ export default function Servidores() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
                 </TableRow>
               ) : paginated.map(s => {
                 const st = s.status ?? "aprovado";
@@ -572,6 +586,23 @@ export default function Servidores() {
                         </Select>
                       ) : (
                         <span>{s.area_servico ?? "—"}</span>
+                      )}
+                    </TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      {isDiretoria && !inactive ? (
+                        <Select
+                          value={s.experiencia ?? ""}
+                          onValueChange={(v) => handleExperienciaChange(s, v)}
+                        >
+                          <SelectTrigger className="h-8 w-[130px] bg-transparent border-none hover:bg-white/5 text-sm px-2">
+                            <SelectValue placeholder="—" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {EXPERIENCIAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span>{s.experiencia ?? "—"}</span>
                       )}
                     </TableCell>
                     <TableCell>
