@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Users, UsersRound, UserCheck, Radio, ChevronRight,
-} from "lucide-react";
+import { ChevronRight, Radio } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -33,14 +31,12 @@ const LOGOS_EQUIPES: Record<string, string> = {
 const ASSET_BASE =
   "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
 
-/* ── Dashboard ────────────────────────────────────── */
 const Dashboard = () => {
   const d = useDashboardData();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
-  // Fetch area data for logged-in user
   const { data: servidor } = useQuery({
     queryKey: ["dash-area", profile?.email],
     queryFn: async () => {
@@ -70,8 +66,11 @@ const Dashboard = () => {
   });
 
   const areaCor = areaData?.cor ?? CORES_EQUIPES[areaName ?? ""] ?? "#6366f1";
-  const areaLogoUrl = areaData?.logo_url
-    ?? (areaName && LOGOS_EQUIPES[areaName] ? `${ASSET_BASE}${LOGOS_EQUIPES[areaName]}` : null);
+  const areaLogoUrl =
+    areaData?.logo_url ??
+    (areaName && LOGOS_EQUIPES[areaName]
+      ? `${ASSET_BASE}${LOGOS_EQUIPES[areaName]}`
+      : null);
   const areaInitials = areaName
     ? areaName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
     : "";
@@ -83,9 +82,8 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5 pb-8">
-
-      {/* ── HEADER ── */}
+    <div className="max-w-7xl mx-auto space-y-6 pb-8 px-2">
+      {/* HEADER */}
       <div className="text-center py-2">
         <p className="text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground/60">
           TOP #1575 — Caminhos do Mar
@@ -93,36 +91,62 @@ const Dashboard = () => {
         <p className="text-[10px] text-muted-foreground/40">02 – 05 Abril 2026</p>
       </div>
 
-      {/* ── AREA SUPERIOR: 2 cols desktop, 1 col mobile ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        {/* ── LEFT COLUMN ── */}
-        <div className="relative flex flex-col items-center gap-5 py-6">
-          {/* AHU background text */}
+      {/* ÁREA PRINCIPAL — 3 colunas desktop, 1 coluna mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start">
+        {/* ═══ COLUNA ESQUERDA ═══ */}
+        <div className="relative flex flex-col items-center gap-4 py-6 min-h-[340px]">
+          {/* AHU sombreado */}
           <span
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[180px] md:text-[12vw] font-black select-none pointer-events-none z-0 leading-none"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] md:text-[150px] font-black select-none pointer-events-none z-0 leading-none whitespace-nowrap"
             style={{ color: "rgba(255,255,255,0.04)" }}
           >
             A H U
           </span>
 
+          {/* KPI cards empilhados */}
+          <div className="relative z-10 flex flex-col gap-3 w-full max-w-[200px] mt-auto">
+            {kpis.map((k) => (
+              <Card
+                key={k.label}
+                className="border-white/[0.06] bg-white/[0.05] overflow-hidden"
+              >
+                <div className="h-[3px]" style={{ backgroundColor: k.color }} />
+                <CardContent className="p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {k.label}
+                  </p>
+                  {d.isLoading ? (
+                    <Skeleton className="h-7 w-12 mx-auto mt-1" />
+                  ) : (
+                    <p className="text-2xl font-bold text-foreground tabular-nums mt-0.5">
+                      {k.value}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* ═══ COLUNA CENTRAL ═══ */}
+        <div className="flex flex-col items-center gap-4 py-6">
           {/* Escudo Caminhos do Mar */}
-          <div className="relative z-10 flex flex-col items-center gap-1">
-            <img
-              src={ESCUDO_URL}
-              alt="Caminhos do Mar"
-              className="h-[120px] w-auto object-contain"
-            />
+          <img
+            src={ESCUDO_URL}
+            alt="Caminhos do Mar"
+            className="h-[120px] w-auto object-contain"
+          />
+          <div className="text-center -mt-2">
             <p className="text-sm font-bold text-foreground">TOP 1575</p>
             <p className="text-xs font-semibold" style={{ color: "#F97316" }}>
               Caminhos do Mar
             </p>
           </div>
 
-          {/* Escudo da Área do Usuário */}
+          {/* Escudo da Área */}
           {areaName && (
             <div
-              className="relative z-10 flex flex-col items-center gap-2 cursor-pointer group"
+              className="flex flex-col items-center gap-2 cursor-pointer group"
               onClick={() => navigate(`/areas/${encodeURIComponent(areaName)}`)}
             >
               <div
@@ -154,61 +178,32 @@ const Dashboard = () => {
               </p>
             </div>
           )}
-
-          {/* KPI counters */}
-          <div className="relative z-10 flex gap-3 w-full max-w-sm">
-            {kpis.map((k) => (
-              <Card
-                key={k.label}
-                className="flex-1 border-white/[0.06] bg-white/[0.05] overflow-hidden"
-              >
-                <div className="h-[3px]" style={{ backgroundColor: k.color }} />
-                <CardContent className="p-3 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                    {k.label}
-                  </p>
-                  {d.isLoading ? (
-                    <Skeleton className="h-7 w-12 mx-auto mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-foreground tabular-nums mt-0.5">
-                      {k.value}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </div>
 
-        {/* ── RIGHT COLUMN ── */}
-        <div className="flex flex-col items-center gap-5 py-6">
-          {/* AMOR HONRA UNIDADE */}
-          <div className="text-center">
+        {/* ═══ COLUNA DIREITA ═══ */}
+        <div className="relative flex flex-col items-center gap-5 py-6 min-h-[340px]">
+          {/* AMOR HONRA UNIDADE sombreado */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none pointer-events-none z-0 text-center leading-tight whitespace-nowrap">
             {["AMOR", "HONRA", "UNIDADE"].map((w) => (
               <p
                 key={w}
-                className="leading-tight"
-                style={{
-                  color: "#F97316",
-                  fontSize: "clamp(28px, 3vw, 42px)",
-                  fontWeight: 800,
-                  letterSpacing: "6px",
-                  textTransform: "uppercase" as const,
-                  lineHeight: 1.2,
-                }}
+                className="text-[60px] md:text-[72px] font-black tracking-[6px] uppercase"
+                style={{ color: "rgba(255,255,255,0.04)", lineHeight: 1.15 }}
               >
                 {w}
               </p>
             ))}
           </div>
 
-          {/* Countdown */}
-          <CountdownSection />
+          {/* Contagem regressiva */}
+          <div className="relative z-10">
+            <CountdownSection />
+          </div>
 
-          {/* TOP Real Time button */}
+          {/* TOP Real Time */}
           <button
             onClick={() => navigate("/top-real-time")}
-            className="w-full max-w-sm group relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent hover:from-emerald-500/20 hover:via-emerald-500/10 transition-all duration-300 p-4"
+            className="relative z-10 w-full max-w-sm group overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent hover:from-emerald-500/20 hover:via-emerald-500/10 transition-all duration-300 p-4"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -227,21 +222,14 @@ const Dashboard = () => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
                 </span>
-                <svg
-                  className="h-4 w-4 text-emerald-400/60 group-hover:translate-x-0.5 transition-transform"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronRight className="h-4 w-4 text-emerald-400/60 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
           </button>
         </div>
       </div>
 
-      {/* ── AREA INFERIOR: Weather + Calendar ── */}
+      {/* ÁREA INFERIOR — 2 colunas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <WeatherCard />
         <CalendarioMensal />
