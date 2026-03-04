@@ -163,7 +163,7 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
 
       // Carregar logo
       const logoBase64 = await loadImageAsBase64(
-        "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
+        "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Logo%20Caminhos%20do%20Mar%20Correto%20.png"
       );
 
       // ── Funções auxiliares ──────────────────────────────────────────────
