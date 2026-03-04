@@ -535,6 +535,7 @@ export default function Servidores() {
                 <TableHead className="hidden lg:table-cell">1ª Opção</TableHead>
                 <TableHead className="hidden lg:table-cell">2ª Opção</TableHead>
                 <TableHead>Área Atual</TableHead>
+                <TableHead>Experiência</TableHead>
                 <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}>Status<SortIcon col="status" /></TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
