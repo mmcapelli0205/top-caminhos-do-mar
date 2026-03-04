@@ -282,6 +282,8 @@ export default function Servidores() {
     queryClient.invalidateQueries({ queryKey: ["servidores"] });
   }
 
+  const EXPERIENCIAS = ["Nunca Serviu", "1 vez", "2 vezes", "3 vezes", "+5 vezes", "+10 vezes"];
+
   // Inline area change
   async function handleAreaChange(s: Servidor, newArea: string) {
     const { error } = await supabase.from("servidores").update({
@@ -290,6 +292,17 @@ export default function Servidores() {
     }).eq("id", s.id);
     if (error) { toast.error("Erro: " + error.message); return; }
     toast.success(`Área de ${s.nome} atualizada para ${newArea}`);
+    queryClient.invalidateQueries({ queryKey: ["servidores"] });
+  }
+
+  // Inline experiencia change
+  async function handleExperienciaChange(s: Servidor, newExp: string) {
+    const { error } = await supabase.from("servidores").update({
+      experiencia: newExp,
+      updated_at: new Date().toISOString(),
+    }).eq("id", s.id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`Experiência de ${s.nome} atualizada para ${newExp}`);
     queryClient.invalidateQueries({ queryKey: ["servidores"] });
   }
 
