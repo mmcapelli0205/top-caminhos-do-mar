@@ -162,9 +162,9 @@ const Login = () => {
       <div className="animate-fade-in relative z-10 w-[90%] max-w-[480px] rounded-2xl border border-white/10 bg-black/70 p-6 shadow-2xl backdrop-blur-xl sm:max-w-[420px] sm:p-8 lg:max-w-[480px]">
         <div className="mb-4 flex flex-col items-center gap-2">
           <img
-            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/logo.png"
+            src="https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Logo%20Caminhos%20do%20Mar%20Correto%20.png"
             alt="Caminhos do Mar"
-            className="h-[140px] sm:h-[160px] object-contain"
+            className="h-[240px] object-contain"
           />
         </div>
 
