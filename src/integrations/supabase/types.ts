@@ -2606,6 +2606,7 @@ export type Database = {
           igreja: string | null
           nome: string
           numero_legendario: string | null
+          observacoes: string | null
           origem: string | null
           pais: string | null
           profissao: string | null
@@ -2652,6 +2653,7 @@ export type Database = {
           igreja?: string | null
           nome: string
           numero_legendario?: string | null
+          observacoes?: string | null
           origem?: string | null
           pais?: string | null
           profissao?: string | null
@@ -2698,6 +2700,7 @@ export type Database = {
           igreja?: string | null
           nome?: string
           numero_legendario?: string | null
+          observacoes?: string | null
           origem?: string | null
           pais?: string | null
           profissao?: string | null
