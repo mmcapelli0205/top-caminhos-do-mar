@@ -202,7 +202,7 @@ const Dashboard = () => {
           {/* TOP Real Time */}
           <button
             onClick={() => navigate("/top-real-time")}
-            className="relative z-10 w-full max-w-sm group overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent hover:from-emerald-500/20 hover:via-emerald-500/10 transition-all duration-300 p-4"
+            className="w-full max-w-sm group overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent hover:from-emerald-500/20 hover:via-emerald-500/10 transition-all duration-300 p-4"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
