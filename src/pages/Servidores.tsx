@@ -544,14 +544,14 @@ export default function Servidores() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum servidor encontrado.</TableCell>
                 </TableRow>
               ) : paginated.map(s => {
                 const st = s.status ?? "aprovado";
