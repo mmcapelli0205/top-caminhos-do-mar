@@ -94,7 +94,9 @@ export default function AreaPortal() {
     enabled: !!decodedNome,
   });
 
-  const servidoresCount = servidoresDaArea.length;
+  const servidoresAtivos = servidoresDaArea.filter(s => s.status === 'aprovado' || !s.status);
+  const servidoresInativos = servidoresDaArea.filter(s => s.status === 'desistente' || s.status === 'removido');
+  const servidoresCount = servidoresAtivos.length;
 
   const { data: designacoesCount = 0 } = useQuery({
     queryKey: ["area-designacoes-count", area?.id],
