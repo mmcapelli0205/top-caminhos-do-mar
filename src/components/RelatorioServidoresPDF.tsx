@@ -92,8 +92,18 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
+const EXPERIENCIAS = [
+  "Nunca Serviu",
+  "1 vez",
+  "2 vezes",
+  "3 vezes",
+  "+5 vezes",
+  "+10 vezes",
+];
+
 const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
   const [areaFiltro, setAreaFiltro] = useState("Todas");
+  const [experienciaFiltro, setExperienciaFiltro] = useState("Todas");
   const [gerando, setGerando] = useState(false);
 
   const gerarPDF = async () => {
