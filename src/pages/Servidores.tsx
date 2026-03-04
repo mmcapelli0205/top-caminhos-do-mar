@@ -666,19 +666,19 @@ export default function Servidores() {
           <p className="text-xs text-muted-foreground">
             O servidor será removido das coordenações de área automaticamente. O registro nunca é excluído permanentemente.
           </p>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setDesistenciaTarget(null)}>Cancelar</Button>
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
+            <Button variant="outline" className="flex-1" onClick={() => setDesistenciaTarget(null)}>Cancelar</Button>
             <Button
               variant="outline"
-              className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-600/20"
+              className="flex-1 border-yellow-600/50 text-yellow-400 hover:bg-yellow-600/20"
               onClick={() => handleDesistencia("desistente")}
             >
               Marcar como Desistente
             </Button>
-            <Button variant="destructive" onClick={() => handleDesistencia("removido")}>
+            <Button variant="destructive" className="flex-1" onClick={() => handleDesistencia("removido")}>
               Remover Servidor
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
