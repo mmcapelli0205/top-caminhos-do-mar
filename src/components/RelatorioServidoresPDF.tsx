@@ -274,8 +274,10 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
 
       const ROW_H = 7.5;
       const SECTION_H = 12; // altura da barra de área
-      const AREA_COL = margin + 5;
-      const CARGO_COL = pageW - margin - 38;
+      const COL_NOME = margin + 5;
+      const COL_NUM_LEG = margin + 82;
+      const COL_EXP = margin + 110;
+      const COL_CARGO = margin + 148;
       const NUM_COL = margin + 3;
 
       for (const area of areasOrdenadas) {
@@ -349,23 +351,25 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
           doc.setFontSize(9.5);
           doc.setTextColor(27, 40, 56);
 
-          // Montar nome com nº legendário
-          const numLeg = s.numero_legendario ? ` #${s.numero_legendario}` : "";
-          const nomeCompleto = (s.nome || "-") + numLeg;
-
           // Truncar nome se muito longo
-          const maxNomeW = CARGO_COL - AREA_COL - 2;
-          let nome = nomeCompleto;
+          const maxNomeW = COL_NUM_LEG - COL_NOME - 2;
+          let nome = s.nome || "-";
           while (nome.length > 2 && doc.getTextWidth(nome) > maxNomeW) {
             nome = nome.slice(0, -4) + "...";
           }
-          doc.text(nome, AREA_COL, y + 5.2);
+          doc.text(nome, COL_NOME, y + 5.2);
 
-          // Cargo
+          // Nº Legendário
           doc.setFont("helvetica", "normal");
           doc.setFontSize(8.5);
           doc.setTextColor(107, 114, 128);
-          doc.text(cargo, CARGO_COL, y + 5.2);
+          doc.text(s.numero_legendario ? String(s.numero_legendario) : "-", COL_NUM_LEG, y + 5.2);
+
+          // Experiência
+          doc.text(s.experiencia || "-", COL_EXP, y + 5.2);
+
+          // Cargo
+          doc.text(cargo, COL_CARGO, y + 5.2);
 
           // Linha divisória suave
           doc.setDrawColor(243, 244, 246);
