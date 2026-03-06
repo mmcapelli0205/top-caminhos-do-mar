@@ -245,7 +245,9 @@ export default function Predicantes() {
                 )}
                 {filtered.map((p, idx) => {
                   const s = p.servidores;
-                  const corEquipe = CORES_EQUIPES[s?.area_servico ?? ""] ?? "#6366f1";
+                  const isExclusivo = s?.area_servico === "Predicantes";
+                  const labelEquipe = isExclusivo ? "Exclusivo" : (s?.area_servico ?? "—");
+                  const corEquipe = isExclusivo ? "#7C3AED" : (CORES_EQUIPES[s?.area_servico ?? ""] ?? "#6366f1");
                   return (
                     <TableRow key={p.id}>
                       <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
@@ -265,7 +267,7 @@ export default function Predicantes() {
                               border: "none",
                             }}
                           >
-                            {s.area_servico}
+                            {labelEquipe}
                           </Badge>
                         ) : "—"}
                       </TableCell>
@@ -309,7 +311,9 @@ export default function Predicantes() {
             )}
             {filtered.map((p, idx) => {
               const s = p.servidores;
-              const corEquipe = CORES_EQUIPES[s?.area_servico ?? ""] ?? "#6366f1";
+              const isExclusivo = s?.area_servico === "Predicantes";
+              const labelEquipe = isExclusivo ? "Exclusivo" : (s?.area_servico ?? "");
+              const corEquipe = isExclusivo ? "#7C3AED" : (CORES_EQUIPES[s?.area_servico ?? ""] ?? "#6366f1");
               return (
                 <Card key={p.id}>
                   <CardContent className="p-3 flex items-center justify-between">
@@ -331,7 +335,7 @@ export default function Predicantes() {
                               border: "none",
                             }}
                           >
-                            {s.area_servico}
+                            {labelEquipe}
                           </Badge>
                         )}
                         <span className="text-xs text-muted-foreground">{s?.experiencia ?? ""}</span>
