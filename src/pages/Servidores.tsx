@@ -43,7 +43,7 @@ type Servidor = Tables<"servidores">;
 const AREAS_SERVICO = [
   "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
   "Logística", "Voz", "ADM",
-  "Intercessão", "Louvor", "Diretoria",
+  "Intercessão", "Louvor", "Diretoria", "Predicantes",
 ];
 
 const LOGOS_EQUIPES: Record<string, string> = {
@@ -180,6 +180,17 @@ export default function Servidores() {
     });
     return map;
   }, [servidores]);
+
+  // Predicantes count (from separate table)
+  const { data: predicantesCount = 0 } = useQuery({
+    queryKey: ["predicantes-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("predicantes")
+        .select("id", { count: "exact", head: true });
+      return count ?? 0;
+    },
+  });
 
   const filtered = useMemo(() => {
     let list = servidores;
@@ -396,10 +407,10 @@ export default function Servidores() {
               key={area}
               className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
               style={{ borderColor: corEquipe }}
-              onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
+              onClick={() => navigate(area === "Predicantes" ? "/predicantes" : `/areas/${encodeURIComponent(area)}`)}
             >
               <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-                {c?.total ?? 0}
+                {area === "Predicantes" ? predicantesCount : (c?.total ?? 0)}
               </Badge>
               {(c?.pendentes ?? 0) > 0 && (
                 <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
@@ -453,7 +464,7 @@ export default function Servidores() {
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas Áreas</SelectItem>
-            {AREAS_SERVICO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            {AREAS_SERVICO.filter(a => a !== "Predicantes").map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>

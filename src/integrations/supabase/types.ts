@@ -2412,6 +2412,58 @@ export type Database = {
           },
         ]
       }
+      predicantes: {
+        Row: {
+          adicionado_por: string | null
+          created_at: string | null
+          id: string
+          observacoes: string | null
+          servidor_id: string
+          top_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          adicionado_por?: string | null
+          created_at?: string | null
+          id?: string
+          observacoes?: string | null
+          servidor_id: string
+          top_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          adicionado_por?: string | null
+          created_at?: string | null
+          id?: string
+          observacoes?: string | null
+          servidor_id?: string
+          top_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "predicantes_adicionado_por_fkey"
+            columns: ["adicionado_por"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predicantes_servidor_id_fkey"
+            columns: ["servidor_id"]
+            isOneToOne: false
+            referencedRelation: "servidores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predicantes_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       predicas: {
         Row: {
           codigo: string

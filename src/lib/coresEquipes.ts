@@ -11,6 +11,7 @@ export const CORES_EQUIPES: Record<string, string> = {
   "Louvor": "#FFFFFF",
   "Alimentação": "#92702A",
   "Diretoria": "#000000",
+  "Predicantes": "#7C3AED",
 };
 
 /** Returns white or dark text color based on background luminance */
