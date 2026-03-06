@@ -11,7 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -22,6 +22,8 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -35,6 +37,7 @@ export default function Predicantes() {
   const isDiretoria = role === "diretoria";
   const [addOpen, setAddOpen] = useState(false);
   const [busca, setBusca] = useState("");
+  const [moverExclusivo, setMoverExclusivo] = useState(false);
 
   // Get active TOP
   const { data: topAtivo } = useQuery({
@@ -81,16 +84,17 @@ export default function Predicantes() {
 
   // All approved servidores for the add dialog
   const { data: todosServidores = [] } = useQuery({
-    queryKey: ["servidores-aprovados-predicantes"],
+    queryKey: ["servidores-aprovados-predicantes", topAtivo?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("servidores")
         .select("id, nome, numero_legendario, area_servico")
         .eq("status", "aprovado")
+        .eq("top_id", topAtivo!.id)
         .order("nome");
       return data ?? [];
     },
-    enabled: addOpen,
+    enabled: addOpen && !!topAtivo?.id,
   });
 
   const predicanteIds = new Set(predicantes.map((p) => p.servidor_id));
@@ -98,19 +102,40 @@ export default function Predicantes() {
 
   // Add mutation
   const addMutation = useMutation({
-    mutationFn: async (servidorId: string) => {
+    mutationFn: async ({ servidorId, mover }: { servidorId: string; mover: boolean }) => {
       const { error } = await supabase.from("predicantes").insert({
         top_id: topAtivo!.id,
         servidor_id: servidorId,
       });
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error("UNIQUE");
+        }
+        throw error;
+      }
+      // Se toggle ligado, mover servidor para Predicantes
+      if (mover) {
+        const { error: updateErr } = await supabase
+          .from("servidores")
+          .update({ area_servico: "Predicantes" })
+          .eq("id", servidorId);
+        if (updateErr) throw updateErr;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["predicantes"] });
+      queryClient.invalidateQueries({ queryKey: ["servidores"] });
       toast.success("Predicante adicionado!");
       setAddOpen(false);
+      setMoverExclusivo(false);
     },
-    onError: () => toast.error("Erro ao adicionar predicante"),
+    onError: (err: Error) => {
+      if (err.message === "UNIQUE") {
+        toast.error("Este servidor já está na equipe Predicantes.");
+      } else {
+        toast.error("Erro ao adicionar predicante");
+      }
+    },
   });
 
   // Remove mutation
@@ -349,10 +374,11 @@ export default function Predicantes() {
       </Tabs>
 
       {/* Add Predicante Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setMoverExclusivo(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Adicionar Predicante</DialogTitle>
+            <DialogDescription>Selecione um servidor aprovado para adicionar à equipe Predicantes.</DialogDescription>
           </DialogHeader>
           <Command className="border rounded-lg">
             <CommandInput placeholder="Buscar servidor..." />
@@ -363,7 +389,7 @@ export default function Predicantes() {
                   <CommandItem
                     key={s.id}
                     value={`${s.nome} ${s.numero_legendario ?? ""} ${s.area_servico ?? ""}`}
-                    onSelect={() => addMutation.mutate(s.id)}
+                    onSelect={() => addMutation.mutate({ servidorId: s.id, mover: moverExclusivo })}
                     className="cursor-pointer"
                   >
                     <div className="flex items-center gap-2 w-full">
@@ -380,6 +406,21 @@ export default function Predicantes() {
               </CommandGroup>
             </CommandList>
           </Command>
+          <div className="border-t pt-3 mt-1 space-y-1.5">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="mover-exclusivo"
+                checked={moverExclusivo}
+                onCheckedChange={setMoverExclusivo}
+              />
+              <Label htmlFor="mover-exclusivo" className="text-sm font-medium cursor-pointer">
+                Mover para Predicantes (remover da equipe atual)
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground pl-[52px]">
+              Ative para servidores que servirão APENAS como Predicantes.
+            </p>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
