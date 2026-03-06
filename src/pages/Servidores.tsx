@@ -464,7 +464,7 @@ export default function Servidores() {
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas Áreas</SelectItem>
-            {AREAS_SERVICO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            {AREAS_SERVICO.filter(a => a !== "Predicantes").map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
