@@ -58,6 +58,7 @@ const LOGOS_EQUIPES: Record<string, string> = {
   "Segurança": "seguranca.png",
   "Voz": "voz.png",
   "Diretoria": "Logo%20Caminhos%20do%20Mar%20Correto%20.png",
+  "Predicantes": "Predicantes.png",
 };
 
 const ASSET_BASE = "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/";
