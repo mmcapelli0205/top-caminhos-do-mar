@@ -125,8 +125,8 @@ export default function Predicantes() {
     onError: (err: Error) => {
       if (err.message === "UNIQUE") {
         toast.error("Este servidor já está na equipe Predicantes.");
-      } else if (err.message === "INSERT_FAILED") {
-        toast.error("Falha ao inserir predicante. Verifique se a função RPC existe no banco.");
+      } else if (err.message === "NO_TOP") {
+        toast.error("Sem TOP ativo. Não é possível adicionar predicante.");
       } else {
         toast.error("Erro ao adicionar predicante: " + err.message);
       }
