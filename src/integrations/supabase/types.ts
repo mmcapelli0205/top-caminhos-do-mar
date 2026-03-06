@@ -2442,13 +2442,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "predicantes_adicionado_por_fkey"
-            columns: ["adicionado_por"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "predicantes_servidor_id_fkey"
             columns: ["servidor_id"]
             isOneToOne: false
