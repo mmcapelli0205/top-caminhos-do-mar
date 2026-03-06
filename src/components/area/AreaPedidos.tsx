@@ -254,7 +254,7 @@ export default function AreaPedidos({ areaNome, canEdit: canEditProp = true, can
               <Select value={form.categoria} onValueChange={(v) => setForm({ ...form, categoria: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {categorias.map((c) => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
+                  {categorias.map((c) => <SelectItem key={c.nome} value={c.nome}>{c.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
