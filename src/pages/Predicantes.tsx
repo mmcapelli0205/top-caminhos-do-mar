@@ -46,7 +46,7 @@ export default function Predicantes() {
       const { data } = await supabase
         .from("tops")
         .select("id, nome")
-        .in("status", ["em_andamento", "inscricoes_abertas", "planejamento"])
+        .in("status", ["em_andamento", "inscricoes_abertas", "planejamento", "Em_andamento", "Inscricoes_abertas", "Planejamento"])
         .order("data_inicio", { ascending: false })
         .limit(1)
         .maybeSingle();
