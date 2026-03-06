@@ -396,7 +396,7 @@ export default function Servidores() {
               key={area}
               className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
               style={{ borderColor: corEquipe }}
-              onClick={() => navigate(`/areas/${encodeURIComponent(area)}`)}
+              onClick={() => navigate(area === "Predicantes" ? "/predicantes" : `/areas/${encodeURIComponent(area)}`)}
             >
               <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
                 {c?.total ?? 0}
