@@ -26,6 +26,7 @@ import PrimeiroAcesso from "./pages/PrimeiroAcesso";
 import NotFound from "./pages/NotFound";
 import KmzMapa from "./pages/KmzMapa";
 import CheckinServidor from "./pages/CheckinServidor";
+import Predicantes from "./pages/Predicantes";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +78,7 @@ const App = () => {
               <Route path="/aprovacoes" element={<Aprovacoes />} />
               <Route path="/areas/:nome" element={<AreaPortal />} />
               <Route path="/kmz" element={<KmzMapa />} />
+              <Route path="/predicantes" element={<Predicantes />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

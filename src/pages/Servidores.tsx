@@ -43,7 +43,7 @@ type Servidor = Tables<"servidores">;
 const AREAS_SERVICO = [
   "Hakuna", "Segurança", "Eventos", "Mídia", "Comunicação",
   "Logística", "Voz", "ADM",
-  "Intercessão", "Louvor", "Diretoria",
+  "Intercessão", "Louvor", "Diretoria", "Predicantes",
 ];
 
 const LOGOS_EQUIPES: Record<string, string> = {
