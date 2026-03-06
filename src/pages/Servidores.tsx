@@ -181,6 +181,17 @@ export default function Servidores() {
     return map;
   }, [servidores]);
 
+  // Predicantes count (from separate table)
+  const { data: predicantesCount = 0 } = useQuery({
+    queryKey: ["predicantes-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("predicantes")
+        .select("id", { count: "exact", head: true });
+      return count ?? 0;
+    },
+  });
+
   const filtered = useMemo(() => {
     let list = servidores;
     if (debouncedSearch) {
