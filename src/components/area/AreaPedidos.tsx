@@ -54,14 +54,13 @@ export default function AreaPedidos({ areaNome, canEdit: canEditProp = true, can
   });
 
   const { data: categorias = [] } = useQuery({
-    queryKey: ["categorias-despesas"],
+    queryKey: ["categorias-despesa"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("categorias_despesas")
-        .select("id, nome")
-        .eq("ativo", true)
-        .order("ordem");
-      return (data ?? []) as unknown as CategoriaDespesa[];
+        .from("categorias_despesa")
+        .select("nome")
+        .order("ordem", { ascending: true });
+      return (data ?? []) as { nome: string }[];
     },
   });
 
@@ -255,7 +254,7 @@ export default function AreaPedidos({ areaNome, canEdit: canEditProp = true, can
               <Select value={form.categoria} onValueChange={(v) => setForm({ ...form, categoria: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {categorias.map((c) => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
+                  {categorias.map((c) => <SelectItem key={c.nome} value={c.nome}>{c.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
