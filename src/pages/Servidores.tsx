@@ -410,7 +410,7 @@ export default function Servidores() {
               onClick={() => navigate(area === "Predicantes" ? "/predicantes" : `/areas/${encodeURIComponent(area)}`)}
             >
               <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-                {c?.total ?? 0}
+                {area === "Predicantes" ? predicantesCount : (c?.total ?? 0)}
               </Badge>
               {(c?.pendentes ?? 0) > 0 && (
                 <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
