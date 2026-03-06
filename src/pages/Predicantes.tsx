@@ -102,23 +102,18 @@ export default function Predicantes() {
   // Add mutation
   const addMutation = useMutation({
     mutationFn: async ({ servidorId, mover }: { servidorId: string; mover: boolean }) => {
-      const { error } = await supabase.from("predicantes").insert({
-        top_id: topAtivo!.id,
-        servidor_id: servidorId,
+      const { data, error } = await supabase.rpc('inserir_predicante', {
+        p_servidor_id: servidorId,
+        p_mover_para_predicantes: mover,
       });
       if (error) {
-        if (error.code === "23505") {
+        if (error.code === "23505" || error.message?.includes("UNIQUE")) {
           throw new Error("UNIQUE");
         }
         throw error;
       }
-      // Se toggle ligado, mover servidor para Predicantes
-      if (mover) {
-        const { error: updateErr } = await supabase
-          .from("servidores")
-          .update({ area_servico: "Predicantes" })
-          .eq("id", servidorId);
-        if (updateErr) throw updateErr;
+      if (data && typeof data === 'object' && 'success' in data && !(data as any).success) {
+        throw new Error((data as any).message || "Erro ao adicionar predicante");
       }
     },
     onSuccess: () => {

@@ -3283,6 +3283,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      inserir_predicante: {
+        Args: { p_mover_para_predicantes?: boolean; p_servidor_id: string }
+        Returns: Json
+      }
       is_approved_user: { Args: never; Returns: boolean }
       is_area_coord: { Args: { area_to_check: string }; Returns: boolean }
       is_coord_or_above: { Args: never; Returns: boolean }
