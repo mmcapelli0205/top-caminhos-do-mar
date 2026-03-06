@@ -84,17 +84,16 @@ export default function Predicantes() {
 
   // All approved servidores for the add dialog
   const { data: todosServidores = [] } = useQuery({
-    queryKey: ["servidores-aprovados-predicantes", topAtivo?.id],
+    queryKey: ["servidores-aprovados-predicantes"],
     queryFn: async () => {
       const { data } = await supabase
         .from("servidores")
         .select("id, nome, numero_legendario, area_servico")
         .eq("status", "aprovado")
-        .eq("top_id", topAtivo!.id)
         .order("nome");
       return data ?? [];
     },
-    enabled: addOpen && !!topAtivo?.id,
+    enabled: addOpen,
   });
 
   const predicanteIds = new Set(predicantes.map((p) => p.servidor_id));
