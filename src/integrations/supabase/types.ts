@@ -742,6 +742,27 @@ export type Database = {
           },
         ]
       }
+      categorias_despesa: {
+        Row: {
+          created_at: string | null
+          id: number
+          nome: string
+          ordem: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          nome: string
+          ordem: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          nome?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
       categorias_despesas: {
         Row: {
           ativo: boolean | null
