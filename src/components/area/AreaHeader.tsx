@@ -129,11 +129,11 @@ export default function AreaHeader({ area, canEdit, servidoresCount, designacoes
             "Eventos": "eventos.png",
             "Hakuna": "hakunas.png",
             "Intercessão": "intercessao.png",
-            "Louvor": "intercessao.png",
+            "Louvor": "Louvor.png",
             "Logística": "logistica.png",
             "Mídia": "midia.png",
             "Comunicação": "midia.png",
-            "Segurança": "seguranca.png",
+            "Segurança": "Seguanca.png",
             "Voz": "voz.png",
             "Diretoria": "Logo%20Caminhos%20do%20Mar%20Correto%20.png",
           };
