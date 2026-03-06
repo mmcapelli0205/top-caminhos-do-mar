@@ -102,6 +102,7 @@ export default function Predicantes() {
   // Add mutation
   const addMutation = useMutation({
     mutationFn: async ({ servidorId, mover }: { servidorId: string; mover: boolean }) => {
+      if (!topAtivo?.id) throw new Error("NO_TOP");
       const { data, error } = await (supabase.rpc as any)('inserir_predicante', {
         p_servidor_id: servidorId,
         p_mover_para_predicantes: mover,
@@ -112,17 +113,6 @@ export default function Predicantes() {
           throw new Error("UNIQUE");
         }
         throw error;
-      }
-      // After RPC, refetch from DB to confirm insertion
-      const { data: freshData, error: fetchError } = await supabase
-        .from("predicantes")
-        .select("id")
-        .eq("top_id", topAtivo!.id)
-        .eq("servidor_id", servidorId)
-        .maybeSingle();
-      if (fetchError || !freshData) {
-        console.error("Predicante not found after RPC:", fetchError);
-        throw new Error("INSERT_FAILED");
       }
     },
     onSuccess: () => {
@@ -135,8 +125,8 @@ export default function Predicantes() {
     onError: (err: Error) => {
       if (err.message === "UNIQUE") {
         toast.error("Este servidor já está na equipe Predicantes.");
-      } else if (err.message === "INSERT_FAILED") {
-        toast.error("Falha ao inserir predicante. Verifique se a função RPC existe no banco.");
+      } else if (err.message === "NO_TOP") {
+        toast.error("Sem TOP ativo. Não é possível adicionar predicante.");
       } else {
         toast.error("Erro ao adicionar predicante: " + err.message);
       }
@@ -221,8 +211,8 @@ export default function Predicantes() {
               />
             </div>
             {isDiretoria && (
-              <Button size="sm" onClick={() => setAddOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" /> Adicionar Predicante
+              <Button size="sm" onClick={() => setAddOpen(true)} disabled={!topAtivo}>
+                <Plus className="h-4 w-4 mr-1" /> {topAtivo ? "Adicionar Predicante" : "Sem TOP ativo"}
               </Button>
             )}
           </div>
