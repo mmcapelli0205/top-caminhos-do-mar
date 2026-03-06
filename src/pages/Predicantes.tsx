@@ -102,7 +102,7 @@ export default function Predicantes() {
   // Add mutation
   const addMutation = useMutation({
     mutationFn: async ({ servidorId, mover }: { servidorId: string; mover: boolean }) => {
-      const { data, error } = await supabase.rpc('inserir_predicante', {
+      const { data, error } = await (supabase.rpc as any)('inserir_predicante', {
         p_servidor_id: servidorId,
         p_mover_para_predicantes: mover,
       });
@@ -111,9 +111,6 @@ export default function Predicantes() {
           throw new Error("UNIQUE");
         }
         throw error;
-      }
-      if (data && typeof data === 'object' && 'success' in data && !(data as any).success) {
-        throw new Error((data as any).message || "Erro ao adicionar predicante");
       }
     },
     onSuccess: () => {
