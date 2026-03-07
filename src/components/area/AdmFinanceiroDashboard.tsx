@@ -10,6 +10,9 @@ import { Link } from "react-router-dom";
 import { differenceInDays } from "date-fns";
 
 const KEY_RECEITA_REAL = "receita_real_valor";
+const KEY_TAXA_TICKET = "taxa_ticket_and_go_valor";
+const KEY_TAXA_GLOBAL = "taxa_global_percentual";
+const KEY_TAXA_TOP = "taxa_top_valor";
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const CAT_COLORS = [
