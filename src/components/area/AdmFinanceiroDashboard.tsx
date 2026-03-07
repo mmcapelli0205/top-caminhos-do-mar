@@ -91,12 +91,14 @@ export default function AdmFinanceiroDashboard() {
   const receita = receitaParticipantes + receitaServidores + receitaDoacoes;
 
   const totalDespesas = despesas.reduce((s, d) => s + (d.valor ?? 0), 0);
-  const receitaReal = (receitaRealConfig ?? 0) as number;
-  const receitaBase = receitaReal > 0 ? receitaReal : receita;
+  const receitaBase = receitaRealConfig > 0 ? receitaRealConfig : receita;
   const saldo = receitaBase - totalDespesas;
 
   const totalPedidosPendentes = pedidosPendentes.reduce((s, p) => s + (p.valor_total_estimado ?? 0), 0);
-  const budgetComprometido = saldo - totalPedidosPendentes;
+
+  // Taxa global incide apenas sobre receita de participantes
+  const taxaGlobalCalc = receitaParticipantes * (globalPercent / 100);
+  const lucroLiquido = receita - taxaGlobalCalc - taxaTopVal - taxaTicketVal - totalPedidosPendentes;
 
   // Despesas por categoria
   const catMap: Record<string, number> = {};
