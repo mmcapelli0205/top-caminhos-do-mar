@@ -64,17 +64,26 @@ export default function AdmFinanceiroDashboard() {
     },
   });
 
-  const { data: receitaRealConfig } = useQuery({
-    queryKey: ["adm-fin-receita-real"],
+  const { data: finConfigs = [] } = useQuery({
+    queryKey: ["adm-fin-configs"],
     queryFn: async () => {
       const { data } = await supabase
         .from("configuracoes_financeiras")
-        .select("valor")
-        .eq("chave", KEY_RECEITA_REAL)
-        .maybeSingle();
-      return data?.valor ?? 0;
+        .select("chave, valor")
+        .in("chave", [KEY_RECEITA_REAL, KEY_TAXA_TICKET, KEY_TAXA_GLOBAL, KEY_TAXA_TOP]);
+      return data ?? [];
     },
   });
+
+  const getConfigVal = (key: string, fallback: number) => {
+    const row = finConfigs.find((c) => c.chave === key);
+    return (row?.valor as number) ?? fallback;
+  };
+
+  const receitaRealConfig = getConfigVal(KEY_RECEITA_REAL, 0);
+  const taxaTicketVal = getConfigVal(KEY_TAXA_TICKET, 0);
+  const globalPercent = getConfigVal(KEY_TAXA_GLOBAL, 0);
+  const taxaTopVal = getConfigVal(KEY_TAXA_TOP, 4125);
 
   const receitaParticipantes = participantes.reduce((s, p) => s + (p.valor_pago ?? 0), 0);
   const receitaServidores = servidores.reduce((s, p) => s + (p.valor_pago ?? 0), 0);
