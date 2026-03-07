@@ -10,6 +10,9 @@ import { Link } from "react-router-dom";
 import { differenceInDays } from "date-fns";
 
 const KEY_RECEITA_REAL = "receita_real_valor";
+const KEY_TAXA_TICKET = "taxa_ticket_and_go_valor";
+const KEY_TAXA_GLOBAL = "taxa_global_percentual";
+const KEY_TAXA_TOP = "taxa_top_valor";
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const CAT_COLORS = [
@@ -61,17 +64,26 @@ export default function AdmFinanceiroDashboard() {
     },
   });
 
-  const { data: receitaRealConfig } = useQuery({
-    queryKey: ["adm-fin-receita-real"],
+  const { data: finConfigs = [] } = useQuery({
+    queryKey: ["adm-fin-configs"],
     queryFn: async () => {
       const { data } = await supabase
         .from("configuracoes_financeiras")
-        .select("valor")
-        .eq("chave", KEY_RECEITA_REAL)
-        .maybeSingle();
-      return data?.valor ?? 0;
+        .select("chave, valor")
+        .in("chave", [KEY_RECEITA_REAL, KEY_TAXA_TICKET, KEY_TAXA_GLOBAL, KEY_TAXA_TOP]);
+      return data ?? [];
     },
   });
+
+  const getConfigVal = (key: string, fallback: number) => {
+    const row = finConfigs.find((c) => c.chave === key);
+    return (row?.valor as number) ?? fallback;
+  };
+
+  const receitaRealConfig = getConfigVal(KEY_RECEITA_REAL, 0);
+  const taxaTicketVal = getConfigVal(KEY_TAXA_TICKET, 0);
+  const globalPercent = getConfigVal(KEY_TAXA_GLOBAL, 0);
+  const taxaTopVal = getConfigVal(KEY_TAXA_TOP, 4125);
 
   const receitaParticipantes = participantes.reduce((s, p) => s + (p.valor_pago ?? 0), 0);
   const receitaServidores = servidores.reduce((s, p) => s + (p.valor_pago ?? 0), 0);
@@ -79,12 +91,14 @@ export default function AdmFinanceiroDashboard() {
   const receita = receitaParticipantes + receitaServidores + receitaDoacoes;
 
   const totalDespesas = despesas.reduce((s, d) => s + (d.valor ?? 0), 0);
-  const receitaReal = (receitaRealConfig ?? 0) as number;
-  const receitaBase = receitaReal > 0 ? receitaReal : receita;
+  const receitaBase = receitaRealConfig > 0 ? receitaRealConfig : receita;
   const saldo = receitaBase - totalDespesas;
 
   const totalPedidosPendentes = pedidosPendentes.reduce((s, p) => s + (p.valor_total_estimado ?? 0), 0);
-  const budgetComprometido = saldo - totalPedidosPendentes;
+
+  // Taxa global incide apenas sobre receita de participantes
+  const taxaGlobalCalc = receitaParticipantes * (globalPercent / 100);
+  const lucroLiquido = receita - taxaGlobalCalc - taxaTopVal - taxaTicketVal - totalPedidosPendentes;
 
   // Despesas por categoria
   const catMap: Record<string, number> = {};
@@ -144,10 +158,10 @@ export default function AdmFinanceiroDashboard() {
             <p className="text-lg font-bold text-amber-500">{fmt(totalPedidosPendentes)}</p>
           </CardContent>
         </Card>
-        <Card className={`border-l-4 ${budgetComprometido >= 0 ? "border-l-blue-500" : "border-l-red-500"}`}>
+        <Card className={`border-l-4 ${lucroLiquido >= 0 ? "border-l-blue-500" : "border-l-red-500"}`}>
           <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Budget Comprom.</p>
-            <p className={`text-lg font-bold ${budgetComprometido >= 0 ? "text-blue-500" : "text-red-500"}`}>{fmt(budgetComprometido)}</p>
+            <p className="text-xs text-muted-foreground">Lucro Líq. Projetado</p>
+            <p className={`text-lg font-bold ${lucroLiquido >= 0 ? "text-blue-500" : "text-red-500"}`}>{fmt(lucroLiquido)}</p>
           </CardContent>
         </Card>
       </div>
