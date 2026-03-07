@@ -158,10 +158,10 @@ export default function AdmFinanceiroDashboard() {
             <p className="text-lg font-bold text-amber-500">{fmt(totalPedidosPendentes)}</p>
           </CardContent>
         </Card>
-        <Card className={`border-l-4 ${budgetComprometido >= 0 ? "border-l-blue-500" : "border-l-red-500"}`}>
+        <Card className={`border-l-4 ${lucroLiquido >= 0 ? "border-l-blue-500" : "border-l-red-500"}`}>
           <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Budget Comprom.</p>
-            <p className={`text-lg font-bold ${budgetComprometido >= 0 ? "text-blue-500" : "text-red-500"}`}>{fmt(budgetComprometido)}</p>
+            <p className="text-xs text-muted-foreground">Lucro Líq. Projetado</p>
+            <p className={`text-lg font-bold ${lucroLiquido >= 0 ? "text-blue-500" : "text-red-500"}`}>{fmt(lucroLiquido)}</p>
           </CardContent>
         </Card>
       </div>
