@@ -518,6 +518,49 @@ export default function AdmPedidosDashboard() {
                       <div><Label>Qtd Comprada</Label><Input type="number" min={1} value={qtdComprada} onChange={(e) => setQtdComprada(parseInt(e.target.value) || 1)} disabled={isComprado} /></div>
                       <div><Label>Data da Compra</Label><Input type="date" value={dataCompra} onChange={(e) => setDataCompra(e.target.value)} disabled={isComprado} /></div>
                     </div>
+
+                    {/* Bloco Doação */}
+                    {!isComprado && (
+                      <div className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isDoado}
+                            onCheckedChange={(v) => { setIsDoado(!!v); if (v) setIsPagoPorTerceiro(false); }}
+                            id="doado-check"
+                            disabled={isPagoPorTerceiro}
+                          />
+                          <Label htmlFor="doado-check">Item Doado</Label>
+                        </div>
+                        {isDoado && (
+                          <div>
+                            <Label>Doado por</Label>
+                            <Input value={doadoPor} onChange={(e) => setDoadoPor(e.target.value)} placeholder="Nome do doador (obrigatório)" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bloco Pago por Terceiro */}
+                    {!isComprado && (
+                      <div className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isPagoPorTerceiro}
+                            onCheckedChange={(v) => { setIsPagoPorTerceiro(!!v); if (v) setIsDoado(false); }}
+                            id="terceiro-check"
+                            disabled={isDoado}
+                          />
+                          <Label htmlFor="terceiro-check">Pago por terceiro (gera reembolso)</Label>
+                        </div>
+                        {isPagoPorTerceiro && (
+                          <div>
+                            <Label>Pago por</Label>
+                            <Input value={pagoPor} onChange={(e) => setPagoPor(e.target.value)} placeholder="Nome de quem pagou (obrigatório)" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       <Label>Comprovante/NF</Label>
                       {comprovanteUrl && (
@@ -537,8 +580,8 @@ export default function AdmPedidosDashboard() {
                       </div>
                     )}
                     {!isComprado && comprado && (
-                      <Button onClick={() => marcarComprado.mutate()} disabled={!valorPago || uploading}>
-                        Confirmar Compra e Migrar para Despesas
+                      <Button onClick={() => marcarComprado.mutate()} disabled={(!valorPago && !isDoado) || uploading || (isDoado && !doadoPor.trim()) || (isPagoPorTerceiro && !pagoPor.trim())}>
+                        {isDoado ? "Confirmar Doação" : "Confirmar Compra e Migrar para Despesas"}
                       </Button>
                     )}
                     {isComprado && (
