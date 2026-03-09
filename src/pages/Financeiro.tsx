@@ -9,6 +9,7 @@ import DespesasSection from "@/components/financeiro/DespesasSection";
 import MreSection from "@/components/financeiro/MreSection";
 import CeiaSection from "@/components/financeiro/CeiaSection";
 import BebidasSection from "@/components/financeiro/BebidasSection";
+import ReembolsosSection from "@/components/financeiro/ReembolsosSection";
 import { getPermissoesMenu } from "@/lib/permissoes";
 
 const Financeiro = () => {
@@ -73,6 +74,7 @@ const Financeiro = () => {
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           {!hakunaOnly && <TabsTrigger value="receita">Receita</TabsTrigger>}
           {!hakunaOnly && <TabsTrigger value="despesas">Despesas</TabsTrigger>}
+          {!hakunaOnly && <TabsTrigger value="reembolsos">Reembolsos</TabsTrigger>}
           {!hakunaOnly && <TabsTrigger value="mre">MRE</TabsTrigger>}
           {!hakunaOnly && <TabsTrigger value="ceia">Ceia do Rei</TabsTrigger>}
           {!hakunaOnly && <TabsTrigger value="bebidas">Bebidas</TabsTrigger>}
@@ -80,6 +82,7 @@ const Financeiro = () => {
         <TabsContent value="resumo"><ResumoSection /></TabsContent>
         {!hakunaOnly && <TabsContent value="receita"><ReceitaSection /></TabsContent>}
         {!hakunaOnly && <TabsContent value="despesas"><DespesasSection /></TabsContent>}
+        {!hakunaOnly && <TabsContent value="reembolsos"><ReembolsosSection /></TabsContent>}
         {!hakunaOnly && <TabsContent value="mre"><MreSection /></TabsContent>}
         {!hakunaOnly && <TabsContent value="ceia"><CeiaSection /></TabsContent>}
         {!hakunaOnly && <TabsContent value="bebidas"><BebidasSection /></TabsContent>}
