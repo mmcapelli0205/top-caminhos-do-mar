@@ -87,10 +87,7 @@ const ReceitaSection = () => {
   // Itens Abençoados: pedidos_orcamentos com is_doado = true
   const itensAbencoados = pedidosDoados ?? [];
 
-  const getValorItem = (p: any) => {
-    if (p.comprado && p.valor_pago != null) return p.valor_pago as number;
-    return (p.valor_total_estimado ?? 0) as number;
-  };
+  const getValorItem = (p: any) => (p.valor_total_estimado ?? 0) as number;
 
   const doadoresUnicos = useMemo(() =>
     Array.from(new Set(itensAbencoados.map((p: any) => p.doado_por || "Desconhecido"))).sort(),
