@@ -24,6 +24,7 @@ const ReceitaSection = () => {
   const [openServidores, setOpenServidores] = useState(false);
   const [openDoacoesFinanceiras, setOpenDoacoesFinanceiras] = useState(false);
   const [openDoacoesMateriais, setOpenDoacoesMateriais] = useState(false);
+  const [filtroDoadorMaterial, setFiltroDoadorMaterial] = useState("Todos");
 
   // Participantes (read-only)
   const { data: participantes } = useQuery({
