@@ -1560,6 +1560,7 @@ export type Database = {
       }
       hakuna_estoque_medicamentos: {
         Row: {
+          categoria: string | null
           created_at: string | null
           doador_nome: string | null
           estoque_minimo: number | null
@@ -1573,6 +1574,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          categoria?: string | null
           created_at?: string | null
           doador_nome?: string | null
           estoque_minimo?: number | null
@@ -1586,6 +1588,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          categoria?: string | null
           created_at?: string | null
           doador_nome?: string | null
           estoque_minimo?: number | null
