@@ -113,7 +113,7 @@ const RelatorioServidoresPDF = ({ open, onOpenChange }: Props) => {
       let query = supabase
         .from("servidores")
         .select("nome, area_servico, cargo_area, status, numero_legendario, experiencia")
-        .in("status", ["aprovado", null as any])
+        .or("status.eq.aprovado,status.is.null")
         .order("nome", { ascending: true });
 
       if (areaFiltro === "Sem Área") {
