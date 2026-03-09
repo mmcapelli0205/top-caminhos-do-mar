@@ -428,17 +428,26 @@ const ReceitaSection = () => {
         <CollapsibleContent className="space-y-4 pt-4">
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">Total Itens Abençoados (valor estimado)</p>
-              <p className="text-lg font-bold text-blue-500">{fmt(totalDoacoesMateriais)}</p>
+              <p className="text-xs text-muted-foreground">Total Itens Abençoados (valor estimado){filtroDoadorMaterial !== "Todos" && ` — ${filtroDoadorMaterial}`}</p>
+              <p className="text-lg font-bold text-blue-500">{fmt(totalDoacoesMateriaisFiltrado)}</p>
               <p className="text-xs text-muted-foreground">NÃO entra no cálculo do Fluxo de Caixa</p>
             </CardContent>
           </Card>
 
+          {doadoresMateriaisUnicos.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant={filtroDoadorMaterial === "Todos" ? "default" : "outline"} onClick={() => setFiltroDoadorMaterial("Todos")}>Todos</Button>
+              {doadoresMateriaisUnicos.map((nome) => (
+                <Button key={nome} size="sm" variant={filtroDoadorMaterial === nome ? "default" : "outline"} onClick={() => setFiltroDoadorMaterial(nome)}>{nome}</Button>
+              ))}
+            </div>
+          )}
+
           {isMobile ? (
             <div className="space-y-2">
-              {doacoesMateriais.length === 0 ? (
+              {doacoesMateriaisFiltradas.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">Nenhum item doado</p>
-              ) : doacoesMateriais.map((d) => (
+              ) : doacoesMateriaisFiltradas.map((d) => (
                 <Card key={d.id}>
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start">
