@@ -65,17 +65,44 @@ const ReceitaSection = () => {
     },
   });
 
+  // Pedidos doados (Itens Abençoados) — sem cache para refletir atualizações imediatas
+  const { data: pedidosDoados } = useQuery({
+    queryKey: ["fin-pedidos-doados"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pedidos_orcamentos")
+        .select("*")
+        .eq("is_doado", true)
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
   const doacoesFinanceiras = (doacoes ?? []).filter((d) => d.tipo === "financeira");
-  const doacoesMateriais = (doacoes ?? []).filter((d) => d.tipo === "material");
   const totalDoacoesFinanceiras = doacoesFinanceiras.reduce((s, d) => s + (d.valor ?? 0), 0);
 
-  // Doadores únicos para filtro de materiais
-  const doadoresMateriaisUnicos = Array.from(new Set(doacoesMateriais.map((d) => d.anonimo ? "Anônimo" : d.doador))).sort();
-  const doacoesMateriaisFiltradas = filtroDoadorMaterial === "Todos"
-    ? doacoesMateriais
-    : doacoesMateriais.filter((d) => (d.anonimo ? "Anônimo" : d.doador) === filtroDoadorMaterial);
-  const totalDoacoesMateriais = doacoesMateriais.reduce((s, d) => s + (d.valor ?? 0), 0);
-  const totalDoacoesMateriaisFiltrado = doacoesMateriaisFiltradas.reduce((s, d) => s + (d.valor ?? 0), 0);
+  // Itens Abençoados: pedidos_orcamentos com is_doado = true
+  const itensAbencoados = pedidosDoados ?? [];
+
+  const getValorItem = (p: any) => {
+    if (p.comprado && p.valor_pago != null) return p.valor_pago as number;
+    return (p.valor_total_estimado ?? 0) as number;
+  };
+
+  const doadoresUnicos = useMemo(() =>
+    Array.from(new Set(itensAbencoados.map((p: any) => p.doado_por || "Desconhecido"))).sort(),
+    [itensAbencoados]
+  );
+
+  const itensFiltrados = filtroDoadorMaterial === "Todos"
+    ? itensAbencoados
+    : itensAbencoados.filter((p: any) => (p.doado_por || "Desconhecido") === filtroDoadorMaterial);
+
+  const totalItensAbencoados = itensAbencoados.reduce((s: number, p: any) => s + getValorItem(p), 0);
+  const totalItensFiltrado = itensFiltrados.reduce((s: number, p: any) => s + getValorItem(p), 0);
 
   // Editing state for doacoes financeiras
   const [editId, setEditId] = useState<string | null>(null);
