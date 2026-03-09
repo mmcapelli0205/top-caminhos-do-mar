@@ -473,9 +473,9 @@ const ReceitaSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {doacoesMateriais.length === 0 ? (
+                  {doacoesMateriaisFiltradas.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum item doado</TableCell></TableRow>
-                  ) : doacoesMateriais.map((d) => (
+                  ) : doacoesMateriaisFiltradas.map((d) => (
                     <TableRow key={d.id}>
                       <TableCell>{displayDoador(d)}</TableCell>
                       <TableCell>{d.item_descricao ?? "-"}</TableCell>
