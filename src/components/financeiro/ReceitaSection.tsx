@@ -24,6 +24,7 @@ const ReceitaSection = () => {
   const [openServidores, setOpenServidores] = useState(false);
   const [openDoacoesFinanceiras, setOpenDoacoesFinanceiras] = useState(false);
   const [openDoacoesMateriais, setOpenDoacoesMateriais] = useState(false);
+  const [filtroDoadorMaterial, setFiltroDoadorMaterial] = useState("Todos");
 
   // Participantes (read-only)
   const { data: participantes } = useQuery({
@@ -67,7 +68,14 @@ const ReceitaSection = () => {
   const doacoesFinanceiras = (doacoes ?? []).filter((d) => d.tipo === "financeira");
   const doacoesMateriais = (doacoes ?? []).filter((d) => d.tipo === "material");
   const totalDoacoesFinanceiras = doacoesFinanceiras.reduce((s, d) => s + (d.valor ?? 0), 0);
+
+  // Doadores únicos para filtro de materiais
+  const doadoresMateriaisUnicos = Array.from(new Set(doacoesMateriais.map((d) => d.anonimo ? "Anônimo" : d.doador))).sort();
+  const doacoesMateriaisFiltradas = filtroDoadorMaterial === "Todos"
+    ? doacoesMateriais
+    : doacoesMateriais.filter((d) => (d.anonimo ? "Anônimo" : d.doador) === filtroDoadorMaterial);
   const totalDoacoesMateriais = doacoesMateriais.reduce((s, d) => s + (d.valor ?? 0), 0);
+  const totalDoacoesMateriaisFiltrado = doacoesMateriaisFiltradas.reduce((s, d) => s + (d.valor ?? 0), 0);
 
   // Editing state for doacoes financeiras
   const [editId, setEditId] = useState<string | null>(null);
@@ -420,17 +428,26 @@ const ReceitaSection = () => {
         <CollapsibleContent className="space-y-4 pt-4">
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">Total Itens Abençoados (valor estimado)</p>
-              <p className="text-lg font-bold text-blue-500">{fmt(totalDoacoesMateriais)}</p>
+              <p className="text-xs text-muted-foreground">Total Itens Abençoados (valor estimado){filtroDoadorMaterial !== "Todos" && ` — ${filtroDoadorMaterial}`}</p>
+              <p className="text-lg font-bold text-blue-500">{fmt(totalDoacoesMateriaisFiltrado)}</p>
               <p className="text-xs text-muted-foreground">NÃO entra no cálculo do Fluxo de Caixa</p>
             </CardContent>
           </Card>
 
+          {doadoresMateriaisUnicos.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant={filtroDoadorMaterial === "Todos" ? "default" : "outline"} onClick={() => setFiltroDoadorMaterial("Todos")}>Todos</Button>
+              {doadoresMateriaisUnicos.map((nome) => (
+                <Button key={nome} size="sm" variant={filtroDoadorMaterial === nome ? "default" : "outline"} onClick={() => setFiltroDoadorMaterial(nome)}>{nome}</Button>
+              ))}
+            </div>
+          )}
+
           {isMobile ? (
             <div className="space-y-2">
-              {doacoesMateriais.length === 0 ? (
+              {doacoesMateriaisFiltradas.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">Nenhum item doado</p>
-              ) : doacoesMateriais.map((d) => (
+              ) : doacoesMateriaisFiltradas.map((d) => (
                 <Card key={d.id}>
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start">
@@ -456,9 +473,9 @@ const ReceitaSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {doacoesMateriais.length === 0 ? (
+                  {doacoesMateriaisFiltradas.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum item doado</TableCell></TableRow>
-                  ) : doacoesMateriais.map((d) => (
+                  ) : doacoesMateriaisFiltradas.map((d) => (
                     <TableRow key={d.id}>
                       <TableCell>{displayDoador(d)}</TableCell>
                       <TableCell>{d.item_descricao ?? "-"}</TableCell>
