@@ -28,6 +28,10 @@ export interface PedidoOrcamento {
   is_obrigatorio_global: boolean | null;
   aprovado_por: string | null;
   motivo_reprovacao: string | null;
+  is_doado: boolean | null;
+  doado_por: string | null;
+  is_pago_por_terceiro: boolean | null;
+  pago_por: string | null;
   top_id: string | null;
   created_at: string | null;
   updated_at: string | null;
