@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Minus, PackagePlus, ChevronDown, Package, AlertTriangle, History, Trash2 } from "lucide-react";
+import { Plus, Minus, PackagePlus, ChevronDown, Package, AlertTriangle, History, Trash2, Search } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
@@ -21,6 +21,20 @@ type EstoqueMed = Tables<"hakuna_estoque_medicamentos">;
 type Movimentacao = Tables<"hakuna_estoque_movimentacoes">;
 
 const UNIDADES = ["un", "cx", "fr", "amp", "cp"];
+
+const CATEGORIAS = [
+  "Cardiovascular e Emergência",
+  "Analgesia e Anti-inflamatório Oral",
+  "Gastrointestinal e Náuseas Oral",
+  "Alergia e Emocional Oral",
+  "Injetáveis Analgesia e Inflamação",
+  "Injetáveis Gastrointestinais",
+  "Injetáveis Alergia e Emergência",
+  "Respiratório e Metabólico",
+  "Insumos Médicos",
+  "Trauma e Imobilização",
+  "Evacuação e Remoção",
+];
 
 export default function MedicamentosEstoqueTab() {
   const qc = useQueryClient();
@@ -31,8 +45,13 @@ export default function MedicamentosEstoqueTab() {
   const [selectedItem, setSelectedItem] = useState<EstoqueMed | null>(null);
   const [histOpen, setHistOpen] = useState(false);
 
+  // Filtro & busca
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("Todas");
+  const [busca, setBusca] = useState("");
+
   // Form states - Novo
   const [novoNome, setNovoNome] = useState("");
+  const [novoCategoria, setNovoCategoria] = useState("");
   const [novoQtd, setNovoQtd] = useState(1);
   const [novoUnidade, setNovoUnidade] = useState("un");
   const [novoEstoqueMin, setNovoEstoqueMin] = useState(5);
@@ -91,6 +110,15 @@ export default function MedicamentosEstoqueTab() {
     },
   });
 
+  // Filtered list
+  const estoqueFiltrado = useMemo(() => {
+    return estoque.filter((item) => {
+      const matchCategoria = filtroCategoria === "Todas" || item.categoria === filtroCategoria;
+      const matchBusca = !busca || item.nome.toLowerCase().includes(busca.toLowerCase());
+      return matchCategoria && matchBusca;
+    });
+  }, [estoque, filtroCategoria, busca]);
+
   // Stats
   const totalItens = estoque.length;
   const totalUnidades = estoque.reduce((s, i) => s + i.quantidade, 0);
@@ -109,7 +137,7 @@ export default function MedicamentosEstoqueTab() {
   };
 
   const resetNovoForm = () => {
-    setNovoNome(""); setNovoQtd(1); setNovoUnidade("un"); setNovoEstoqueMin(5); setNovoOrigem("manual"); setNovoDoador("");
+    setNovoNome(""); setNovoCategoria(""); setNovoQtd(1); setNovoUnidade("un"); setNovoEstoqueMin(5); setNovoOrigem("manual"); setNovoDoador("");
   };
 
   const criarMedicamento = useMutation({
@@ -118,6 +146,7 @@ export default function MedicamentosEstoqueTab() {
         nome: novoNome, quantidade: novoQtd, unidade: novoUnidade, estoque_minimo: novoEstoqueMin,
         origem: novoOrigem === "doacao" ? "doacao" : "manual",
         doador_nome: novoOrigem === "doacao" ? novoDoador : null,
+        categoria: novoCategoria || null,
       }).select("id").single();
       if (e1) throw e1;
       await supabase.from("hakuna_estoque_movimentacoes").insert({
@@ -184,7 +213,6 @@ export default function MedicamentosEstoqueTab() {
 
   const excluirItem = useMutation({
     mutationFn: async (item: EstoqueMed) => {
-      // Delete related movements first, then the item
       await supabase.from("hakuna_estoque_movimentacoes").delete().eq("medicamento_id", item.id);
       const { error } = await supabase.from("hakuna_estoque_medicamentos").delete().eq("id", item.id);
       if (error) throw error;
@@ -200,6 +228,22 @@ export default function MedicamentosEstoqueTab() {
   const openAddEstoque = (item: EstoqueMed) => { setSelectedItem(item); setAddQtd(1); setAddEstoqueOpen(true); };
 
   const pacienteList = baixaTipo === "participante" ? participantes : servidores;
+
+  // Categorias presentes no estoque para exibir nos filtros
+  const categoriasPresentes = useMemo(() => {
+    const cats = new Set<string>();
+    estoque.forEach((i) => { if (i.categoria) cats.add(i.categoria); });
+    return Array.from(cats).sort();
+  }, [estoque]);
+
+  const CategoriaBadge = ({ categoria }: { categoria: string | null }) => {
+    if (!categoria) return null;
+    return (
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal ml-1.5 bg-muted/50 text-muted-foreground border-muted-foreground/20">
+        {categoria}
+      </Badge>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -226,11 +270,45 @@ export default function MedicamentosEstoqueTab() {
       {/* Action button */}
       <Button variant="outline" onClick={() => setNovoOpen(true)}><Plus className="h-4 w-4 mr-1" /> Novo Medicamento</Button>
 
+      {/* Search + Category Filters */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar medicamento..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Button
+            size="sm"
+            variant={filtroCategoria === "Todas" ? "default" : "outline"}
+            className="text-xs h-7 px-2.5"
+            onClick={() => setFiltroCategoria("Todas")}
+          >
+            Todas
+          </Button>
+          {categoriasPresentes.map((cat) => (
+            <Button
+              key={cat}
+              size="sm"
+              variant={filtroCategoria === cat ? "default" : "outline"}
+              className="text-xs h-7 px-2.5"
+              onClick={() => setFiltroCategoria(cat)}
+            >
+              {cat}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {/* Inventory */}
       {isMobile ? (
         <div className="space-y-3">
-          {estoque.length === 0 && <p className="text-center text-muted-foreground py-8">Nenhum medicamento no estoque</p>}
-          {estoque.map((item) => {
+          {estoqueFiltrado.length === 0 && <p className="text-center text-muted-foreground py-8">Nenhum medicamento encontrado</p>}
+          {estoqueFiltrado.map((item) => {
             const isLow = item.quantidade <= (item.estoque_minimo ?? 5);
             return (
               <Card key={item.id} className={isLow ? "border-destructive" : ""}>
@@ -238,6 +316,7 @@ export default function MedicamentosEstoqueTab() {
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="font-medium">{item.nome}</span>
+                      <CategoriaBadge categoria={item.categoria} />
                       <p className="text-xs text-muted-foreground">{item.origem} · {item.unidade}</p>
                     </div>
                     <Badge variant={isLow ? "destructive" : "default"}>{item.quantidade} {item.unidade}</Badge>
@@ -267,11 +346,14 @@ export default function MedicamentosEstoqueTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {estoque.map((item) => {
+              {estoqueFiltrado.map((item) => {
                 const isLow = item.quantidade <= (item.estoque_minimo ?? 5);
                 return (
                   <TableRow key={item.id} className={isLow ? "bg-destructive/10" : ""}>
-                    <TableCell className="font-medium">{item.nome}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.nome}
+                      <CategoriaBadge categoria={item.categoria} />
+                    </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={isLow ? "destructive" : "default"}>{item.quantidade}</Badge>
                     </TableCell>
@@ -288,8 +370,8 @@ export default function MedicamentosEstoqueTab() {
                   </TableRow>
                 );
               })}
-              {estoque.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum medicamento no estoque</TableCell></TableRow>
+              {estoqueFiltrado.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum medicamento encontrado</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -347,6 +429,14 @@ export default function MedicamentosEstoqueTab() {
           <DialogHeader><DialogTitle>Novo Medicamento</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Nome</Label><Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} /></div>
+            <div><Label>Categoria</Label>
+              <Select value={novoCategoria} onValueChange={setNovoCategoria}>
+                <SelectTrigger><SelectValue placeholder="Selecione a categoria..." /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Quantidade</Label><Input type="number" min={1} value={novoQtd} onChange={(e) => setNovoQtd(parseInt(e.target.value) || 1)} /></div>
               <div><Label>Unidade</Label>
