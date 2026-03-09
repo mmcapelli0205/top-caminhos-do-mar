@@ -183,6 +183,11 @@ export default function AdmPedidosDashboard() {
   const marcarComprado = useMutation({
     mutationFn: async () => {
       if (!selectedPedido) return;
+
+      // Validation
+      if (isDoado && !doadoPor.trim()) throw new Error("Informe quem doou o item");
+      if (isPagoPorTerceiro && !pagoPor.trim()) throw new Error("Informe quem pagou o item");
+
       // Update pedido
       const { error: updateErr } = await supabase.from("pedidos_orcamentos").update({
         status: "comprado",
@@ -193,23 +198,56 @@ export default function AdmPedidosDashboard() {
         data_compra: dataCompra || null,
         comprovante_url: comprovanteUrl || null,
         migrado_despesas: true,
+        is_doado: isDoado,
+        doado_por: isDoado ? doadoPor : null,
+        is_pago_por_terceiro: isPagoPorTerceiro,
+        pago_por: isPagoPorTerceiro ? pagoPor : null,
       }).eq("id", selectedPedido.id);
       if (updateErr) throw updateErr;
 
-      // Create despesa
-      const { error: insertErr } = await supabase.from("despesas").insert({
-        item: selectedPedido.nome_item,
-        descricao: selectedPedido.nome_item,
-        categoria: selectedPedido.categoria,
-        quantidade: qtdComprada || selectedPedido.quantidade,
-        valor_unitario: qtdComprada > 0 ? valorPago / qtdComprada : valorPago,
-        valor: valorPago,
-        fornecedor: fornAprovado || null,
-        data_aquisicao: dataCompra || null,
-        comprovante_url: comprovanteUrl || null,
-        auto_calculado: false,
-      });
-      if (insertErr) throw insertErr;
+      // If donated, create doacao record
+      if (isDoado) {
+        const { error: doacaoErr } = await supabase.from("doacoes").insert({
+          tipo: "material",
+          doador: doadoPor,
+          valor: selectedPedido.valor_total_estimado || 0,
+          pedido_id: selectedPedido.id,
+          item_descricao: selectedPedido.nome_item,
+          top_id: selectedPedido.top_id,
+        });
+        if (doacaoErr) throw doacaoErr;
+      }
+
+      // If paid by third party, create reembolso record
+      if (isPagoPorTerceiro) {
+        const { error: reembolsoErr } = await supabase.from("reembolsos").insert({
+          nome_pagador: pagoPor,
+          descricao: selectedPedido.nome_item,
+          valor: valorPago || selectedPedido.valor_total_estimado || 0,
+          area: selectedPedido.area_solicitante,
+          pedido_id: selectedPedido.id,
+          top_id: selectedPedido.top_id,
+          status: "pendente",
+        });
+        if (reembolsoErr) throw reembolsoErr;
+      }
+
+      // Create despesa (only if not donated)
+      if (!isDoado) {
+        const { error: insertErr } = await supabase.from("despesas").insert({
+          item: selectedPedido.nome_item,
+          descricao: selectedPedido.nome_item,
+          categoria: selectedPedido.categoria,
+          quantidade: qtdComprada || selectedPedido.quantidade,
+          valor_unitario: qtdComprada > 0 ? valorPago / qtdComprada : valorPago,
+          valor: valorPago,
+          fornecedor: fornAprovado || null,
+          data_aquisicao: dataCompra || null,
+          comprovante_url: comprovanteUrl || null,
+          auto_calculado: false,
+        });
+        if (insertErr) throw insertErr;
+      }
 
       // Integração com estoque de medicamentos
       if (selectedPedido.categoria === "Medicamentos") {
@@ -253,10 +291,12 @@ export default function AdmPedidosDashboard() {
       qc.invalidateQueries({ queryKey: ["adm-pedidos-todos"] });
       qc.invalidateQueries({ queryKey: ["fin-despesas-lista"] });
       qc.invalidateQueries({ queryKey: ["fin-despesas-resumo"] });
+      qc.invalidateQueries({ queryKey: ["fin-doacoes-lista"] });
+      qc.invalidateQueries({ queryKey: ["fin-doacoes"] });
       qc.invalidateQueries({ queryKey: ["hk-estoque-medicamentos"] });
       qc.invalidateQueries({ queryKey: ["hk-estoque-movimentacoes"] });
       setDialogOpen(false);
-      toast({ title: "Compra registrada e despesa criada automaticamente!" });
+      toast({ title: "Compra registrada!" });
     },
     onError: (err: any) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
