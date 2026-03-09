@@ -43,6 +43,11 @@ export default function AdmPedidosDashboard() {
   const [comprado, setComprado] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [comprovanteUrl, setComprovanteUrl] = useState("");
+  const [isDoado, setIsDoado] = useState(false);
+  const [doadoPor, setDoadoPor] = useState("");
+  const [isPagoPorTerceiro, setIsPagoPorTerceiro] = useState(false);
+  const [pagoPor, setPagoPor] = useState("");
+  const [comprovanteUrl, setComprovanteUrl] = useState("");
 
   const { data: pedidos = [] } = useQuery({
     queryKey: ["adm-pedidos-todos"],
