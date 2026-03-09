@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,17 +65,44 @@ const ReceitaSection = () => {
     },
   });
 
+  // Pedidos doados (Itens Abençoados) — sem cache para refletir atualizações imediatas
+  const { data: pedidosDoados } = useQuery({
+    queryKey: ["fin-pedidos-doados"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pedidos_orcamentos")
+        .select("*")
+        .eq("is_doado", true)
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
   const doacoesFinanceiras = (doacoes ?? []).filter((d) => d.tipo === "financeira");
-  const doacoesMateriais = (doacoes ?? []).filter((d) => d.tipo === "material");
   const totalDoacoesFinanceiras = doacoesFinanceiras.reduce((s, d) => s + (d.valor ?? 0), 0);
 
-  // Doadores únicos para filtro de materiais
-  const doadoresMateriaisUnicos = Array.from(new Set(doacoesMateriais.map((d) => d.anonimo ? "Anônimo" : d.doador))).sort();
-  const doacoesMateriaisFiltradas = filtroDoadorMaterial === "Todos"
-    ? doacoesMateriais
-    : doacoesMateriais.filter((d) => (d.anonimo ? "Anônimo" : d.doador) === filtroDoadorMaterial);
-  const totalDoacoesMateriais = doacoesMateriais.reduce((s, d) => s + (d.valor ?? 0), 0);
-  const totalDoacoesMateriaisFiltrado = doacoesMateriaisFiltradas.reduce((s, d) => s + (d.valor ?? 0), 0);
+  // Itens Abençoados: pedidos_orcamentos com is_doado = true
+  const itensAbencoados = pedidosDoados ?? [];
+
+  const getValorItem = (p: any) => {
+    if (p.comprado && p.valor_pago != null) return p.valor_pago as number;
+    return (p.valor_total_estimado ?? 0) as number;
+  };
+
+  const doadoresUnicos = useMemo(() =>
+    Array.from(new Set(itensAbencoados.map((p: any) => p.doado_por || "Desconhecido"))).sort(),
+    [itensAbencoados]
+  );
+
+  const itensFiltrados = filtroDoadorMaterial === "Todos"
+    ? itensAbencoados
+    : itensAbencoados.filter((p: any) => (p.doado_por || "Desconhecido") === filtroDoadorMaterial);
+
+  const totalItensAbencoados = itensAbencoados.reduce((s: number, p: any) => s + getValorItem(p), 0);
+  const totalItensFiltrado = itensFiltrados.reduce((s: number, p: any) => s + getValorItem(p), 0);
 
   // Editing state for doacoes financeiras
   const [editId, setEditId] = useState<string | null>(null);
@@ -411,16 +438,16 @@ const ReceitaSection = () => {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Itens Abençoados — Doações Materiais */}
+      {/* Itens Abençoados — Doações Materiais (pedidos_orcamentos com is_doado) */}
       <Collapsible open={openDoacoesMateriais} onOpenChange={setOpenDoacoesMateriais}>
         <CollapsibleTrigger asChild>
           <button className="w-full flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Itens Abençoados — Doações Materiais</h3>
-              <span className="text-sm text-muted-foreground">({doacoesMateriais.length} itens)</span>
+              <span className="text-sm text-muted-foreground">({itensAbencoados.length} itens)</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="font-bold">{fmt(totalDoacoesMateriais)}</span>
+              <span className="font-bold">{fmt(totalItensAbencoados)}</span>
               <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${openDoacoesMateriais ? "rotate-180" : ""}`} />
             </div>
           </button>
@@ -429,15 +456,15 @@ const ReceitaSection = () => {
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground">Total Itens Abençoados (valor estimado){filtroDoadorMaterial !== "Todos" && ` — ${filtroDoadorMaterial}`}</p>
-              <p className="text-lg font-bold text-blue-500">{fmt(totalDoacoesMateriaisFiltrado)}</p>
+              <p className="text-lg font-bold text-blue-500">{fmt(totalItensFiltrado)}</p>
               <p className="text-xs text-muted-foreground">NÃO entra no cálculo do Fluxo de Caixa</p>
             </CardContent>
           </Card>
 
-          {doadoresMateriaisUnicos.length > 0 && (
+          {doadoresUnicos.length > 0 && (
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant={filtroDoadorMaterial === "Todos" ? "default" : "outline"} onClick={() => setFiltroDoadorMaterial("Todos")}>Todos</Button>
-              {doadoresMateriaisUnicos.map((nome) => (
+              {doadoresUnicos.map((nome) => (
                 <Button key={nome} size="sm" variant={filtroDoadorMaterial === nome ? "default" : "outline"} onClick={() => setFiltroDoadorMaterial(nome)}>{nome}</Button>
               ))}
             </div>
@@ -445,17 +472,18 @@ const ReceitaSection = () => {
 
           {isMobile ? (
             <div className="space-y-2">
-              {doacoesMateriaisFiltradas.length === 0 ? (
+              {itensFiltrados.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">Nenhum item doado</p>
-              ) : doacoesMateriaisFiltradas.map((d) => (
-                <Card key={d.id}>
+              ) : itensFiltrados.map((p: any) => (
+                <Card key={p.id}>
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start">
-                      <span className="font-medium">{displayDoador(d)}</span>
-                      <span className="font-bold">{fmt(d.valor)}</span>
+                      <span className="font-medium">{p.doado_por || "Desconhecido"}</span>
+                      <span className="font-bold">{fmt(getValorItem(p))}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{d.item_descricao ?? "-"}</p>
-                    {d.quantidade && <p className="text-xs text-muted-foreground">Qtd: {d.quantidade}</p>}
+                    <p className="text-sm text-muted-foreground mt-1">{p.nome_item ?? "-"}</p>
+                    {p.quantidade && <p className="text-xs text-muted-foreground">Qtd: {p.quantidade}</p>}
+                    {p.comprado && p.valor_pago != null && <p className="text-xs text-green-500">Valor pago</p>}
                   </CardContent>
                 </Card>
               ))}
@@ -469,19 +497,22 @@ const ReceitaSection = () => {
                     <TableHead>Item</TableHead>
                     <TableHead className="text-right">Valor Estimado</TableHead>
                     <TableHead className="text-right">Quantidade</TableHead>
-                    <TableHead>Pedido de Origem</TableHead>
+                    <TableHead>Área</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {doacoesMateriaisFiltradas.length === 0 ? (
+                  {itensFiltrados.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum item doado</TableCell></TableRow>
-                  ) : doacoesMateriaisFiltradas.map((d) => (
-                    <TableRow key={d.id}>
-                      <TableCell>{displayDoador(d)}</TableCell>
-                      <TableCell>{d.item_descricao ?? "-"}</TableCell>
-                      <TableCell className="text-right">{fmt(d.valor)}</TableCell>
-                      <TableCell className="text-right">{d.quantidade ?? "-"}</TableCell>
-                      <TableCell>{d.pedido_id ? "Sim" : "-"}</TableCell>
+                  ) : itensFiltrados.map((p: any) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.doado_por || "Desconhecido"}</TableCell>
+                      <TableCell>{p.nome_item ?? "-"}</TableCell>
+                      <TableCell className="text-right">
+                        {fmt(getValorItem(p))}
+                        {p.comprado && p.valor_pago != null && <span className="text-xs text-green-500 ml-1">(pago)</span>}
+                      </TableCell>
+                      <TableCell className="text-right">{p.quantidade ?? "-"}</TableCell>
+                      <TableCell>{p.area_solicitante ?? "-"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -494,7 +525,7 @@ const ReceitaSection = () => {
       <Card>
         <CardContent className="p-4">
           <p className="text-lg font-bold">RECEITA TOTAL: {fmt(totalArrecadado + totalServidores + totalDoacoesFinanceiras)}</p>
-          <p className="text-xs text-muted-foreground">Doações materiais ({fmt(totalDoacoesMateriais)}) não incluídas no total</p>
+          <p className="text-xs text-muted-foreground">Doações materiais ({fmt(totalItensAbencoados)}) não incluídas no total</p>
         </CardContent>
       </Card>
     </div>
