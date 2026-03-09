@@ -68,7 +68,14 @@ const ReceitaSection = () => {
   const doacoesFinanceiras = (doacoes ?? []).filter((d) => d.tipo === "financeira");
   const doacoesMateriais = (doacoes ?? []).filter((d) => d.tipo === "material");
   const totalDoacoesFinanceiras = doacoesFinanceiras.reduce((s, d) => s + (d.valor ?? 0), 0);
+
+  // Doadores únicos para filtro de materiais
+  const doadoresMateriaisUnicos = Array.from(new Set(doacoesMateriais.map((d) => d.anonimo ? "Anônimo" : d.doador))).sort();
+  const doacoesMateriaisFiltradas = filtroDoadorMaterial === "Todos"
+    ? doacoesMateriais
+    : doacoesMateriais.filter((d) => (d.anonimo ? "Anônimo" : d.doador) === filtroDoadorMaterial);
   const totalDoacoesMateriais = doacoesMateriais.reduce((s, d) => s + (d.valor ?? 0), 0);
+  const totalDoacoesMateriaisFiltrado = doacoesMateriaisFiltradas.reduce((s, d) => s + (d.valor ?? 0), 0);
 
   // Editing state for doacoes financeiras
   const [editId, setEditId] = useState<string | null>(null);
