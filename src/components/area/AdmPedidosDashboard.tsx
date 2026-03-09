@@ -104,6 +104,10 @@ export default function AdmPedidosDashboard() {
     setMotivoReprovacao(p.motivo_reprovacao || "");
     setComprado(p.comprado || false);
     setComprovanteUrl(p.comprovante_url || p.comprovante_nf_url || "");
+    setIsDoado(p.is_doado || false);
+    setDoadoPor(p.doado_por || "");
+    setIsPagoPorTerceiro(p.is_pago_por_terceiro || false);
+    setPagoPor(p.pago_por || "");
     setDialogOpen(true);
   };
 
