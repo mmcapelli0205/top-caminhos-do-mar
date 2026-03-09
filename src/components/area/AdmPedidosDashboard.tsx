@@ -43,6 +43,10 @@ export default function AdmPedidosDashboard() {
   const [comprado, setComprado] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [comprovanteUrl, setComprovanteUrl] = useState("");
+  const [isDoado, setIsDoado] = useState(false);
+  const [doadoPor, setDoadoPor] = useState("");
+  const [isPagoPorTerceiro, setIsPagoPorTerceiro] = useState(false);
+  const [pagoPor, setPagoPor] = useState("");
 
   const { data: pedidos = [] } = useQuery({
     queryKey: ["adm-pedidos-todos"],
@@ -100,6 +104,10 @@ export default function AdmPedidosDashboard() {
     setMotivoReprovacao(p.motivo_reprovacao || "");
     setComprado(p.comprado || false);
     setComprovanteUrl(p.comprovante_url || p.comprovante_nf_url || "");
+    setIsDoado(p.is_doado || false);
+    setDoadoPor(p.doado_por || "");
+    setIsPagoPorTerceiro(p.is_pago_por_terceiro || false);
+    setPagoPor(p.pago_por || "");
     setDialogOpen(true);
   };
 
@@ -175,6 +183,11 @@ export default function AdmPedidosDashboard() {
   const marcarComprado = useMutation({
     mutationFn: async () => {
       if (!selectedPedido) return;
+
+      // Validation
+      if (isDoado && !doadoPor.trim()) throw new Error("Informe quem doou o item");
+      if (isPagoPorTerceiro && !pagoPor.trim()) throw new Error("Informe quem pagou o item");
+
       // Update pedido
       const { error: updateErr } = await supabase.from("pedidos_orcamentos").update({
         status: "comprado",
@@ -185,23 +198,56 @@ export default function AdmPedidosDashboard() {
         data_compra: dataCompra || null,
         comprovante_url: comprovanteUrl || null,
         migrado_despesas: true,
+        is_doado: isDoado,
+        doado_por: isDoado ? doadoPor : null,
+        is_pago_por_terceiro: isPagoPorTerceiro,
+        pago_por: isPagoPorTerceiro ? pagoPor : null,
       }).eq("id", selectedPedido.id);
       if (updateErr) throw updateErr;
 
-      // Create despesa
-      const { error: insertErr } = await supabase.from("despesas").insert({
-        item: selectedPedido.nome_item,
-        descricao: selectedPedido.nome_item,
-        categoria: selectedPedido.categoria,
-        quantidade: qtdComprada || selectedPedido.quantidade,
-        valor_unitario: qtdComprada > 0 ? valorPago / qtdComprada : valorPago,
-        valor: valorPago,
-        fornecedor: fornAprovado || null,
-        data_aquisicao: dataCompra || null,
-        comprovante_url: comprovanteUrl || null,
-        auto_calculado: false,
-      });
-      if (insertErr) throw insertErr;
+      // If donated, create doacao record
+      if (isDoado) {
+        const { error: doacaoErr } = await supabase.from("doacoes").insert({
+          tipo: "material",
+          doador: doadoPor,
+          valor: selectedPedido.valor_total_estimado || 0,
+          pedido_id: selectedPedido.id,
+          item_descricao: selectedPedido.nome_item,
+          top_id: selectedPedido.top_id,
+        });
+        if (doacaoErr) throw doacaoErr;
+      }
+
+      // If paid by third party, create reembolso record
+      if (isPagoPorTerceiro) {
+        const { error: reembolsoErr } = await supabase.from("reembolsos").insert({
+          nome_pagador: pagoPor,
+          descricao: selectedPedido.nome_item,
+          valor: valorPago || selectedPedido.valor_total_estimado || 0,
+          area: selectedPedido.area_solicitante,
+          pedido_id: selectedPedido.id,
+          top_id: selectedPedido.top_id,
+          status: "pendente",
+        });
+        if (reembolsoErr) throw reembolsoErr;
+      }
+
+      // Create despesa (only if not donated)
+      if (!isDoado) {
+        const { error: insertErr } = await supabase.from("despesas").insert({
+          item: selectedPedido.nome_item,
+          descricao: selectedPedido.nome_item,
+          categoria: selectedPedido.categoria,
+          quantidade: qtdComprada || selectedPedido.quantidade,
+          valor_unitario: qtdComprada > 0 ? valorPago / qtdComprada : valorPago,
+          valor: valorPago,
+          fornecedor: fornAprovado || null,
+          data_aquisicao: dataCompra || null,
+          comprovante_url: comprovanteUrl || null,
+          auto_calculado: false,
+        });
+        if (insertErr) throw insertErr;
+      }
 
       // Integração com estoque de medicamentos
       if (selectedPedido.categoria === "Medicamentos") {
@@ -245,10 +291,12 @@ export default function AdmPedidosDashboard() {
       qc.invalidateQueries({ queryKey: ["adm-pedidos-todos"] });
       qc.invalidateQueries({ queryKey: ["fin-despesas-lista"] });
       qc.invalidateQueries({ queryKey: ["fin-despesas-resumo"] });
+      qc.invalidateQueries({ queryKey: ["fin-doacoes-lista"] });
+      qc.invalidateQueries({ queryKey: ["fin-doacoes"] });
       qc.invalidateQueries({ queryKey: ["hk-estoque-medicamentos"] });
       qc.invalidateQueries({ queryKey: ["hk-estoque-movimentacoes"] });
       setDialogOpen(false);
-      toast({ title: "Compra registrada e despesa criada automaticamente!" });
+      toast({ title: "Compra registrada!" });
     },
     onError: (err: any) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
@@ -470,6 +518,49 @@ export default function AdmPedidosDashboard() {
                       <div><Label>Qtd Comprada</Label><Input type="number" min={1} value={qtdComprada} onChange={(e) => setQtdComprada(parseInt(e.target.value) || 1)} disabled={isComprado} /></div>
                       <div><Label>Data da Compra</Label><Input type="date" value={dataCompra} onChange={(e) => setDataCompra(e.target.value)} disabled={isComprado} /></div>
                     </div>
+
+                    {/* Bloco Doação */}
+                    {!isComprado && (
+                      <div className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isDoado}
+                            onCheckedChange={(v) => { setIsDoado(!!v); if (v) setIsPagoPorTerceiro(false); }}
+                            id="doado-check"
+                            disabled={isPagoPorTerceiro}
+                          />
+                          <Label htmlFor="doado-check">Item Doado</Label>
+                        </div>
+                        {isDoado && (
+                          <div>
+                            <Label>Doado por</Label>
+                            <Input value={doadoPor} onChange={(e) => setDoadoPor(e.target.value)} placeholder="Nome do doador (obrigatório)" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bloco Pago por Terceiro */}
+                    {!isComprado && (
+                      <div className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isPagoPorTerceiro}
+                            onCheckedChange={(v) => { setIsPagoPorTerceiro(!!v); if (v) setIsDoado(false); }}
+                            id="terceiro-check"
+                            disabled={isDoado}
+                          />
+                          <Label htmlFor="terceiro-check">Pago por terceiro (gera reembolso)</Label>
+                        </div>
+                        {isPagoPorTerceiro && (
+                          <div>
+                            <Label>Pago por</Label>
+                            <Input value={pagoPor} onChange={(e) => setPagoPor(e.target.value)} placeholder="Nome de quem pagou (obrigatório)" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       <Label>Comprovante/NF</Label>
                       {comprovanteUrl && (
@@ -489,8 +580,8 @@ export default function AdmPedidosDashboard() {
                       </div>
                     )}
                     {!isComprado && comprado && (
-                      <Button onClick={() => marcarComprado.mutate()} disabled={!valorPago || uploading}>
-                        Confirmar Compra e Migrar para Despesas
+                      <Button onClick={() => marcarComprado.mutate()} disabled={(!valorPago && !isDoado) || uploading || (isDoado && !doadoPor.trim()) || (isPagoPorTerceiro && !pagoPor.trim())}>
+                        {isDoado ? "Confirmar Doação" : "Confirmar Compra e Migrar para Despesas"}
                       </Button>
                     )}
                     {isComprado && (

@@ -1118,33 +1118,58 @@ export type Database = {
       }
       doacoes: {
         Row: {
+          anonimo: boolean | null
           created_at: string | null
           data: string | null
           doador: string
           id: string
+          item_descricao: string | null
+          nome_exibicao: string | null
           observacoes: string | null
+          pedido_id: string | null
+          quantidade: number | null
+          tipo: string
           top_id: string | null
           valor: number
         }
         Insert: {
+          anonimo?: boolean | null
           created_at?: string | null
           data?: string | null
           doador: string
           id?: string
+          item_descricao?: string | null
+          nome_exibicao?: string | null
           observacoes?: string | null
+          pedido_id?: string | null
+          quantidade?: number | null
+          tipo?: string
           top_id?: string | null
           valor: number
         }
         Update: {
+          anonimo?: boolean | null
           created_at?: string | null
           data?: string | null
           doador?: string
           id?: string
+          item_descricao?: string | null
+          nome_exibicao?: string | null
           observacoes?: string | null
+          pedido_id?: string | null
+          quantidade?: number | null
+          tipo?: string
           top_id?: string | null
           valor?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "doacoes_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_orcamentos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "doacoes_top_id_fkey"
             columns: ["top_id"]
@@ -2324,10 +2349,13 @@ export type Database = {
           created_at: string | null
           data_compra: string | null
           data_solicitacao: string | null
+          doado_por: string | null
           finalidade: string | null
           fornecedor_aprovado: string | null
           id: string
+          is_doado: boolean | null
           is_obrigatorio_global: boolean | null
+          is_pago_por_terceiro: boolean | null
           migrado_despesas: boolean | null
           motivo_reprovacao: string | null
           nome_item: string
@@ -2337,6 +2365,7 @@ export type Database = {
           orcamento_2_valor: number | null
           orcamento_3_fornecedor: string | null
           orcamento_3_valor: number | null
+          pago_por: string | null
           quantidade: number
           quantidade_comprada: number | null
           responsavel_id: string | null
@@ -2358,10 +2387,13 @@ export type Database = {
           created_at?: string | null
           data_compra?: string | null
           data_solicitacao?: string | null
+          doado_por?: string | null
           finalidade?: string | null
           fornecedor_aprovado?: string | null
           id?: string
+          is_doado?: boolean | null
           is_obrigatorio_global?: boolean | null
+          is_pago_por_terceiro?: boolean | null
           migrado_despesas?: boolean | null
           motivo_reprovacao?: string | null
           nome_item: string
@@ -2371,6 +2403,7 @@ export type Database = {
           orcamento_2_valor?: number | null
           orcamento_3_fornecedor?: string | null
           orcamento_3_valor?: number | null
+          pago_por?: string | null
           quantidade?: number
           quantidade_comprada?: number | null
           responsavel_id?: string | null
@@ -2392,10 +2425,13 @@ export type Database = {
           created_at?: string | null
           data_compra?: string | null
           data_solicitacao?: string | null
+          doado_por?: string | null
           finalidade?: string | null
           fornecedor_aprovado?: string | null
           id?: string
+          is_doado?: boolean | null
           is_obrigatorio_global?: boolean | null
+          is_pago_por_terceiro?: boolean | null
           migrado_despesas?: boolean | null
           motivo_reprovacao?: string | null
           nome_item?: string
@@ -2405,6 +2441,7 @@ export type Database = {
           orcamento_2_valor?: number | null
           orcamento_3_fornecedor?: string | null
           orcamento_3_valor?: number | null
+          pago_por?: string | null
           quantidade?: number
           quantidade_comprada?: number | null
           responsavel_id?: string | null
@@ -2639,6 +2676,72 @@ export type Database = {
           titulo?: string
         }
         Relationships: []
+      }
+      reembolsos: {
+        Row: {
+          area: string | null
+          comprovante_url: string | null
+          created_at: string | null
+          data_pagamento: string | null
+          data_reembolso: string | null
+          descricao: string
+          id: string
+          nome_pagador: string
+          observacoes: string | null
+          pedido_id: string | null
+          status: string
+          top_id: string | null
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          area?: string | null
+          comprovante_url?: string | null
+          created_at?: string | null
+          data_pagamento?: string | null
+          data_reembolso?: string | null
+          descricao: string
+          id?: string
+          nome_pagador: string
+          observacoes?: string | null
+          pedido_id?: string | null
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+          valor: number
+        }
+        Update: {
+          area?: string | null
+          comprovante_url?: string | null
+          created_at?: string | null
+          data_pagamento?: string | null
+          data_reembolso?: string | null
+          descricao?: string
+          id?: string
+          nome_pagador?: string
+          observacoes?: string | null
+          pedido_id?: string | null
+          status?: string
+          top_id?: string | null
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reembolsos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reembolsos_top_id_fkey"
+            columns: ["top_id"]
+            isOneToOne: false
+            referencedRelation: "tops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       servidores: {
         Row: {
