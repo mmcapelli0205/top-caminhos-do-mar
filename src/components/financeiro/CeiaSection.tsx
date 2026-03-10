@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Save, AlertTriangle, SendHorizonal, Gift, Trash2 } from "lucide-react";
+import { AlertTriangle, SendHorizonal, Gift, Trash2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type PedidoRow = Tables<"pedidos_orcamentos">;
@@ -156,21 +156,23 @@ const CeiaSection = () => {
     onError: (err: any) => toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" }),
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      for (const it of items) {
-        if (!it.id) continue;
-        await supabase.from("pedidos_orcamentos").update({
-          kg_compra: it.kg_compra,
-          valor_unitario_estimado: it.valor_unitario_estimado,
-        }).eq("id", it.id);
-      }
+  const saveItemMutation = useMutation({
+    mutationFn: async (it: Partial<PedidoRow>) => {
+      if (!it.id) return;
+      await supabase.from("pedidos_orcamentos").update({
+        kg_compra: it.kg_compra,
+        valor_unitario_estimado: it.valor_unitario_estimado,
+      }).eq("id", it.id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-ceia-pedidos"] });
-      toast({ title: "Ceia salva" });
     },
   });
+
+  const handleBlurSave = useCallback((idx: number) => {
+    const it = items[idx];
+    if (it?.id) saveItemMutation.mutate(it);
+  }, [items, saveItemMutation]);
 
   const enviarAprovacaoMutation = useMutation({
     mutationFn: async () => {
@@ -253,24 +255,26 @@ const CeiaSection = () => {
                       }}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <Input
                       type="number"
                       min={0}
                       step="0.01"
                       value={it.valor_unitario_estimado ?? ""}
                       onChange={(e) => updateItem(i, "valor_unitario_estimado", parseFloat(e.target.value) || null)}
-                      className={`w-28 ml-auto text-center ${rowColor}`}
+                      onBlur={() => handleBlurSave(i)}
+                      className={`w-28 mx-auto text-center ${rowColor}`}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <Input
                       type="number"
                       min={0}
                       step="0.1"
                       value={(it.kg_compra as number | null) ?? ""}
                       onChange={(e) => updateItem(i, "kg_compra", parseFloat(e.target.value) || null)}
-                      className={`w-28 ml-auto text-center ${rowColor}`}
+                      onBlur={() => handleBlurSave(i)}
+                      className={`w-28 mx-auto text-center ${rowColor}`}
                     />
                   </TableCell>
                   <TableCell className={`text-right font-medium ${rowColor}`}>{fmt(calcTotal(it))}</TableCell>
@@ -301,9 +305,6 @@ const CeiaSection = () => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => saveMutation.mutate()}>
-          <Save className="h-4 w-4 mr-1" /> Salvar
-        </Button>
         <Button variant="outline" onClick={() => enviarAprovacaoMutation.mutate()}>
           <SendHorizonal className="h-4 w-4 mr-1" /> Enviar para Aprovação
         </Button>
