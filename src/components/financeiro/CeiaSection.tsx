@@ -255,24 +255,26 @@ const CeiaSection = () => {
                       }}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <Input
                       type="number"
                       min={0}
                       step="0.01"
                       value={it.valor_unitario_estimado ?? ""}
                       onChange={(e) => updateItem(i, "valor_unitario_estimado", parseFloat(e.target.value) || null)}
-                      className={`w-28 ml-auto text-center ${rowColor}`}
+                      onBlur={() => handleBlurSave(i)}
+                      className={`w-28 mx-auto text-center ${rowColor}`}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     <Input
                       type="number"
                       min={0}
                       step="0.1"
                       value={(it.kg_compra as number | null) ?? ""}
                       onChange={(e) => updateItem(i, "kg_compra", parseFloat(e.target.value) || null)}
-                      className={`w-28 ml-auto text-center ${rowColor}`}
+                      onBlur={() => handleBlurSave(i)}
+                      className={`w-28 mx-auto text-center ${rowColor}`}
                     />
                   </TableCell>
                   <TableCell className={`text-right font-medium ${rowColor}`}>{fmt(calcTotal(it))}</TableCell>
