@@ -408,66 +408,68 @@ export default function Servidores() {
       )}
 
       {/* Area Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {AREAS_SERVICO.map(area => {
-          const c = areaCounts[area];
-          const logoFile = LOGOS_EQUIPES[area];
-          const corEquipe = CORES_EQUIPES[area] || "#6B7280";
-          return (
-            <Card
-              key={area}
-              className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
-              style={{ borderColor: corEquipe }}
-              onClick={() => navigate(area === "Predicantes" ? "/predicantes" : `/areas/${encodeURIComponent(area)}`)}
-            >
-              <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-                {area === "Predicantes" ? predicantesCount : (c?.total ?? 0)}
-              </Badge>
-              {(c?.pendentes ?? 0) > 0 && (
-                <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
-                  {c.pendentes}
+      {!isCoord && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {AREAS_SERVICO.map(area => {
+            const c = areaCounts[area];
+            const logoFile = LOGOS_EQUIPES[area];
+            const corEquipe = CORES_EQUIPES[area] || "#6B7280";
+            return (
+              <Card
+                key={area}
+                className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
+                style={{ borderColor: corEquipe }}
+                onClick={() => navigate(area === "Predicantes" ? "/predicantes" : `/areas/${encodeURIComponent(area)}`)}
+              >
+                <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
+                  {area === "Predicantes" ? predicantesCount : (c?.total ?? 0)}
                 </Badge>
-              )}
-              <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full w-full">
-                {logoFile && !imgErrors[area] ? (
-                  <img
-                    src={`${ASSET_BASE}${logoFile}`}
-                    alt={area}
-                    className="h-24 w-24 md:h-28 md:w-28 object-contain"
-                    onError={() => setImgErrors(prev => ({ ...prev, [area]: true }))}
-                  />
-                ) : (
-                  <div
-                    className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: corEquipe }}
-                  >
-                    <span className="text-3xl font-bold" style={{ color: getTextColor(corEquipe) }}>
-                      {area.charAt(0)}
-                    </span>
-                  </div>
+                {(c?.pendentes ?? 0) > 0 && (
+                  <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
+                    {c.pendentes}
+                  </Badge>
                 )}
-                <p className="text-xs font-bold text-foreground text-center truncate w-full">{area}</p>
+                <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full w-full">
+                  {logoFile && !imgErrors[area] ? (
+                    <img
+                      src={`${ASSET_BASE}${logoFile}`}
+                      alt={area}
+                      className="h-24 w-24 md:h-28 md:w-28 object-contain"
+                      onError={() => setImgErrors(prev => ({ ...prev, [area]: true }))}
+                    />
+                  ) : (
+                    <div
+                      className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: corEquipe }}
+                    >
+                      <span className="text-3xl font-bold" style={{ color: getTextColor(corEquipe) }}>
+                        {area.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-xs font-bold text-foreground text-center truncate w-full">{area}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {semArea.length > 0 && (
+            <Card
+              className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 border-red-600/40 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
+              onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}
+            >
+              <Badge className="absolute top-1.5 right-1.5 bg-red-600/20 text-red-400 border-red-600/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
+                {semArea.length}
+              </Badge>
+              <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full">
+                <div className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center bg-red-600/20">
+                  <AlertTriangle className="h-12 w-12 text-red-400" />
+                </div>
+                <p className="text-xs font-bold text-red-400">Sem Área</p>
               </CardContent>
             </Card>
-          );
-        })}
-        {semArea.length > 0 && (
-          <Card
-            className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 border-red-600/40 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
-            onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}
-          >
-            <Badge className="absolute top-1.5 right-1.5 bg-red-600/20 text-red-400 border-red-600/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-              {semArea.length}
-            </Badge>
-            <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full">
-              <div className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center bg-red-600/20">
-                <AlertTriangle className="h-12 w-12 text-red-400" />
-              </div>
-              <p className="text-xs font-bold text-red-400">Sem Área</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
