@@ -3,10 +3,11 @@ import { Input } from "@/components/ui/input";
 interface PriceCellProps {
   value: number | null;
   onChange: (val: number | null) => void;
+  onBlur?: () => void;
   isAuto?: boolean;
 }
 
-const PriceCell = ({ value, onChange, isAuto }: PriceCellProps) => {
+const PriceCell = ({ value, onChange, onBlur, isAuto }: PriceCellProps) => {
   const dotColor = value != null
     ? isAuto ? "bg-blue-500" : "bg-orange-500"
     : "";
@@ -23,6 +24,7 @@ const PriceCell = ({ value, onChange, isAuto }: PriceCellProps) => {
           const v = e.target.value;
           onChange(v === "" ? null : parseFloat(v));
         }}
+        onBlur={onBlur}
       />
       {value != null && (
         <span className={`absolute top-1 right-1 h-2 w-2 rounded-full ${dotColor}`} />

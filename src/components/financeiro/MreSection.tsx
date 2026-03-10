@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { Save, AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2, SendHorizonal } from "lucide-react";
 import PriceCell from "./PriceCell";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -72,29 +72,45 @@ const MreSection = () => {
 
   const hasEmptyPrices = items.some((it) => it.is_obrigatorio_global && getMinPrice(it) === 0);
 
-  const saveMutation = useMutation({
+  const saveItemMutation = useMutation({
+    mutationFn: async (it: Partial<PedidoRow>) => {
+      if (!it.id) return;
+      await supabase.from("pedidos_orcamentos").update({
+        orcamento_1_valor: it.orcamento_1_valor,
+        orcamento_2_valor: it.orcamento_2_valor,
+        orcamento_3_valor: it.orcamento_3_valor,
+        orcamento_1_link: it.orcamento_1_link,
+        orcamento_2_link: it.orcamento_2_link,
+        orcamento_3_link: it.orcamento_3_link,
+        orcamento_1_fornecedor: it.orcamento_1_fornecedor,
+        orcamento_2_fornecedor: it.orcamento_2_fornecedor,
+        orcamento_3_fornecedor: it.orcamento_3_fornecedor,
+        quantidade: it.quantidade,
+        is_obrigatorio_global: it.is_obrigatorio_global,
+      }).eq("id", it.id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-mre-pedidos"] });
+    },
+  });
+
+  const handleBlurSave = useCallback((idx: number) => {
+    const it = items[idx];
+    if (it?.id) saveItemMutation.mutate(it);
+  }, [items, saveItemMutation]);
+
+  const enviarAprovacaoMutation = useMutation({
     mutationFn: async () => {
       for (const it of items) {
         if (!it.id) continue;
         await supabase.from("pedidos_orcamentos").update({
-          orcamento_1_valor: it.orcamento_1_valor,
-          orcamento_2_valor: it.orcamento_2_valor,
-          orcamento_3_valor: it.orcamento_3_valor,
-          orcamento_1_link: it.orcamento_1_link,
-          orcamento_2_link: it.orcamento_2_link,
-          orcamento_3_link: it.orcamento_3_link,
-          orcamento_1_fornecedor: it.orcamento_1_fornecedor,
-          orcamento_2_fornecedor: it.orcamento_2_fornecedor,
-          orcamento_3_fornecedor: it.orcamento_3_fornecedor,
-          quantidade: it.quantidade,
-          is_obrigatorio_global: it.is_obrigatorio_global,
           status: "aguardando",
         }).eq("id", it.id);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-mre-pedidos"] });
-      toast({ title: "MRE salvo — itens enviados para aprovação" });
+      toast({ title: "Itens enviados para aprovação ADM" });
     },
   });
 
@@ -184,16 +200,18 @@ const MreSection = () => {
                       min={1}
                       value={it.quantidade ?? 1}
                       onChange={(e) => updateItem(i, "quantidade", parseInt(e.target.value) || 1)}
+                      onBlur={() => handleBlurSave(i)}
                       className={`w-16 text-center ${rowColor}`}
                     />
                   </TableCell>
                   {/* Orçamento 1 */}
                   <TableCell>
                     <div className="space-y-1">
-                      <PriceCell value={it.orcamento_1_valor ?? null} onChange={(v) => updateItem(i, orc1Key, v)} />
+                      <PriceCell value={it.orcamento_1_valor ?? null} onChange={(v) => updateItem(i, orc1Key, v)} onBlur={() => handleBlurSave(i)} />
                       <Input
                         value={it.orcamento_1_link ?? ""}
                         onChange={(e) => updateItem(i, "orcamento_1_link", e.target.value)}
+                        onBlur={() => handleBlurSave(i)}
                         placeholder="Link de compra (opcional)"
                         className="h-6 text-xs"
                       />
@@ -202,10 +220,11 @@ const MreSection = () => {
                   {/* Orçamento 2 */}
                   <TableCell>
                     <div className="space-y-1">
-                      <PriceCell value={it.orcamento_2_valor ?? null} onChange={(v) => updateItem(i, orc2Key, v)} />
+                      <PriceCell value={it.orcamento_2_valor ?? null} onChange={(v) => updateItem(i, orc2Key, v)} onBlur={() => handleBlurSave(i)} />
                       <Input
                         value={it.orcamento_2_link ?? ""}
                         onChange={(e) => updateItem(i, "orcamento_2_link", e.target.value)}
+                        onBlur={() => handleBlurSave(i)}
                         placeholder="Link de compra (opcional)"
                         className="h-6 text-xs"
                       />
@@ -214,10 +233,11 @@ const MreSection = () => {
                   {/* Orçamento 3 */}
                   <TableCell>
                     <div className="space-y-1">
-                      <PriceCell value={it.orcamento_3_valor ?? null} onChange={(v) => updateItem(i, orc3Key, v)} />
+                      <PriceCell value={it.orcamento_3_valor ?? null} onChange={(v) => updateItem(i, orc3Key, v)} onBlur={() => handleBlurSave(i)} />
                       <Input
                         value={it.orcamento_3_link ?? ""}
                         onChange={(e) => updateItem(i, "orcamento_3_link", e.target.value)}
+                        onBlur={() => handleBlurSave(i)}
                         placeholder="Link de compra (opcional)"
                         className="h-6 text-xs"
                       />
@@ -252,7 +272,9 @@ const MreSection = () => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => saveMutation.mutate()}><Save className="h-4 w-4 mr-1" /> Salvar</Button>
+        <Button variant="outline" onClick={() => enviarAprovacaoMutation.mutate()}>
+          <SendHorizonal className="h-4 w-4 mr-1" /> Enviar para Aprovação
+        </Button>
         <Button variant="secondary" onClick={() => saveDespesaMutation.mutate()}>Salvar como Despesa</Button>
       </div>
 
