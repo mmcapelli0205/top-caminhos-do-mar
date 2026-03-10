@@ -8,7 +8,7 @@ import ReceitaSection from "@/components/financeiro/ReceitaSection";
 import DespesasSection from "@/components/financeiro/DespesasSection";
 import MreSection from "@/components/financeiro/MreSection";
 import CeiaSection from "@/components/financeiro/CeiaSection";
-import BebidasSection from "@/components/financeiro/BebidasSection";
+
 import ReembolsosSection from "@/components/financeiro/ReembolsosSection";
 import { getPermissoesMenu } from "@/lib/permissoes";
 
