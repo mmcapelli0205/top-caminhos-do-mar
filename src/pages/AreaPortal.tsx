@@ -155,6 +155,17 @@ export default function AreaPortal() {
     );
   }
 
+  if (areaError) {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+        <p className="text-muted-foreground">Não foi possível carregar os dados da área.</p>
+        <p className="text-xs text-muted-foreground">Verifique se você tem permissão para acessar esta área.</p>
+        <Button variant="outline" onClick={() => navigate("/dashboard")}>Voltar ao Início</Button>
+      </div>
+    );
+  }
+
   if (!area) {
     return (
       <div className="p-4 text-center text-muted-foreground">
