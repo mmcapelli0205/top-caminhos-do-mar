@@ -1,50 +1,64 @@
 
 
-## Bug: Coordenador vê "Área não encontrada" / sem permissões no portal ADM
+# Diagnóstico: Flutuantes não apareceram no Portal de Área
 
-### Causa Raiz
+## O que aconteceu
 
-Em `AreaPortal.tsx`, o cargo efetivo do usuário é resolvido assim:
+O Bloco A atualizou apenas os **dropdowns de criação/aprovação de usuários** (CadastroRápido, Aprovações, Configurações). Os cards de liderança no header do portal de área (`AreaHeader.tsx`) **não foram tocados** porque a tabela `areas` no banco **não possui colunas para Flutuantes**.
 
-```tsx
-const { cargoArea } = useAreaServico(); // lê servidores.cargo_area
-const effectiveCargo = role === "diretoria" ? "Coord 01" : (cargoArea ?? "Servidor");
+Estrutura atual da tabela `areas`:
+```text
+areas
+├── coordenador_id      → Coord 01
+├── coordenador_02_id   → Coord 02
+├── coordenador_03_id   → Coord 03
+├── sombra_id           → Sombra 01
+├── sombra_02_id        → Sombra 02
+└── sombra_03_id        → Sombra 03
+   (sem flutuante_01_id, flutuante_02_id, flutuante_03_id)
 ```
 
-O campo `servidores.cargo_area` está **NULL** para todos os servidores da área ADM. Resultado: Juliano (que É o `coordenador_id` da área ADM) recebe `effectiveCargo = "Servidor"`, perdendo todas as permissões de coordenador.
+Para exibir Flutuantes no header do portal, são necessárias **3 mudanças**:
 
-O hook `usePermissoes.ts` já resolve isso corretamente — ele cruza `servidor.id` com `areas.coordenador_id`, `coordenador_02_id`, etc. Mas o `AreaPortal` **não usa esse hook**, usa uma lógica separada e quebrada.
+---
 
-### Dados no banco confirmam
+## Plano de Correção
 
-- `areas.coordenador_id = e1389bd8` (Juliano) ✅
-- `servidores.cargo_area = NULL` para Juliano ❌
-- Console: `effectiveCargo: "Servidor"`, `cargoArea: null`
+### 1. Migration SQL — Adicionar colunas na tabela `areas`
 
-### Correção
+```sql
+ALTER TABLE areas
+  ADD COLUMN flutuante_01_id UUID REFERENCES servidores(id),
+  ADD COLUMN flutuante_02_id UUID REFERENCES servidores(id),
+  ADD COLUMN flutuante_03_id UUID REFERENCES servidores(id);
+```
 
-**Arquivo: `src/pages/AreaPortal.tsx`**
+### 2. Atualizar tipos Supabase (`src/integrations/supabase/types.ts`)
 
-Substituir a lógica de resolução de cargo (linhas 149-155) para usar o mesmo padrão do `usePermissoes`: buscar o `servidor.id` do usuário logado e cruzar com os campos `coordenador_id`, `coordenador_02_id`, `coordenador_03_id`, `flutuante_*`, `expert_id` da tabela `areas`.
+Adicionar `flutuante_01_id`, `flutuante_02_id`, `flutuante_03_id` nos blocos Row, Insert e Update da tabela `areas`.
 
-Concretamente:
+### 3. Atualizar `src/components/area/AreaHeader.tsx`
 
-1. Já temos `area` carregada (com `coordenador_id`, etc.) — só precisamos buscar o `servidor.id` do usuário logado pelo email.
-2. Já existe a query `servidoresDaArea` mas ela busca todos da área. Precisamos de uma query específica para o servidor logado (por email).
-3. Resolver o cargo efetivo com a mesma lógica de `usePermissoes.getCargoNaArea()`:
-   - `area.coordenador_id === servidorId` → "Coord 01"
-   - `area.coordenador_02_id === servidorId` → "Coord 02"
-   - `area.coordenador_03_id === servidorId` → "Coord 03"
-   - `flutuante_01_id` / `expert_id` → "Coord 01"
-   - `flutuante_02_id` → "Coord 02"
-   - `flutuante_03_id` → "Coord 03"
-   - fallback → "Servidor"
-   - `role === "diretoria"` → "Coord 01"
+Adicionar os 3 slots de Flutuante nos cards de liderança (entre Coords e Sombras):
 
-4. Usar esse cargo resolvido no `getPermissoesPortal(effectiveArea, effectiveCargo)`.
+```text
+Coord 01 | Coord 02 | Coord 03 | Flut. 01 | Flut. 02 | Flut. 03 | Sombra 01 | Sombra 02 | Sombra 03
+```
 
-### Impacto
-- Apenas `AreaPortal.tsx` precisa ser editado
-- Adicionar uma query para buscar o `servidor.id` do usuário logado pelo email (ou reutilizar dados existentes)
-- Nenhuma migração de banco necessária
+Layout proposto: grid de 9 colunas no desktop (3+3+3), com os Flutuantes sem badge especial e os Sombras mantendo o badge "Em treinamento".
+
+### 4. Atualizar `src/hooks/usePermissoes.ts`
+
+Adicionar verificação dos novos campos `flutuante_01_id/02/03` no `getCargoNaArea()` para resolver corretamente o cargo quando o servidor logado é um flutuante na área. Também atualizar a query para incluir os novos campos no select.
+
+---
+
+## Arquivos afetados
+
+| Arquivo | Mudança |
+|---|---|
+| Nova migration SQL | `ALTER TABLE areas ADD COLUMN flutuante_01/02/03_id` |
+| `src/integrations/supabase/types.ts` | Adicionar 3 campos nos tipos da tabela `areas` |
+| `src/components/area/AreaHeader.tsx` | Adicionar 3 cards de Flutuante + tipo no `handleSetLeader` |
+| `src/hooks/usePermissoes.ts` | Incluir `flutuante_01/02/03_id` no select e no `getCargoNaArea` |
 
