@@ -219,7 +219,7 @@ const CeiaSection = () => {
               <TableHead className="sticky left-0 bg-card z-10 min-w-[180px]">Item</TableHead>
               <TableHead className="text-center">Doação</TableHead>
               <TableHead className="text-right">Valor Unit. (R$/kg)</TableHead>
-              <TableHead className="text-right">Kg Compra</TableHead>
+              <TableHead className="text-right">Qtd. Comprada</TableHead>
               <TableHead className="text-right">Total R$</TableHead>
               <TableHead className="w-10" />
             </TableRow>
