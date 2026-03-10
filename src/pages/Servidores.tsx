@@ -355,26 +355,28 @@ export default function Servidores() {
             {statusCounts.removido > 0 && ` | ${statusCounts.removido} removidos`})
           </span>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          {perms.servidores_exportar === "E" && (
-            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
-              <Download className="h-4 w-4 mr-1" /> CSV
+        {!isCoord && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            {perms.servidores_exportar === "E" && (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
+                <Download className="h-4 w-4 mr-1" /> CSV
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setRelatorioOpen(true)}>
+              <Download className="h-4 w-4 mr-1" /> Relatório PDF
             </Button>
-          )}
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setRelatorioOpen(true)}>
-            <Download className="h-4 w-4 mr-1" /> Relatório PDF
-          </Button>
-          {perms.servidores_importar === "E" && (
-            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
-            </Button>
-          )}
-          {perms.servidores_novo === "E" && (
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
-              <Plus className="h-4 w-4 mr-1" /> Novo Servidor
-            </Button>
-          )}
-        </div>
+            {perms.servidores_importar === "E" && (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
+              </Button>
+            )}
+            {perms.servidores_novo === "E" && (
+              <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
+                <Plus className="h-4 w-4 mr-1" /> Novo Servidor
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Alerts */}
