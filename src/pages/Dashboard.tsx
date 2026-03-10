@@ -38,6 +38,19 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
+  const { data: activeTopId } = useQuery({
+    queryKey: ["active-top-id"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tops")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+  });
+
   const { data: servidor } = useQuery({
     queryKey: ["dash-area", profile?.email],
     queryFn: async () => {
@@ -54,16 +67,17 @@ const Dashboard = () => {
   const areaName = servidor?.area_servico ?? null;
 
   const { data: areaData } = useQuery({
-    queryKey: ["dash-area-info", areaName],
+    queryKey: ["dash-area-info", areaName, activeTopId],
     queryFn: async () => {
       const { data } = await supabase
         .from("areas")
         .select("logo_url, cor, nome")
         .eq("nome", areaName!)
+        .eq("top_id", activeTopId!)
         .maybeSingle();
       return data;
     },
-    enabled: !!areaName,
+    enabled: !!areaName && !!activeTopId,
   });
 
   const areaCor = areaData?.cor ?? CORES_EQUIPES[areaName ?? ""] ?? "#6366f1";
