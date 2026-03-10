@@ -98,6 +98,7 @@ export default function Servidores() {
   const { areaServico } = useAreaServico();
 
   const isDiretoria = role === "diretoria";
+  const isCoord = ["coordenacao", "coord02", "coord03"].includes(role ?? "");
   const effectiveArea = isDiretoria ? "Diretoria" : areaServico;
   const perms = getPermissoesMenu(effectiveArea);
   const canDeleteServidor = perms.servidores_excluir === "E";
