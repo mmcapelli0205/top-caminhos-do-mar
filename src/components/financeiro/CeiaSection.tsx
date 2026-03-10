@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Save, AlertTriangle, SendHorizonal, Gift, Trash2 } from "lucide-react";
+import { AlertTriangle, SendHorizonal, Gift, Trash2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type PedidoRow = Tables<"pedidos_orcamentos">;
