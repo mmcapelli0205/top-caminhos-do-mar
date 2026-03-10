@@ -268,8 +268,7 @@ const MreSection = () => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => saveMutation.mutate()}><Save className="h-4 w-4 mr-1" /> Salvar</Button>
-        <Button variant="secondary" onClick={() => saveDespesaMutation.mutate()}>Salvar como Despesa</Button>
+        <Button variant="outline" onClick={() => enviarAprovacaoMutation.mutate()}>Enviar para Aprovação</Button>
       </div>
 
       {/* Delete confirmation */}
