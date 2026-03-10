@@ -200,7 +200,9 @@ const MreSection = () => {
                       min={1}
                       value={it.quantidade ?? 1}
                       onChange={(e) => updateItem(i, "quantidade", parseInt(e.target.value) || 1)}
+                      onBlur={() => handleBlurSave(i)}
                       className={`w-16 text-center ${rowColor}`}
+                    />
                     />
                   </TableCell>
                   {/* Orçamento 1 */}
