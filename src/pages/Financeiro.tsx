@@ -85,7 +85,7 @@ const Financeiro = () => {
         {!hakunaOnly && <TabsContent value="reembolsos"><ReembolsosSection /></TabsContent>}
         {!hakunaOnly && <TabsContent value="mre"><MreSection /></TabsContent>}
         {!hakunaOnly && <TabsContent value="ceia"><CeiaSection /></TabsContent>}
-        {!hakunaOnly && <TabsContent value="bebidas"><BebidasSection /></TabsContent>}
+        
       </Tabs>
     </div>
   );
