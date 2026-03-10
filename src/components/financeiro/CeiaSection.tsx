@@ -156,21 +156,23 @@ const CeiaSection = () => {
     onError: (err: any) => toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" }),
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      for (const it of items) {
-        if (!it.id) continue;
-        await supabase.from("pedidos_orcamentos").update({
-          kg_compra: it.kg_compra,
-          valor_unitario_estimado: it.valor_unitario_estimado,
-        }).eq("id", it.id);
-      }
+  const saveItemMutation = useMutation({
+    mutationFn: async (it: Partial<PedidoRow>) => {
+      if (!it.id) return;
+      await supabase.from("pedidos_orcamentos").update({
+        kg_compra: it.kg_compra,
+        valor_unitario_estimado: it.valor_unitario_estimado,
+      }).eq("id", it.id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-ceia-pedidos"] });
-      toast({ title: "Ceia salva" });
     },
   });
+
+  const handleBlurSave = useCallback((idx: number) => {
+    const it = items[idx];
+    if (it?.id) saveItemMutation.mutate(it);
+  }, [items, saveItemMutation]);
 
   const enviarAprovacaoMutation = useMutation({
     mutationFn: async () => {
