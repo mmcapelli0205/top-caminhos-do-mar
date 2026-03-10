@@ -57,19 +57,34 @@ export default function AreaPortal() {
 
   const dashData = useDashboardData();
 
-  // Fetch area (read-only — no auto-create to avoid 403 for non-diretoria)
+  // Fetch the active TOP id first
+  const { data: activeTopId } = useQuery({
+    queryKey: ["active-top-id"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tops")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+  });
+
+  // Fetch area (read-only, filtered by top_id to avoid duplicates)
   const { data: area, isLoading: loadingArea, error: areaError } = useQuery({
-    queryKey: ["area", decodedNome],
+    queryKey: ["area", decodedNome, activeTopId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("areas")
         .select("*")
         .eq("nome", decodedNome)
+        .eq("top_id", activeTopId!)
         .maybeSingle();
       if (error) throw error;
       return data as Area | null;
     },
-    enabled: !!decodedNome,
+    enabled: !!decodedNome && !!activeTopId,
   });
 
   // Stats
