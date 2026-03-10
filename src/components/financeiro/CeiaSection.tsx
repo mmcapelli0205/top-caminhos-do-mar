@@ -303,9 +303,6 @@ const CeiaSection = () => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => saveMutation.mutate()}>
-          <Save className="h-4 w-4 mr-1" /> Salvar
-        </Button>
         <Button variant="outline" onClick={() => enviarAprovacaoMutation.mutate()}>
           <SendHorizonal className="h-4 w-4 mr-1" /> Enviar para Aprovação
         </Button>
