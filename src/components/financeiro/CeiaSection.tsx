@@ -218,8 +218,8 @@ const CeiaSection = () => {
             <TableRow>
               <TableHead className="sticky left-0 bg-card z-10 min-w-[180px]">Item</TableHead>
               <TableHead className="text-center">Doação</TableHead>
-              <TableHead className="text-right">Valor Unit. (R$/kg)</TableHead>
-              <TableHead className="text-right">Qtd. Comprada</TableHead>
+              <TableHead className="text-center">Valor Unit. (R$/kg)</TableHead>
+              <TableHead className="text-center">Qtd. Comprada</TableHead>
               <TableHead className="text-right">Total R$</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -253,24 +253,24 @@ const CeiaSection = () => {
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
                     <Input
                       type="number"
                       min={0}
                       step="0.01"
                       value={it.valor_unitario_estimado ?? ""}
                       onChange={(e) => updateItem(i, "valor_unitario_estimado", parseFloat(e.target.value) || null)}
-                      className={`w-24 text-right ${rowColor}`}
+                      className={`w-28 ml-auto text-center ${rowColor}`}
                     />
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
                     <Input
                       type="number"
                       min={0}
                       step="0.1"
                       value={(it.kg_compra as number | null) ?? ""}
                       onChange={(e) => updateItem(i, "kg_compra", parseFloat(e.target.value) || null)}
-                      className={`w-24 text-right ${rowColor}`}
+                      className={`w-28 ml-auto text-center ${rowColor}`}
                     />
                   </TableCell>
                   <TableCell className={`text-right font-medium ${rowColor}`}>{fmt(calcTotal(it))}</TableCell>
