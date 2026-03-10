@@ -3083,6 +3083,7 @@ export type Database = {
       }
       tops: {
         Row: {
+          ativo: boolean | null
           created_at: string | null
           data_fim: string | null
           data_inicio: string | null
@@ -3094,6 +3095,7 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          ativo?: boolean | null
           created_at?: string | null
           data_fim?: string | null
           data_inicio?: string | null
@@ -3105,6 +3107,7 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          ativo?: boolean | null
           created_at?: string | null
           data_fim?: string | null
           data_inicio?: string | null
