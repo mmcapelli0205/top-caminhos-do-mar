@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { Save, AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2, SendHorizonal } from "lucide-react";
 import PriceCell from "./PriceCell";
 import type { Tables } from "@/integrations/supabase/types";
 
