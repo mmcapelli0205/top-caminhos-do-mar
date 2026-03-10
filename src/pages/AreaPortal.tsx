@@ -147,14 +147,41 @@ export default function AreaPortal() {
   });
 
   // Granular permissions via new portal system
-  const { role } = useAuth();
-  const { cargoArea } = useAreaServico();
+  const { role, profile } = useAuth();
 
-  const effectiveCargo = role === "diretoria" ? "Coord 01" : (cargoArea ?? "Servidor");
+  // Fetch the logged-in user's servidor ID to resolve their role in this area
+  const { data: servidorLogado } = useQuery({
+    queryKey: ["servidor-logado-id", profile?.email],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servidores")
+        .select("id")
+        .eq("email", profile!.email)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!profile?.email,
+  });
+
+  // Resolve effective cargo by matching servidor.id against area leadership fields
+  function resolveCargoNaArea(): string {
+    if (role === "diretoria") return "Coord 01";
+    if (!area || !servidorLogado) return "Servidor";
+    const sid = servidorLogado.id;
+    if (area.coordenador_id === sid) return "Coord 01";
+    if (area.coordenador_02_id === sid) return "Coord 02";
+    if (area.coordenador_03_id === sid) return "Coord 03";
+    if (area.flutuante_01_id === sid || area.expert_id === sid) return "Coord 01";
+    if (area.flutuante_02_id === sid) return "Coord 02";
+    if (area.flutuante_03_id === sid) return "Coord 03";
+    return "Servidor";
+  }
+
+  const effectiveCargo = resolveCargoNaArea();
   const effectiveArea = decodedNome;
   const perms = getPermissoesPortal(effectiveArea, effectiveCargo);
 
-  console.log("[AreaPortal] perms debug:", { effectiveArea, effectiveCargo, cargoArea, role, permsNull: perms === null });
+  console.log("[AreaPortal] perms debug:", { effectiveArea, effectiveCargo, servidorLogadoId: servidorLogado?.id, role, permsNull: perms === null });
 
   const headerCanEdit = canEditPortal(perms, "painel_editar_area") || canEditPortal(perms, "painel_definir_coords");
   const canComment    = canAccessPortal(perms, "mural_visualizar");
