@@ -207,10 +207,11 @@ const MreSection = () => {
                   {/* Orçamento 1 */}
                   <TableCell>
                     <div className="space-y-1">
-                      <PriceCell value={it.orcamento_1_valor ?? null} onChange={(v) => updateItem(i, orc1Key, v)} />
+                      <PriceCell value={it.orcamento_1_valor ?? null} onChange={(v) => updateItem(i, orc1Key, v)} onBlur={() => handleBlurSave(i)} />
                       <Input
                         value={it.orcamento_1_link ?? ""}
                         onChange={(e) => updateItem(i, "orcamento_1_link", e.target.value)}
+                        onBlur={() => handleBlurSave(i)}
                         placeholder="Link de compra (opcional)"
                         className="h-6 text-xs"
                       />
@@ -219,10 +220,11 @@ const MreSection = () => {
                   {/* Orçamento 2 */}
                   <TableCell>
                     <div className="space-y-1">
-                      <PriceCell value={it.orcamento_2_valor ?? null} onChange={(v) => updateItem(i, orc2Key, v)} />
+                      <PriceCell value={it.orcamento_2_valor ?? null} onChange={(v) => updateItem(i, orc2Key, v)} onBlur={() => handleBlurSave(i)} />
                       <Input
                         value={it.orcamento_2_link ?? ""}
                         onChange={(e) => updateItem(i, "orcamento_2_link", e.target.value)}
+                        onBlur={() => handleBlurSave(i)}
                         placeholder="Link de compra (opcional)"
                         className="h-6 text-xs"
                       />
@@ -231,10 +233,11 @@ const MreSection = () => {
                   {/* Orçamento 3 */}
                   <TableCell>
                     <div className="space-y-1">
-                      <PriceCell value={it.orcamento_3_valor ?? null} onChange={(v) => updateItem(i, orc3Key, v)} />
+                      <PriceCell value={it.orcamento_3_valor ?? null} onChange={(v) => updateItem(i, orc3Key, v)} onBlur={() => handleBlurSave(i)} />
                       <Input
                         value={it.orcamento_3_link ?? ""}
                         onChange={(e) => updateItem(i, "orcamento_3_link", e.target.value)}
+                        onBlur={() => handleBlurSave(i)}
                         placeholder="Link de compra (opcional)"
                         className="h-6 text-xs"
                       />
