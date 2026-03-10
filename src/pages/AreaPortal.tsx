@@ -13,7 +13,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis } from "recharts";
 import { getUser } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
-import { useAreaServico } from "@/hooks/useAreaServico";
+
 import {
   getPermissoesPortal,
   canAccessPortal,
