@@ -380,7 +380,7 @@ export default function Servidores() {
       </div>
 
       {/* Alerts */}
-      {pendentes.length > 0 && (
+      {!isCoord && pendentes.length > 0 && (
         <Card className="border-orange-600/50 bg-orange-600/10 cursor-pointer" onClick={() => { setFilterStatus("pendente"); setFilterArea("todas"); }}>
           <CardContent className="p-3 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-400" />
@@ -388,7 +388,7 @@ export default function Servidores() {
           </CardContent>
         </Card>
       )}
-      {semArea.length > 0 && (
+      {!isCoord && semArea.length > 0 && (
         <Card className="border-red-600/50 bg-red-600/10">
           <CardContent className="p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
