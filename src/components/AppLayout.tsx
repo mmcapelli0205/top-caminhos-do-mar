@@ -151,7 +151,7 @@ export default function AppLayout() {
             <div className="hidden items-center gap-2 sm:flex">
               <span className="text-sm text-foreground">{profile.nome}</span>
               <Badge variant="secondary" className="text-xs">
-                {CARGO_LABELS[cargo || ""] ?? cargo}
+                {areaServico || CARGO_LABELS[cargo || ""] || cargo}
               </Badge>
             </div>
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
