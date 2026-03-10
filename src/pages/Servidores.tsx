@@ -98,6 +98,7 @@ export default function Servidores() {
   const { areaServico } = useAreaServico();
 
   const isDiretoria = role === "diretoria";
+  const isCoord = ["coordenacao", "coord02", "coord03"].includes(role ?? "");
   const effectiveArea = isDiretoria ? "Diretoria" : areaServico;
   const perms = getPermissoesMenu(effectiveArea);
   const canDeleteServidor = perms.servidores_excluir === "E";
@@ -154,6 +155,13 @@ export default function Servidores() {
   }, [searchTerm]);
 
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterArea, filterStatus]);
+
+  // Auto-lock filter for coordinators
+  useEffect(() => {
+    if (isCoord && areaServico) {
+      setFilterArea(areaServico);
+    }
+  }, [isCoord, areaServico]);
 
   const pendentes = useMemo(() => servidores.filter(s => s.status === "pendente"), [servidores]);
   const semArea = useMemo(() => servidores.filter(s => s.status === "sem_area"), [servidores]);
@@ -347,30 +355,32 @@ export default function Servidores() {
             {statusCounts.removido > 0 && ` | ${statusCounts.removido} removidos`})
           </span>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          {perms.servidores_exportar === "E" && (
-            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
-              <Download className="h-4 w-4 mr-1" /> CSV
+        {!isCoord && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            {perms.servidores_exportar === "E" && (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={exportCSV}>
+                <Download className="h-4 w-4 mr-1" /> CSV
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setRelatorioOpen(true)}>
+              <Download className="h-4 w-4 mr-1" /> Relatório PDF
             </Button>
-          )}
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setRelatorioOpen(true)}>
-            <Download className="h-4 w-4 mr-1" /> Relatório PDF
-          </Button>
-          {perms.servidores_importar === "E" && (
-            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
-            </Button>
-          )}
-          {perms.servidores_novo === "E" && (
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
-              <Plus className="h-4 w-4 mr-1" /> Novo Servidor
-            </Button>
-          )}
-        </div>
+            {perms.servidores_importar === "E" && (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-1" /> Importar TicketAndGo
+              </Button>
+            )}
+            {perms.servidores_novo === "E" && (
+              <Button size="sm" className="w-full sm:w-auto" onClick={() => navigate("/servidores/novo")}>
+                <Plus className="h-4 w-4 mr-1" /> Novo Servidor
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Alerts */}
-      {pendentes.length > 0 && (
+      {!isCoord && pendentes.length > 0 && (
         <Card className="border-orange-600/50 bg-orange-600/10 cursor-pointer" onClick={() => { setFilterStatus("pendente"); setFilterArea("todas"); }}>
           <CardContent className="p-3 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-400" />
@@ -378,7 +388,7 @@ export default function Servidores() {
           </CardContent>
         </Card>
       )}
-      {semArea.length > 0 && (
+      {!isCoord && semArea.length > 0 && (
         <Card className="border-red-600/50 bg-red-600/10">
           <CardContent className="p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}>
@@ -398,76 +408,80 @@ export default function Servidores() {
       )}
 
       {/* Area Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {AREAS_SERVICO.map(area => {
-          const c = areaCounts[area];
-          const logoFile = LOGOS_EQUIPES[area];
-          const corEquipe = CORES_EQUIPES[area] || "#6B7280";
-          return (
-            <Card
-              key={area}
-              className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
-              style={{ borderColor: corEquipe }}
-              onClick={() => navigate(area === "Predicantes" ? "/predicantes" : `/areas/${encodeURIComponent(area)}`)}
-            >
-              <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-                {area === "Predicantes" ? predicantesCount : (c?.total ?? 0)}
-              </Badge>
-              {(c?.pendentes ?? 0) > 0 && (
-                <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
-                  {c.pendentes}
+      {!isCoord && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {AREAS_SERVICO.map(area => {
+            const c = areaCounts[area];
+            const logoFile = LOGOS_EQUIPES[area];
+            const corEquipe = CORES_EQUIPES[area] || "#6B7280";
+            return (
+              <Card
+                key={area}
+                className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
+                style={{ borderColor: corEquipe }}
+                onClick={() => navigate(area === "Predicantes" ? "/predicantes" : `/areas/${encodeURIComponent(area)}`)}
+              >
+                <Badge className="absolute top-1.5 right-1.5 bg-primary/20 text-primary border-primary/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
+                  {area === "Predicantes" ? predicantesCount : (c?.total ?? 0)}
                 </Badge>
-              )}
-              <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full w-full">
-                {logoFile && !imgErrors[area] ? (
-                  <img
-                    src={`${ASSET_BASE}${logoFile}`}
-                    alt={area}
-                    className="h-24 w-24 md:h-28 md:w-28 object-contain"
-                    onError={() => setImgErrors(prev => ({ ...prev, [area]: true }))}
-                  />
-                ) : (
-                  <div
-                    className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: corEquipe }}
-                  >
-                    <span className="text-3xl font-bold" style={{ color: getTextColor(corEquipe) }}>
-                      {area.charAt(0)}
-                    </span>
-                  </div>
+                {(c?.pendentes ?? 0) > 0 && (
+                  <Badge className="absolute top-1.5 left-1.5 bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs h-5 px-1">
+                    {c.pendentes}
+                  </Badge>
                 )}
-                <p className="text-xs font-bold text-foreground text-center truncate w-full">{area}</p>
+                <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full w-full">
+                  {logoFile && !imgErrors[area] ? (
+                    <img
+                      src={`${ASSET_BASE}${logoFile}`}
+                      alt={area}
+                      className="h-24 w-24 md:h-28 md:w-28 object-contain"
+                      onError={() => setImgErrors(prev => ({ ...prev, [area]: true }))}
+                    />
+                  ) : (
+                    <div
+                      className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: corEquipe }}
+                    >
+                      <span className="text-3xl font-bold" style={{ color: getTextColor(corEquipe) }}>
+                        {area.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-xs font-bold text-foreground text-center truncate w-full">{area}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {semArea.length > 0 && (
+            <Card
+              className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 border-red-600/40 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
+              onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}
+            >
+              <Badge className="absolute top-1.5 right-1.5 bg-red-600/20 text-red-400 border-red-600/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
+                {semArea.length}
+              </Badge>
+              <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full">
+                <div className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center bg-red-600/20">
+                  <AlertTriangle className="h-12 w-12 text-red-400" />
+                </div>
+                <p className="text-xs font-bold text-red-400">Sem Área</p>
               </CardContent>
             </Card>
-          );
-        })}
-        {semArea.length > 0 && (
-          <Card
-            className="cursor-pointer relative h-40 flex flex-col items-center justify-center border-2 border-red-600/40 hover:scale-[1.05] hover:shadow-lg transition-all duration-300"
-            onClick={() => { setFilterStatus("sem_area"); setFilterArea("todas"); }}
-          >
-            <Badge className="absolute top-1.5 right-1.5 bg-red-600/20 text-red-400 border-red-600/30 text-xs h-5 min-w-5 flex items-center justify-center px-1">
-              {semArea.length}
-            </Badge>
-            <CardContent className="p-3 flex flex-col items-center justify-center gap-1 h-full">
-              <div className="h-24 w-24 md:h-28 md:w-28 rounded-full flex items-center justify-center bg-red-600/20">
-                <AlertTriangle className="h-12 w-12 text-red-400" />
-              </div>
-              <p className="text-xs font-bold text-red-400">Sem Área</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
-        <Select value={filterArea} onValueChange={setFilterArea}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas Áreas</SelectItem>
-            {AREAS_SERVICO.filter(a => a !== "Predicantes").map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {!isCoord && (
+          <Select value={filterArea} onValueChange={setFilterArea}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas Áreas</SelectItem>
+              {AREAS_SERVICO.filter(a => a !== "Predicantes").map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
