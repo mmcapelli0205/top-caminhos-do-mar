@@ -473,13 +473,15 @@ export default function Servidores() {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
-        <Select value={filterArea} onValueChange={setFilterArea}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas Áreas</SelectItem>
-            {AREAS_SERVICO.filter(a => a !== "Predicantes").map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {!isCoord && (
+          <Select value={filterArea} onValueChange={setFilterArea}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Área" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas Áreas</SelectItem>
+              {AREAS_SERVICO.filter(a => a !== "Predicantes").map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
