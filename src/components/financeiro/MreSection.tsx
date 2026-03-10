@@ -203,7 +203,6 @@ const MreSection = () => {
                       onBlur={() => handleBlurSave(i)}
                       className={`w-16 text-center ${rowColor}`}
                     />
-                    />
                   </TableCell>
                   {/* Orçamento 1 */}
                   <TableCell>
