@@ -156,6 +156,13 @@ export default function Servidores() {
 
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, filterArea, filterStatus]);
 
+  // Auto-lock filter for coordinators
+  useEffect(() => {
+    if (isCoord && areaServico) {
+      setFilterArea(areaServico);
+    }
+  }, [isCoord, areaServico]);
+
   const pendentes = useMemo(() => servidores.filter(s => s.status === "pendente"), [servidores]);
   const semArea = useMemo(() => servidores.filter(s => s.status === "sem_area"), [servidores]);
 
