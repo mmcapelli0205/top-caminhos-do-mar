@@ -57,8 +57,8 @@ export default function AreaPortal() {
 
   const dashData = useDashboardData();
 
-  // Fetch or auto-create area
-  const { data: area, isLoading: loadingArea } = useQuery({
+  // Fetch area (read-only — no auto-create to avoid 403 for non-diretoria)
+  const { data: area, isLoading: loadingArea, error: areaError } = useQuery({
     queryKey: ["area", decodedNome],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -67,15 +67,7 @@ export default function AreaPortal() {
         .eq("nome", decodedNome)
         .maybeSingle();
       if (error) throw error;
-      if (data) return data as Area;
-      // Auto-create
-      const { data: created, error: createErr } = await supabase
-        .from("areas")
-        .insert({ nome: decodedNome })
-        .select()
-        .single();
-      if (createErr) throw createErr;
-      return created as Area;
+      return data as Area | null;
     },
     enabled: !!decodedNome,
   });
@@ -159,6 +151,17 @@ export default function AreaPortal() {
       <div className="space-y-4 p-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  if (areaError) {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+        <p className="text-muted-foreground">Não foi possível carregar os dados da área.</p>
+        <p className="text-xs text-muted-foreground">Verifique se você tem permissão para acessar esta área.</p>
+        <Button variant="outline" onClick={() => navigate("/dashboard")}>Voltar ao Início</Button>
       </div>
     );
   }
