@@ -7,22 +7,27 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Save, AlertTriangle, SendHorizonal, Gift } from "lucide-react";
+import { Save, AlertTriangle, SendHorizonal, Gift, Trash2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type PedidoRow = Tables<"pedidos_orcamentos">;
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtKg = (v: number) => `${v.toFixed(1)} kg`;
 
-const isApprovedOrDoado = (it: Partial<PedidoRow>) =>
-  it.status === "aprovado" || it.status === "comprado" || it.is_doado === true;
+const getRowColor = (it: Partial<PedidoRow>) => {
+  if (it.status === "aprovado" || it.status === "comprado" || it.is_doado === true) return "text-green-500";
+  if (it.status === "aguardando") return "text-yellow-500";
+  if (it.status === "reprovado") return "text-red-500";
+  return "";
+};
 
 const CeiaSection = () => {
   const qc = useQueryClient();
   const [items, setItems] = useState<Partial<PedidoRow>[]>([]);
+  const [deleteItem, setDeleteItem] = useState<Partial<PedidoRow> | null>(null);
 
   // Donation modal state
   const [doacaoModalOpen, setDoacaoModalOpen] = useState(false);
@@ -82,7 +87,6 @@ const CeiaSection = () => {
   const custoTotal = items.reduce((s, it) => s + calcTotal(it), 0);
   const custoPorPessoa = totalPessoas > 0 ? custoTotal / totalPessoas : 0;
 
-  // Open donation modal
   const openDoacaoModal = (idx: number) => {
     const it = items[idx];
     setDoacaoIdx(idx);
@@ -93,7 +97,6 @@ const CeiaSection = () => {
     setDoacaoModalOpen(true);
   };
 
-  // Save donation
   const saveDoacaoMutation = useMutation({
     mutationFn: async () => {
       if (!doacaoNome.trim() || !doacaoValor.trim() || !doacaoQtd.trim()) {
@@ -126,7 +129,6 @@ const CeiaSection = () => {
     },
   });
 
-  // Uncheck donation
   const removeDoacaoMutation = useMutation({
     mutationFn: async (id: string) => {
       await supabase.from("pedidos_orcamentos").update({
@@ -141,7 +143,19 @@ const CeiaSection = () => {
     },
   });
 
-  // Save all items
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("pedidos_orcamentos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-ceia-pedidos"] });
+      setDeleteItem(null);
+      toast({ title: "Item excluído" });
+    },
+    onError: (err: any) => toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" }),
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       for (const it of items) {
@@ -158,7 +172,6 @@ const CeiaSection = () => {
     },
   });
 
-  // Send to approval
   const enviarAprovacaoMutation = useMutation({
     mutationFn: async () => {
       for (const it of items) {
@@ -176,7 +189,6 @@ const CeiaSection = () => {
     },
   });
 
-  // Save as despesa
   const saveDespesaMutation = useMutation({
     mutationFn: async () => {
       const total = items.reduce((s, it) => s + calcTotal(it), 0);
@@ -194,8 +206,6 @@ const CeiaSection = () => {
     },
   });
 
-  const greenClass = "text-green-500";
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4 text-sm">
@@ -211,12 +221,12 @@ const CeiaSection = () => {
               <TableHead className="text-right">Valor Unit. (R$/kg)</TableHead>
               <TableHead className="text-right">Kg Compra</TableHead>
               <TableHead className="text-right">Total R$</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {items.map((it, i) => {
-              const approved = isApprovedOrDoado(it);
-              const rowColor = approved ? greenClass : "";
+              const rowColor = getRowColor(it);
 
               return (
                 <TableRow key={it.id ?? `new-${i}`}>
@@ -241,7 +251,6 @@ const CeiaSection = () => {
                           removeDoacaoMutation.mutate(it.id);
                         }
                       }}
-                      className={approved ? "border-green-500 data-[state=checked]:bg-green-500" : ""}
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -265,6 +274,13 @@ const CeiaSection = () => {
                     />
                   </TableCell>
                   <TableCell className={`text-right font-medium ${rowColor}`}>{fmt(calcTotal(it))}</TableCell>
+                  <TableCell>
+                    {it.status !== "comprado" && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteItem(it)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -272,11 +288,13 @@ const CeiaSection = () => {
               <TableCell colSpan={3} className="sticky left-0 bg-card z-10" />
               <TableCell className="text-right">Por Pessoa</TableCell>
               <TableCell className="text-right">{fmt(custoPorPessoa)}</TableCell>
+              <TableCell />
             </TableRow>
             <TableRow className="font-bold">
               <TableCell colSpan={3} className="sticky left-0 bg-card z-10" />
               <TableCell className="text-right">TOTAL</TableCell>
               <TableCell className="text-right">{fmt(custoTotal)}</TableCell>
+              <TableCell />
             </TableRow>
           </TableBody>
         </Table>
@@ -308,33 +326,15 @@ const CeiaSection = () => {
             )}
             <div className="space-y-2">
               <Label>Nome do Doador *</Label>
-              <Input
-                value={doacaoNome}
-                onChange={(e) => setDoacaoNome(e.target.value)}
-                placeholder="Nome completo do doador"
-              />
+              <Input value={doacaoNome} onChange={(e) => setDoacaoNome(e.target.value)} placeholder="Nome completo do doador" />
             </div>
             <div className="space-y-2">
               <Label>Valor Real ou Aproximado (R$) *</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={doacaoValor}
-                onChange={(e) => setDoacaoValor(e.target.value)}
-                placeholder="0.00"
-              />
+              <Input type="number" min={0} step="0.01" value={doacaoValor} onChange={(e) => setDoacaoValor(e.target.value)} placeholder="0.00" />
             </div>
             <div className="space-y-2">
               <Label>Quantidade Doada *</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.1"
-                value={doacaoQtd}
-                onChange={(e) => setDoacaoQtd(e.target.value)}
-                placeholder="Ex: 5"
-              />
+              <Input type="number" min={0} step="0.1" value={doacaoQtd} onChange={(e) => setDoacaoQtd(e.target.value)} placeholder="Ex: 5" />
             </div>
             {doacaoError && (
               <Alert className="border-destructive/50 bg-destructive/10">
@@ -345,12 +345,28 @@ const CeiaSection = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDoacaoModalOpen(false)}>Cancelar</Button>
-            <Button onClick={() => saveDoacaoMutation.mutate()}>
-              Salvar Doação
-            </Button>
+            <Button onClick={() => saveDoacaoMutation.mutate()}>Salvar Doação</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o item <strong>{deleteItem?.nome_item}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteItem?.id && deleteMutation.mutate(deleteItem.id)}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
