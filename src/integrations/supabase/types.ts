@@ -2359,14 +2359,18 @@ export type Database = {
           is_doado: boolean | null
           is_obrigatorio_global: boolean | null
           is_pago_por_terceiro: boolean | null
+          kg_compra: number | null
           migrado_despesas: boolean | null
           motivo_reprovacao: string | null
           nome_item: string
           orcamento_1_fornecedor: string | null
+          orcamento_1_link: string | null
           orcamento_1_valor: number | null
           orcamento_2_fornecedor: string | null
+          orcamento_2_link: string | null
           orcamento_2_valor: number | null
           orcamento_3_fornecedor: string | null
+          orcamento_3_link: string | null
           orcamento_3_valor: number | null
           pago_por: string | null
           quantidade: number
@@ -2397,14 +2401,18 @@ export type Database = {
           is_doado?: boolean | null
           is_obrigatorio_global?: boolean | null
           is_pago_por_terceiro?: boolean | null
+          kg_compra?: number | null
           migrado_despesas?: boolean | null
           motivo_reprovacao?: string | null
           nome_item: string
           orcamento_1_fornecedor?: string | null
+          orcamento_1_link?: string | null
           orcamento_1_valor?: number | null
           orcamento_2_fornecedor?: string | null
+          orcamento_2_link?: string | null
           orcamento_2_valor?: number | null
           orcamento_3_fornecedor?: string | null
+          orcamento_3_link?: string | null
           orcamento_3_valor?: number | null
           pago_por?: string | null
           quantidade?: number
@@ -2435,14 +2443,18 @@ export type Database = {
           is_doado?: boolean | null
           is_obrigatorio_global?: boolean | null
           is_pago_por_terceiro?: boolean | null
+          kg_compra?: number | null
           migrado_despesas?: boolean | null
           motivo_reprovacao?: string | null
           nome_item?: string
           orcamento_1_fornecedor?: string | null
+          orcamento_1_link?: string | null
           orcamento_1_valor?: number | null
           orcamento_2_fornecedor?: string | null
+          orcamento_2_link?: string | null
           orcamento_2_valor?: number | null
           orcamento_3_fornecedor?: string | null
+          orcamento_3_link?: string | null
           orcamento_3_valor?: number | null
           pago_por?: string | null
           quantidade?: number
