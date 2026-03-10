@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { Save, AlertTriangle } from "lucide-react";
+import { Save, AlertTriangle, Trash2 } from "lucide-react";
 import PriceCell from "./PriceCell";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -15,13 +16,18 @@ type PedidoRow = Tables<"pedidos_orcamentos">;
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const isApprovedOrDoado = (it: Partial<PedidoRow>) =>
-  it.status === "aprovado" || it.status === "comprado" || it.is_doado === true;
+const getRowColor = (it: Partial<PedidoRow>) => {
+  if (it.status === "aprovado" || it.status === "comprado" || it.is_doado === true) return "text-green-500";
+  if (it.status === "aguardando") return "text-yellow-500";
+  if (it.status === "reprovado") return "text-red-500";
+  return "";
+};
 
 const MreSection = () => {
   const qc = useQueryClient();
   const [items, setItems] = useState<Partial<PedidoRow>[]>([]);
   const [mercadoNames, setMercadoNames] = useState(["Atacadão", "Mercadão", "Marsil"]);
+  const [deleteItem, setDeleteItem] = useState<Partial<PedidoRow> | null>(null);
 
   const { data: totalParticipantes } = useQuery({
     queryKey: ["fin-participantes-count"],
@@ -92,6 +98,19 @@ const MreSection = () => {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("pedidos_orcamentos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-mre-pedidos"] });
+      setDeleteItem(null);
+      toast({ title: "Item excluído" });
+    },
+    onError: (err: any) => toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" }),
+  });
+
   const saveDespesaMutation = useMutation({
     mutationFn: async () => {
       const total = items.reduce((s, it) => s + calcTotal(it), 0);
@@ -108,8 +127,6 @@ const MreSection = () => {
       toast({ title: "Despesa MRE salva" });
     },
   });
-
-  const greenClass = "text-green-500";
 
   return (
     <div className="space-y-4">
@@ -140,12 +157,12 @@ const MreSection = () => {
               ))}
               <TableHead className="text-right">Menor</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {items.map((it, i) => {
-              const approved = isApprovedOrDoado(it);
-              const rowColor = approved ? greenClass : "";
+              const rowColor = getRowColor(it);
               const orc1Key = "orcamento_1_valor" as const;
               const orc2Key = "orcamento_2_valor" as const;
               const orc3Key = "orcamento_3_valor" as const;
@@ -159,7 +176,6 @@ const MreSection = () => {
                     <Checkbox
                       checked={it.is_obrigatorio_global ?? false}
                       onCheckedChange={(v) => updateItem(i, "is_obrigatorio_global", !!v)}
-                      className={approved ? "border-green-500 data-[state=checked]:bg-green-500" : ""}
                     />
                   </TableCell>
                   <TableCell>
@@ -209,6 +225,13 @@ const MreSection = () => {
                   </TableCell>
                   <TableCell className={`text-right font-medium ${rowColor}`}>{fmt(getMinPrice(it))}</TableCell>
                   <TableCell className={`text-right font-medium ${rowColor}`}>{fmt(calcTotal(it))}</TableCell>
+                  <TableCell>
+                    {it.status !== "comprado" && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteItem(it)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -216,11 +239,13 @@ const MreSection = () => {
               <TableCell colSpan={6} className="sticky left-0 bg-card z-10" />
               <TableCell className="text-right">Custo/Kit</TableCell>
               <TableCell className="text-right">{fmt(custoPorKit)}</TableCell>
+              <TableCell />
             </TableRow>
             <TableRow className="font-bold">
               <TableCell colSpan={6} className="sticky left-0 bg-card z-10" />
               <TableCell className="text-right">TOTAL MRE</TableCell>
               <TableCell className="text-right">{fmt(custoTotal)}</TableCell>
+              <TableCell />
             </TableRow>
           </TableBody>
         </Table>
@@ -230,6 +255,24 @@ const MreSection = () => {
         <Button onClick={() => saveMutation.mutate()}><Save className="h-4 w-4 mr-1" /> Salvar</Button>
         <Button variant="secondary" onClick={() => saveDespesaMutation.mutate()}>Salvar como Despesa</Button>
       </div>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o item <strong>{deleteItem?.nome_item}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteItem?.id && deleteMutation.mutate(deleteItem.id)}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -11,13 +11,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, Clock, CheckCircle2, ShoppingCart, FileDown } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, ShoppingCart, FileDown, Trash2, Pencil } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format, subDays } from "date-fns";
 import type { PedidoOrcamento, CategoriaDespesa } from "@/types/pedidos";
 import { STATUS_CONFIG, fmt } from "@/types/pedidos";
+
+const getRowColor = (p: { status: string; is_doado?: boolean | null }) => {
+  if (p.status === "aprovado" || p.status === "comprado" || p.is_doado === true) return "text-green-500";
+  if (p.status === "aguardando") return "text-yellow-500";
+  if (p.status === "reprovado") return "text-red-500";
+  return "";
+};
 
 export default function AdmPedidosDashboard() {
   const qc = useQueryClient();
@@ -27,14 +35,20 @@ export default function AdmPedidosDashboard() {
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [selectedPedido, setSelectedPedido] = useState<PedidoOrcamento | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PedidoOrcamento | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   // Editable fields for the management modal
+  const [editQtd, setEditQtd] = useState<number>(0);
   const [orc1Forn, setOrc1Forn] = useState("");
   const [orc1Val, setOrc1Val] = useState<number>(0);
+  const [orc1Link, setOrc1Link] = useState("");
   const [orc2Forn, setOrc2Forn] = useState("");
   const [orc2Val, setOrc2Val] = useState<number>(0);
+  const [orc2Link, setOrc2Link] = useState("");
   const [orc3Forn, setOrc3Forn] = useState("");
   const [orc3Val, setOrc3Val] = useState<number>(0);
+  const [orc3Link, setOrc3Link] = useState("");
   const [fornAprovado, setFornAprovado] = useState("");
   const [valorPago, setValorPago] = useState<number>(0);
   const [qtdComprada, setQtdComprada] = useState<number>(0);
@@ -91,12 +105,17 @@ export default function AdmPedidosDashboard() {
 
   const openGestao = (p: PedidoOrcamento) => {
     setSelectedPedido(p);
+    setEditMode(false);
+    setEditQtd(p.quantidade);
     setOrc1Forn(p.orcamento_1_fornecedor || "");
     setOrc1Val(p.orcamento_1_valor || 0);
+    setOrc1Link((p as any).orcamento_1_link || "");
     setOrc2Forn(p.orcamento_2_fornecedor || "");
     setOrc2Val(p.orcamento_2_valor || 0);
+    setOrc2Link((p as any).orcamento_2_link || "");
     setOrc3Forn(p.orcamento_3_fornecedor || "");
     setOrc3Val(p.orcamento_3_valor || 0);
+    setOrc3Link((p as any).orcamento_3_link || "");
     setFornAprovado(p.fornecedor_aprovado || "");
     setValorPago(p.valor_pago || 0);
     setQtdComprada(p.quantidade_comprada || p.quantidade);
@@ -128,6 +147,31 @@ export default function AdmPedidosDashboard() {
     }
   };
 
+  const salvarEdicao = useMutation({
+    mutationFn: async () => {
+      if (!selectedPedido) return;
+      const { error } = await supabase.from("pedidos_orcamentos").update({
+        quantidade: editQtd,
+        orcamento_1_fornecedor: orc1Forn || null,
+        orcamento_1_valor: orc1Val || null,
+        orcamento_1_link: orc1Link || null,
+        orcamento_2_fornecedor: orc2Forn || null,
+        orcamento_2_valor: orc2Val || null,
+        orcamento_2_link: orc2Link || null,
+        orcamento_3_fornecedor: orc3Forn || null,
+        orcamento_3_valor: orc3Val || null,
+        orcamento_3_link: orc3Link || null,
+      }).eq("id", selectedPedido.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["adm-pedidos-todos"] });
+      setEditMode(false);
+      toast({ title: "Edição salva" });
+    },
+    onError: (err: any) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+
   const salvarOrcamentos = useMutation({
     mutationFn: async () => {
       if (!selectedPedido) return;
@@ -136,10 +180,13 @@ export default function AdmPedidosDashboard() {
       const { error } = await supabase.from("pedidos_orcamentos").update({
         orcamento_1_fornecedor: orc1Forn || null,
         orcamento_1_valor: orc1Val || null,
+        orcamento_1_link: orc1Link || null,
         orcamento_2_fornecedor: orc2Forn || null,
         orcamento_2_valor: orc2Val || null,
+        orcamento_2_link: orc2Link || null,
         orcamento_3_fornecedor: orc3Forn || null,
         orcamento_3_valor: orc3Val || null,
+        orcamento_3_link: orc3Link || null,
         status: newStatus,
       }).eq("id", selectedPedido.id);
       if (error) throw error;
@@ -180,15 +227,26 @@ export default function AdmPedidosDashboard() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("pedidos_orcamentos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["adm-pedidos-todos"] });
+      setDeleteTarget(null);
+      toast({ title: "Pedido excluído" });
+    },
+    onError: (err: any) => toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" }),
+  });
+
   const marcarComprado = useMutation({
     mutationFn: async () => {
       if (!selectedPedido) return;
 
-      // Validation
       if (isDoado && !doadoPor.trim()) throw new Error("Informe quem doou o item");
       if (isPagoPorTerceiro && !pagoPor.trim()) throw new Error("Informe quem pagou o item");
 
-      // Update pedido
       const { error: updateErr } = await supabase.from("pedidos_orcamentos").update({
         status: "comprado",
         comprado: true,
@@ -205,7 +263,6 @@ export default function AdmPedidosDashboard() {
       }).eq("id", selectedPedido.id);
       if (updateErr) throw updateErr;
 
-      // If donated, create doacao record
       if (isDoado) {
         const { error: doacaoErr } = await supabase.from("doacoes").insert({
           tipo: "material",
@@ -218,7 +275,6 @@ export default function AdmPedidosDashboard() {
         if (doacaoErr) throw doacaoErr;
       }
 
-      // If paid by third party, create reembolso record
       if (isPagoPorTerceiro) {
         const { error: reembolsoErr } = await supabase.from("reembolsos").insert({
           nome_pagador: pagoPor,
@@ -232,7 +288,6 @@ export default function AdmPedidosDashboard() {
         if (reembolsoErr) throw reembolsoErr;
       }
 
-      // Create despesa (only if not donated)
       if (!isDoado) {
         const { error: insertErr } = await supabase.from("despesas").insert({
           item: selectedPedido.nome_item,
@@ -249,7 +304,6 @@ export default function AdmPedidosDashboard() {
         if (insertErr) throw insertErr;
       }
 
-      // Integração com estoque de medicamentos
       if (selectedPedido.categoria === "Medicamentos") {
         const finalQtd = qtdComprada || selectedPedido.quantidade;
         const { data: existing } = await supabase
@@ -372,25 +426,35 @@ export default function AdmPedidosDashboard() {
         <div className="space-y-3">
           {filtered.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum pedido encontrado</p>
-          ) : filtered.map((p) => (
-            <Card key={p.id} className="cursor-pointer" onClick={() => openGestao(p)}>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-medium">{p.nome_item}</span>
-                    <p className="text-xs text-muted-foreground">{p.area_solicitante}</p>
+          ) : filtered.map((p) => {
+            const color = getRowColor(p);
+            return (
+              <Card key={p.id} className="cursor-pointer" onClick={() => openGestao(p)}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className={`font-medium ${color}`}>{p.nome_item}</span>
+                      <p className={`text-xs ${color || "text-muted-foreground"}`}>{p.area_solicitante}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {statusBadge(p.status)}
+                      {p.status !== "comprado" && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  {statusBadge(p.status)}
-                </div>
-                <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-                  <span>{p.categoria}</span>
-                  <span>Qtd: {p.quantidade}</span>
-                  <span>{fmt(p.valor_total_estimado || 0)}</span>
-                  <span>{p.data_solicitacao ? format(new Date(p.data_solicitacao), "dd/MM/yy") : "-"}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className={`grid grid-cols-2 gap-1 text-sm ${color || "text-muted-foreground"}`}>
+                    <span>{p.categoria}</span>
+                    <span>Qtd: {p.quantidade}</span>
+                    <span>{fmt(p.valor_total_estimado || 0)}</span>
+                    <span>{p.data_solicitacao ? format(new Date(p.data_solicitacao), "dd/MM/yy") : "-"}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -405,23 +469,34 @@ export default function AdmPedidosDashboard() {
                 <TableHead>Responsável</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openGestao(p)}>
-                  <TableCell>{p.area_solicitante}</TableCell>
-                  <TableCell>{p.nome_item}</TableCell>
-                  <TableCell>{p.categoria}</TableCell>
-                  <TableCell className="text-right">{p.quantidade}</TableCell>
-                  <TableCell className="text-right">{fmt(p.valor_total_estimado || 0)}</TableCell>
-                  <TableCell>{p.responsavel_nome}</TableCell>
-                  <TableCell>{statusBadge(p.status)}</TableCell>
-                  <TableCell>{p.data_solicitacao ? format(new Date(p.data_solicitacao), "dd/MM/yy") : "-"}</TableCell>
-                </TableRow>
-              ))}
+              {filtered.map((p) => {
+                const color = getRowColor(p);
+                return (
+                  <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openGestao(p)}>
+                    <TableCell className={color}>{p.area_solicitante}</TableCell>
+                    <TableCell className={color}>{p.nome_item}</TableCell>
+                    <TableCell className={color}>{p.categoria}</TableCell>
+                    <TableCell className={`text-right ${color}`}>{p.quantidade}</TableCell>
+                    <TableCell className={`text-right ${color}`}>{fmt(p.valor_total_estimado || 0)}</TableCell>
+                    <TableCell className={color}>{p.responsavel_nome}</TableCell>
+                    <TableCell>{statusBadge(p.status)}</TableCell>
+                    <TableCell className={color}>{p.data_solicitacao ? format(new Date(p.data_solicitacao), "dd/MM/yy") : "-"}</TableCell>
+                    <TableCell>
+                      {p.status !== "comprado" && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pedido encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum pedido encontrado</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -438,15 +513,29 @@ export default function AdmPedidosDashboard() {
 
           {selectedPedido && (
             <div className="space-y-6">
-              {/* Section 1: Pedido data (readonly) */}
+              {/* Section 1: Pedido data */}
               <div>
-                <h4 className="font-semibold mb-2">Dados do Pedido</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">Dados do Pedido</h4>
+                  {!isComprado && !editMode && (
+                    <Button size="sm" variant="outline" onClick={() => setEditMode(true)}>
+                      <Pencil className="h-3 w-3 mr-1" /> Editar
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div><span className="text-muted-foreground">Área:</span> {selectedPedido.area_solicitante}</div>
                   <div><span className="text-muted-foreground">Responsável:</span> {selectedPedido.responsavel_nome}</div>
                   <div><span className="text-muted-foreground">Item:</span> {selectedPedido.nome_item}</div>
                   <div><span className="text-muted-foreground">Categoria:</span> {selectedPedido.categoria}</div>
-                  <div><span className="text-muted-foreground">Quantidade:</span> {selectedPedido.quantidade}</div>
+                  <div>
+                    <span className="text-muted-foreground">Quantidade:</span>{" "}
+                    {editMode ? (
+                      <Input type="number" min={1} value={editQtd} onChange={(e) => setEditQtd(parseInt(e.target.value) || 1)} className="inline-block w-20 h-7 ml-1" />
+                    ) : (
+                      selectedPedido.quantidade
+                    )}
+                  </div>
                   <div><span className="text-muted-foreground">Valor Estimado:</span> {fmt(selectedPedido.valor_total_estimado || 0)}</div>
                   {selectedPedido.finalidade && <div className="col-span-2"><span className="text-muted-foreground">Finalidade:</span> {selectedPedido.finalidade}</div>}
                   <div><span className="text-muted-foreground">Status:</span> {statusBadge(selectedPedido.status)}</div>
@@ -455,30 +544,42 @@ export default function AdmPedidosDashboard() {
 
               <Separator />
 
-              {/* Section 2: Orcamentos (hidden if is_obrigatorio_global) */}
+              {/* Section 2: Orcamentos */}
               {!selectedPedido.is_obrigatorio_global && (
                 <>
                   <div>
                     <h4 className="font-semibold mb-2">Orçamentos</h4>
                     <div className="space-y-3">
                       {[
-                        { label: "1", forn: orc1Forn, setForn: setOrc1Forn, val: orc1Val, setVal: setOrc1Val },
-                        { label: "2", forn: orc2Forn, setForn: setOrc2Forn, val: orc2Val, setVal: setOrc2Val },
-                        { label: "3", forn: orc3Forn, setForn: setOrc3Forn, val: orc3Val, setVal: setOrc3Val },
+                        { label: "1", forn: orc1Forn, setForn: setOrc1Forn, val: orc1Val, setVal: setOrc1Val, link: orc1Link, setLink: setOrc1Link },
+                        { label: "2", forn: orc2Forn, setForn: setOrc2Forn, val: orc2Val, setVal: setOrc2Val, link: orc2Link, setLink: setOrc2Link },
+                        { label: "3", forn: orc3Forn, setForn: setOrc3Forn, val: orc3Val, setVal: setOrc3Val, link: orc3Link, setLink: setOrc3Link },
                       ].map((o) => (
-                        <div key={o.label} className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-xs">Fornecedor {o.label}</Label>
-                            <Input value={o.forn} onChange={(e) => o.setForn(e.target.value)} disabled={isComprado} />
+                        <div key={o.label} className="space-y-1">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">Fornecedor {o.label}</Label>
+                              <Input value={o.forn} onChange={(e) => o.setForn(e.target.value)} disabled={isComprado && !editMode} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Valor TOTAL</Label>
+                              <Input type="number" step="0.01" value={o.val || ""} onChange={(e) => o.setVal(parseFloat(e.target.value) || 0)} disabled={isComprado && !editMode} />
+                            </div>
                           </div>
                           <div>
-                            <Label className="text-xs">Valor {o.label}</Label>
-                            <Input type="number" step="0.01" value={o.val || ""} onChange={(e) => o.setVal(parseFloat(e.target.value) || 0)} disabled={isComprado} />
+                            <Label className="text-xs">Link de compra</Label>
+                            <Input value={o.link} onChange={(e) => o.setLink(e.target.value)} placeholder="https://..." disabled={isComprado && !editMode} className="h-8 text-xs" />
                           </div>
                         </div>
                       ))}
                     </div>
-                    {!isComprado && !isReprovado && (
+                    {editMode && (
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" onClick={() => salvarEdicao.mutate()}>Salvar edição</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditMode(false)}>Cancelar</Button>
+                      </div>
+                    )}
+                    {!editMode && !isComprado && !isReprovado && (
                       <Button size="sm" className="mt-2" onClick={() => salvarOrcamentos.mutate()}>
                         Salvar Orçamentos
                       </Button>
@@ -519,7 +620,6 @@ export default function AdmPedidosDashboard() {
                       <div><Label>Data da Compra</Label><Input type="date" value={dataCompra} onChange={(e) => setDataCompra(e.target.value)} disabled={isComprado} /></div>
                     </div>
 
-                    {/* Bloco Doação */}
                     {!isComprado && (
                       <div className="border rounded-lg p-3 space-y-2">
                         <div className="flex items-center gap-2">
@@ -540,7 +640,6 @@ export default function AdmPedidosDashboard() {
                       </div>
                     )}
 
-                    {/* Bloco Pago por Terceiro */}
                     {!isComprado && (
                       <div className="border rounded-lg p-3 space-y-2">
                         <div className="flex items-center gap-2">
@@ -594,6 +693,24 @@ export default function AdmPedidosDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pedido</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o item <strong>{deleteTarget?.nome_item}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteTarget?.id && deleteMutation.mutate(deleteTarget.id)}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
