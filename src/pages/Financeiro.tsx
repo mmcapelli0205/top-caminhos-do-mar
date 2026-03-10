@@ -77,7 +77,7 @@ const Financeiro = () => {
           {!hakunaOnly && <TabsTrigger value="reembolsos">Reembolsos</TabsTrigger>}
           {!hakunaOnly && <TabsTrigger value="mre">MRE</TabsTrigger>}
           {!hakunaOnly && <TabsTrigger value="ceia">Ceia do Rei</TabsTrigger>}
-          {!hakunaOnly && <TabsTrigger value="bebidas">Bebidas</TabsTrigger>}
+          
         </TabsList>
         <TabsContent value="resumo"><ResumoSection /></TabsContent>
         {!hakunaOnly && <TabsContent value="receita"><ReceitaSection /></TabsContent>}
