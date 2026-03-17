@@ -124,9 +124,19 @@ export function useAuth(): UseAuthReturn {
   const signOut = useCallback(async () => {
     localStorage.removeItem("top_user");
     try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("Erro ao deslogar (ignorado):", err);
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // ignored — we force-clear tokens below regardless
+    }
+    // Force-clear any remaining Supabase auth tokens from localStorage
+    try {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') && key.includes('-auth-')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {
+      // localStorage may be unavailable (Safari private mode)
     }
     setSession(null);
     setProfile(null);

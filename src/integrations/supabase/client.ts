@@ -33,8 +33,5 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-    window.location.href = '/';
-  }
-});
+// Auth state changes are handled by useAuth hook + AppLayout redirect logic.
+// No hard redirect here to avoid race conditions with React Router.
