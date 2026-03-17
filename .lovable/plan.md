@@ -1,64 +1,116 @@
 
 
-# Diagnóstico: Flutuantes não apareceram no Portal de Área
+## Bug: Logout não limpa sessão — precisa limpar cache para logar novamente
 
-## O que aconteceu
+### Causa raiz
 
-O Bloco A atualizou apenas os **dropdowns de criação/aprovação de usuários** (CadastroRápido, Aprovações, Configurações). Os cards de liderança no header do portal de área (`AreaHeader.tsx`) **não foram tocados** porque a tabela `areas` no banco **não possui colunas para Flutuantes**.
+Existem **3 problemas** que se somam:
 
-Estrutura atual da tabela `areas`:
-```text
-areas
-├── coordenador_id      → Coord 01
-├── coordenador_02_id   → Coord 02
-├── coordenador_03_id   → Coord 03
-├── sombra_id           → Sombra 01
-├── sombra_02_id        → Sombra 02
-└── sombra_03_id        → Sombra 03
-   (sem flutuante_01_id, flutuante_02_id, flutuante_03_id)
+1. **`signOut()` falha silenciosamente e tokens ficam no localStorage**: O `useAuth.signOut()` faz `try/catch` e ignora erros. Se o `supabase.auth.signOut()` falha (rede instável, token expirado), os tokens JWT permanecem no localStorage. Na próxima visita, `getSession()` encontra esses tokens "fantasma" e a Login page redireciona imediatamente para `/dashboard`, onde o profile fetch falha e o usuário fica preso num loading infinito.
+
+2. **Navegação dupla conflitante no logout**: Quando `signOut()` funciona, dois redirecionamentos competem ao mesmo tempo:
+   - O listener global em `client.ts`: `window.location.href = '/'` (hard redirect)
+   - O `handleLogout` em `AppLayout.tsx`: `navigate("/", { replace: true })` (SPA navigation)
+   
+   Essa race condition pode deixar o app num estado inconsistente.
+
+3. **Login page não valida se a sessão é realmente válida**: O `useEffect` na Login page chama `getSession()` e, se retornar qualquer sessão (mesmo com token expirado), redireciona para `/dashboard` sem verificar se o token ainda funciona.
+
+### Correção
+
+**Arquivo 1: `src/hooks/useAuth.ts` — signOut robusto**
+
+Alterar o `signOut` para:
+- Usar `signOut({ scope: 'local' })` para garantir limpeza local mesmo se o servidor não responder
+- Após o signOut, limpar manualmente TODAS as chaves do Supabase do localStorage (padrão `sb-*-auth-token`)
+- Remover o `top_user` do localStorage (já faz)
+
+```tsx
+const signOut = useCallback(async () => {
+  localStorage.removeItem("top_user");
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // ignored
+  }
+  // Force-clear any remaining Supabase auth tokens
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('sb-') && key.includes('-auth-')) {
+      localStorage.removeItem(key);
+    }
+  });
+  setSession(null);
+  setProfile(null);
+  setRole(null);
+}, []);
 ```
 
-Para exibir Flutuantes no header do portal, são necessárias **3 mudanças**:
+**Arquivo 2: `src/integrations/supabase/client.ts` — remover hard redirect**
 
----
+Remover o `window.location.href = '/'` do listener global. Esse redirect compete com a navegação do React Router e causa problemas. O `useAuth` + `AppLayout` já cuidam do redirect quando `session` fica `null`.
 
-## Plano de Correção
-
-### 1. Migration SQL — Adicionar colunas na tabela `areas`
-
-```sql
-ALTER TABLE areas
-  ADD COLUMN flutuante_01_id UUID REFERENCES servidores(id),
-  ADD COLUMN flutuante_02_id UUID REFERENCES servidores(id),
-  ADD COLUMN flutuante_03_id UUID REFERENCES servidores(id);
+```ts
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+    // Don't force hard redirect — let React handle it via useAuth
+    // The useAuth hook sets session=null, and AppLayout redirects to "/"
+  }
+});
 ```
 
-### 2. Atualizar tipos Supabase (`src/integrations/supabase/types.ts`)
+Ou simplesmente remover o listener inteiro.
 
-Adicionar `flutuante_01_id`, `flutuante_02_id`, `flutuante_03_id` nos blocos Row, Insert e Update da tabela `areas`.
+**Arquivo 3: `src/pages/Login.tsx` — validar sessão antes de redirecionar**
 
-### 3. Atualizar `src/components/area/AreaHeader.tsx`
+No `getSession()` da Login page, verificar se a sessão tem um token válido (não expirado) antes de redirecionar. Se expirado, chamar `signOut` para limpar:
 
-Adicionar os 3 slots de Flutuante nos cards de liderança (entre Coords e Sombras):
-
-```text
-Coord 01 | Coord 02 | Coord 03 | Flut. 01 | Flut. 02 | Flut. 03 | Sombra 01 | Sombra 02 | Sombra 03
+```tsx
+supabase.auth.getSession().then(async ({ data: { session } }) => {
+  if (session) {
+    // Check if token is expired
+    const expiresAt = session.expires_at ?? 0;
+    if (expiresAt * 1000 < Date.now()) {
+      // Stale session — clean up
+      await supabase.auth.signOut({ scope: 'local' });
+      return;
+    }
+    // ... proceed with redirect
+  }
+});
 ```
 
-Layout proposto: grid de 9 colunas no desktop (3+3+3), com os Flutuantes sem badge especial e os Sombras mantendo o badge "Em treinamento".
+**Arquivo 4: `src/hooks/useInactivityTimeout.ts` — mesmo padrão robusto**
 
-### 4. Atualizar `src/hooks/usePermissoes.ts`
+O `doLogout` também chama `supabase.auth.signOut()` sem scope e sem limpeza manual. Aplicar o mesmo padrão:
 
-Adicionar verificação dos novos campos `flutuante_01_id/02/03` no `getCargoNaArea()` para resolver corretamente o cargo quando o servidor logado é um flutuante na área. Também atualizar a query para incluir os novos campos no select.
+```tsx
+const doLogout = useCallback(async () => {
+  clearTimers();
+  toast.error("Sessão encerrada por inatividade");
+  localStorage.removeItem("top_user");
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch { /* ignored */ }
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('sb-') && key.includes('-auth-')) {
+      localStorage.removeItem(key);
+    }
+  });
+  navigate("/", { replace: true });
+}, [clearTimers, navigate]);
+```
 
----
-
-## Arquivos afetados
+### Resumo das mudanças
 
 | Arquivo | Mudança |
-|---|---|
-| Nova migration SQL | `ALTER TABLE areas ADD COLUMN flutuante_01/02/03_id` |
-| `src/integrations/supabase/types.ts` | Adicionar 3 campos nos tipos da tabela `areas` |
-| `src/components/area/AreaHeader.tsx` | Adicionar 3 cards de Flutuante + tipo no `handleSetLeader` |
-| `src/hooks/usePermissoes.ts` | Incluir `flutuante_01/02/03_id` no select e no `getCargoNaArea` |
+|---------|---------|
+| `useAuth.ts` | signOut com `scope: 'local'` + limpeza manual de tokens |
+| `client.ts` | Remover hard redirect no listener global |
+| `Login.tsx` | Verificar expiração do token antes de redirecionar |
+| `useInactivityTimeout.ts` | Mesmo padrão robusto de signOut |
+
+### Impacto
+- 4 arquivos editados, zero mudanças no banco
+- Resolve definitivamente o problema de "precisa limpar cache"
+- Funciona em mobile, Safari private mode, e redes instáveis
 
