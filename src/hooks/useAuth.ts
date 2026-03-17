@@ -15,6 +15,7 @@ export interface UserProfile {
   created_at: string | null;
   pode_aprovar: boolean | null;
   acesso_financeiro: boolean | null;
+  primeiro_acesso: boolean | null;
 }
 
 export interface UseAuthReturn {
