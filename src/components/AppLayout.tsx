@@ -121,7 +121,7 @@ export default function AppLayout() {
   }
 
   // Redirect primeiro_acesso users
-  if ((profile as any).primeiro_acesso === true) {
+  if (profile.primeiro_acesso === true) {
     navigate("/primeiro-acesso", { replace: true });
     return null;
   }

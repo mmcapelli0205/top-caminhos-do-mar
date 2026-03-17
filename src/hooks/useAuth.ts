@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { purgeAuthSession } from "@/lib/authPurge";
 import type { Session } from "@supabase/supabase-js";
 
 export interface UserProfile {
@@ -15,6 +16,7 @@ export interface UserProfile {
   created_at: string | null;
   pode_aprovar: boolean | null;
   acesso_financeiro: boolean | null;
+  primeiro_acesso: boolean | null;
 }
 
 export interface UseAuthReturn {
@@ -122,22 +124,7 @@ export function useAuth(): UseAuthReturn {
   }, [userId, initialSessionChecked]);
 
   const signOut = useCallback(async () => {
-    localStorage.removeItem("top_user");
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch {
-      // ignored — we force-clear tokens below regardless
-    }
-    // Force-clear any remaining Supabase auth tokens from localStorage
-    try {
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sb-') && key.includes('-auth-')) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch {
-      // localStorage may be unavailable (Safari private mode)
-    }
+    await purgeAuthSession();
     setSession(null);
     setProfile(null);
     setRole(null);

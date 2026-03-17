@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { purgeAuthSession } from "@/lib/authPurge";
 import { toast } from "sonner";
 
 const EVENTS: (keyof DocumentEventMap)[] = [
@@ -31,19 +31,7 @@ export function useInactivityTimeout(minutes: number) {
   const doLogout = useCallback(async () => {
     clearTimers();
     toast.error("Sessão encerrada por inatividade");
-    localStorage.removeItem("top_user");
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch {
-      // ignored
-    }
-    try {
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sb-') && key.includes('-auth-')) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch {}
+    await purgeAuthSession();
     navigate("/", { replace: true });
   }, [clearTimers, navigate]);
 

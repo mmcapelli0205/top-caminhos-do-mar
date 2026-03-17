@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { purgeAuthSession } from "@/lib/authPurge";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +16,6 @@ import { Input } from "@/components/ui/input";
 
 const BG_URL =
   "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20-%20foto.png";
-const LOGO_URL =
-  "https://ilknzgupnswyeynwpovj.supabase.co/storage/v1/object/public/assets/Caminhos%20do%20Mar%20sem%20fundo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -26,54 +25,29 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
-  // Redirect to dashboard if already logged in
+  // Redirect to dashboard if already logged in — simple, no async DB queries
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
-        // Check if user needs first access flow
-        const { data: profileData } = await supabase
-          .from("user_profiles")
-          .select("primeiro_acesso")
-          .eq("id", session.user.id)
-          .single();
-
-        if (profileData?.primeiro_acesso) {
-          navigate("/primeiro-acesso", { replace: true });
-        } else {
-          navigate("/dashboard", { replace: true });
-        }
-      }
-    });
     // Check existing session on mount — validate token is not expired
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         const expiresAt = session.expires_at ?? 0;
         if (expiresAt * 1000 < Date.now()) {
           // Stale/expired session — clean up silently
-          try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
-          try {
-            Object.keys(localStorage).forEach(key => {
-              if (key.startsWith('sb-') && key.includes('-auth-')) {
-                localStorage.removeItem(key);
-              }
-            });
-          } catch {}
+          await purgeAuthSession();
           return;
         }
-
-        const { data: profileData } = await supabase
-          .from("user_profiles")
-          .select("primeiro_acesso")
-          .eq("id", session.user.id)
-          .single();
-
-        if (profileData?.primeiro_acesso) {
-          navigate("/primeiro-acesso", { replace: true });
-        } else {
-          navigate("/dashboard", { replace: true });
-        }
+        // Valid session — redirect immediately, let AppLayout handle primeiro_acesso
+        navigate("/dashboard", { replace: true });
       }
     });
+
+    // Listen for auth state changes (login success, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        navigate("/dashboard", { replace: true });
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, [navigate]);
 
