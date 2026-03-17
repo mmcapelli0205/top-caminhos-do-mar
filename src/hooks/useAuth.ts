@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { purgeAuthSession } from "@/lib/authPurge";
 import type { Session } from "@supabase/supabase-js";
 
 export interface UserProfile {
