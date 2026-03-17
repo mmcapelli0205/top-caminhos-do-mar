@@ -31,7 +31,19 @@ export function useInactivityTimeout(minutes: number) {
   const doLogout = useCallback(async () => {
     clearTimers();
     toast.error("Sessão encerrada por inatividade");
-    await supabase.auth.signOut();
+    localStorage.removeItem("top_user");
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // ignored
+    }
+    try {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') && key.includes('-auth-')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {}
     navigate("/", { replace: true });
   }, [clearTimers, navigate]);
 

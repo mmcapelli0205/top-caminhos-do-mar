@@ -44,9 +44,23 @@ const Login = () => {
         }
       }
     });
-    // Check existing session on mount
+    // Check existing session on mount — validate token is not expired
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        const expiresAt = session.expires_at ?? 0;
+        if (expiresAt * 1000 < Date.now()) {
+          // Stale/expired session — clean up silently
+          try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
+          try {
+            Object.keys(localStorage).forEach(key => {
+              if (key.startsWith('sb-') && key.includes('-auth-')) {
+                localStorage.removeItem(key);
+              }
+            });
+          } catch {}
+          return;
+        }
+
         const { data: profileData } = await supabase
           .from("user_profiles")
           .select("primeiro_acesso")
